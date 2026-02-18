@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en" data-layout-mode="light_mode">
+
+
+<!-- Mirrored from dreamspos.dreamstechnologies.com/html/template/index.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 03 Apr 2025 10:30:40 GMT -->
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        <%= title %>
+    </title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/assets/img/favicon1.png">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="/assets/css/bootstrap.min.css">
+
+    <!-- Animation -->
+    <link rel="stylesheet" href="/assets/css/animate.css">
+
+    <!-- Select2 -->
+    <link rel="stylesheet" href="/assets/plugins/select2/css/select2.min.css">
+
+    <!-- Daterangepicker -->
+    <link rel="stylesheet" href="/assets/plugins/daterangepicker/daterangepicker.css">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="/assets/plugins/tabler-icons/tabler-icons.css">
+    <link rel="stylesheet" href="/assets/plugins/fontawesome/css/all.min.css">
+
+    <link href="/assets/plugins/datatables/datatables.min.css" rel="stylesheet">
+
+    <!-- Color Picker -->
+    <link rel="stylesheet" href="/assets/plugins/@simonwep/pickr/themes/nano.min.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
+    <!-- <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css"> -->
+
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+</head>
+
+
+<body>
+    <div id="global-loader">
+        <div class="whirly-loader"> </div>
+    </div>
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+
+        <div id="toastContainer" class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"></div>
+
+        <!-- Header -->
+        <div class="header">
+            <div class="main-header">
+                <!-- Logo -->
+                <div class="header-left">
+                    <a href="index.html" class="logo logo-normal">
+                        <img src="/assets/img/logo_lehConnect.png" alt="Img">
+                    </a>
+                    <a href="index.html" class="logo logo-white">
+                        <img src="/assets/img/logo_lehConnect2.png" alt="Img">
+                    </a>
+                    <a href="index.html" class="logo-small">
+                        <img src="/assets/img/logo-small.png" alt="Img">
+                    </a>
+                </div>
+                <!-- /Logo -->
+                <a id="mobile_btn" class="mobile_btn" href="#sidebar">
+                    <span class="bar-icon">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </a>
+
+                <!-- Header Menu -->
+                <ul class="nav user-menu">
+
+                    <!-- Search -->
+                    <li class="nav-item nav-searchinputs">
+
+                    </li>
+                    <!-- /Search -->
+
+                    <!-- Select Store -->
+                    <li class="nav-item dropdown has-arrow main-drop select-store-dropdown">
+                        <div class="dropdown-menu dropdown-menu-right">
+                            <a href="javascript:void(0);" class="dropdown-item">
+                                <img src="/assets/img/store/store-01.png" alt="Store Logo" class="img-fluid">Freshmart
+                            </a>
+                            <a href="javascript:void(0);" class="dropdown-item">
+                                <img src="/assets/img/store/store-02.png" alt="Store Logo" class="img-fluid">Grocery
+                                Apex
+                            </a>
+                            <a href="javascript:void(0);" class="dropdown-item">
+                                <img src="/assets/img/store/store-03.png" alt="Store Logo" class="img-fluid">Grocery
+                                Bevy
+                            </a>
+                            <a href="javascript:void(0);" class="dropdown-item">
+                                <img src="/assets/img/store/store-04.png" alt="Store Logo" class="img-fluid">Grocery
+                                Eden
+                            </a>
+                        </div>
+                    </li>
+                    <!-- /Select Store -->
+
+
+                    <!-- /Flag -->
+
+                    <li class="nav-item nav-item-box">
+                        <a href="javascript:void(0);" id="btnFullscreen">
+                            <i class="ti ti-maximize"></i>
+                        </a>
+                    </li>
+                    <li class="nav-item nav-item-box">
+                        <a href="email.html">
+                            <i class="ti ti-mail"></i>
+                            <span class="badge rounded-pill">1</span>
+                        </a>
+                    </li>
+                    <!-- Notifications -->
+                    <li class="nav-item dropdown nav-item-box">
+                        <a href="javascript:void(0);" class="dropdown-toggle nav-link" data-bs-toggle="dropdown">
+                            <i class="ti ti-bell"></i>
+                        </a>
+                        <div class="dropdown-menu notifications">
+                            <div class="topnav-dropdown-header">
+                                <h5 class="notification-title">Notifications</h5>
+                                <a href="javascript:void(0)" class="clear-noti">Mark all as read</a>
+                            </div>
+                            <div class="noti-content">
+                                <ul class="notification-list">
+                                    <li class="notification-message">
+                                        <a href="activities.html">
+                                            <div class="media d-flex">
+                                                <span class="avatar flex-shrink-0">
+                                                    <img alt="Img" src="/assets/img/profiles/avatar-13.jpg">
+                                                </span>
+                                                <div class="flex-grow-1">
+                                                    <p class="noti-details"><span class="noti-title">James Kirwin</span>
+                                                        confirmed his order. Order No: #78901.Estimated delivery: 2 days
+                                                    </p>
+                                                    <p class="noti-time">4 mins ago</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="notification-message">
+                                        <a href="activities.html">
+                                            <div class="media d-flex">
+                                                <span class="avatar flex-shrink-0">
+                                                    <img alt="Img" src="/assets/img/profiles/avatar-03.jpg">
+                                                </span>
+                                                <div class="flex-grow-1">
+                                                    <p class="noti-details"><span class="noti-title">Leo Kelly</span>
+                                                        cancelled his order scheduled for 17 Jan 2025</p>
+                                                    <p class="noti-time">10 mins ago</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="notification-message">
+                                        <a href="activities.html" class="recent-msg">
+                                            <div class="media d-flex">
+                                                <span class="avatar flex-shrink-0">
+                                                    <img alt="Img" src="/assets/img/profiles/avatar-17.jpg">
+                                                </span>
+                                                <div class="flex-grow-1">
+                                                    <p class="noti-details">Payment of $50 received for Order #67890
+                                                        from <span class="noti-title">Antonio Engle</span></p>
+                                                    <p class="noti-time">05 mins ago</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="notification-message">
+                                        <a href="activities.html" class="recent-msg">
+                                            <div class="media d-flex">
+                                                <span class="avatar flex-shrink-0">
+                                                    <img alt="Img" src="/assets/img/profiles/avatar-02.jpg">
+                                                </span>
+                                                <div class="flex-grow-1">
+                                                    <p class="noti-details"><span class="noti-title">Andrea</span>
+                                                        confirmed his order. Order No: #73401.Estimated delivery: 3 days
+                                                    </p>
+                                                    <p class="noti-time">4 mins ago</p>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="topnav-dropdown-footer d-flex align-items-center gap-3">
+                                <a href="#" class="btn btn-secondary btn-md w-100">Cancel</a>
+                                <a href="activities.html" class="btn btn-primary btn-md w-100">View all</a>
+                            </div>
+                        </div>
+                    </li>
+                    <!-- /Notifications -->
+
+                    <li class="nav-item nav-item-box">
+                        <a href="general-settings.html"><i class="ti ti-settings"></i></a>
+                    </li>
+                    <li class="nav-item dropdown has-arrow main-drop profile-nav">
+                        <a href="javascript:void(0);" class="nav-link userset" data-bs-toggle="dropdown">
+                            <span class="user-info p-0">
+                                <span class="user-letter">
+                                    <img src="/assets/img/profiles/avator1.jpg" alt="Img" class="img-fluid">
+                                </span>
+                            </span>
+                        </a>
+                        <div class="dropdown-menu menu-drop-user">
+                            <div class="profileset d-flex align-items-center">
+                                <span class="user-img me-2">
+                                    <img src="/assets/img/profiles/avator1.jpg" alt="Img">
+                                </span>
+                                <div>
+                                    <h6 class="fw-medium">John Smilga</h6>
+                                    <p>Admin</p>
+                                </div>
+                            </div>
+                            <a class="dropdown-item" href="profile.html"><i
+                                    class="ti ti-user-circle me-2"></i>MyProfile</a>
+                            <a class="dropdown-item" href="sales-report.html"><i
+                                    class="ti ti-file-text me-2"></i>Reports</a>
+                            <a class="dropdown-item" href="general-settings.html"><i
+                                    class="ti ti-settings-2 me-2"></i>Settings</a>
+                            <hr class="my-2">
+                            <a class="dropdown-item logout pb-0" href="signin.html"><i
+                                    class="ti ti-logout me-2"></i>Logout</a>
+                        </div>
+                    </li>
+                </ul>
+                <!-- /Header Menu -->
+
+                <!-- Mobile Menu -->
+                <div class="dropdown mobile-user-menu">
+                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+                        aria-expanded="false"><i class="fa fa-ellipsis-v"></i></a>
+                    <div class="dropdown-menu dropdown-menu-right">
+                        <a class="dropdown-item" href="profile.html">My Profile</a>
+                        <a class="dropdown-item" href="general-settings.html">Settings</a>
+                        <a class="dropdown-item" href="signin.html">Logout</a>
+                    </div>
+                </div>
+                <!-- /Mobile Menu -->
+            </div>
+        </div>
+        <!-- /Header -->
+
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <!-- Logo -->
+            <div class="sidebar-logo">
+                <a href="/" class="logo logo-normal">
+                    <img src="/assets/img/logo_lehConnect.png" alt="Img">
+                </a>
+                <a href="/" class="logo logo-white">
+                    <img src="/assets/img/logo_lehConnect2.png" alt="Img">
+                </a>
+                <a href="/" class="logo-small">
+                    <img src="/assets/img/logo_lehConnect.png" alt="Img">
+                </a>
+                <a id="toggle_btn" href="javascript:void(0);">
+                    <i data-feather="chevrons-left" class="feather-16"></i>
+                </a>
+            </div>
+            <!-- /Logo -->
+            <div class="modern-profile p-3 pb-0">
+                <div class="text-center rounded bg-light p-3 mb-4 user-profile">
+                    <div class="avatar avatar-lg online mb-3">
+                        <img src="/assets/img/customer/customer15.jpg" alt="Img" class="img-fluid rounded-circle">
+                    </div>
+                    <h6 class="fs-14 fw-bold mb-1">Adrian Herman</h6>
+                    <p class="fs-12 mb-0">System Admin</p>
+                </div>
+                <div class="sidebar-nav mb-3">
+                    <ul class="nav nav-tabs nav-tabs-solid nav-tabs-rounded nav-justified bg-transparent"
+                        role="tablist">
+                        <li class="nav-item"><a class="nav-link border-0" href="#">Menu</a></li>
+                        <li class="nav-item"><a class="nav-link border-0" href="chat.html">Chats</a></li>
+                        <li class="nav-item"><a class="nav-link border-0" href="email.html">Inbox</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="sidebar-header p-3 pb-0 pt-2">
+                <div class="text-center rounded bg-light p-2 mb-4 sidebar-profile d-flex align-items-center">
+                    <div class="avatar avatar-md onlin">
+                        <img src="/assets/img/customer/customer15.jpg" alt="Img" class="img-fluid rounded-circle">
+                    </div>
+                    <div class="text-start sidebar-profile-info ms-2">
+                        <h6 class="fs-14 fw-bold mb-1">Adrian Herman</h6>
+                        <p class="fs-12">System Admin</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center justify-content-between menu-item mb-3">
+                    <div>
+                        <a href="/" class="btn btn-sm btn-icon bg-light">
+                            <i class="ti ti-layout-grid-remove"></i>
+                        </a>
+                    </div>
+                    <div>
+                        <a href="chat.html" class="btn btn-sm btn-icon bg-light">
+                            <i class="ti ti-brand-hipchat"></i>
+                        </a>
+                    </div>
+                    <div>
+                        <a href="email.html" class="btn btn-sm btn-icon bg-light position-relative">
+                            <i class="ti ti-message"></i>
+                        </a>
+                    </div>
+                    <div class="notification-item">
+                        <a href="activities.html" class="btn btn-sm btn-icon bg-light position-relative">
+                            <i class="ti ti-bell"></i>
+                            <span class="notification-status-dot"></span>
+                        </a>
+                    </div>
+                    <div class="me-0">
+                        <a href="general-settings.html" class="btn btn-sm btn-icon bg-light">
+                            <i class="ti ti-settings"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="sidebar-inner slimscroll">
+                <div id="sidebar-menu" class="sidebar-menu">
+                    <ul>
+                        <li class="submenu-open">
+                            <h6 class="submenu-hdr">Main</h6>
+                            <ul>
+                                <!-- Dashboard -->
+                                <li class="<%= currentPage === 'dashboard' ? 'active' : '' %>">
+                                    <a href="/">
+                                        <i class="ti ti-dashboard fs-16 me-2"></i>
+                                        <span>Dashboard</span>
+                                        <% if (currentPage==='dashboard' ) { %>
+                                            <span class="menu-dot"></span>
+                                            <% } %>
+                                    </a>
+                                </li>
+
+                                <!-- Vendor Management -->
+                                <li
+                                    class="submenu 
+                        <%= (currentPage === 'vendor-requests' || currentPage === 'vendor' || currentPage === 'vendor-duties' || currentPage === 'vendor-del-request' || currentPage === 'vendor-help') ? 'active' : '' %>">
+                                    <a href="javascript:void(0);">
+                                        <i class="ti ti-building-store fs-16 me-2"></i>
+                                        <span>Vendor Management</span>
+                                        <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        <li class="<%= currentPage === 'vendor-requests' ? 'active' : '' %>">
+                                            <a href="/vendor-requests">
+                                                <i class="ti ti-list-details fs-14 me-2"></i>
+                                                Vendor Requests
+                                                <% if (currentPage==='vendor-requests' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'vendor' ? 'active' : '' %>">
+                                            <a href="/vendor">
+                                                <i class="ti ti-list-details fs-14 me-2"></i>
+                                                Vendor List
+                                                <% if (currentPage==='vendor' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'vendor-duties' ? 'active' : '' %>">
+                                            <a href="/vendor-duties">
+                                                <i class="ti ti-clipboard-check fs-14 me-2"></i>
+                                                Vendor Duties
+                                                <% if (currentPage==='vendor-duties' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'vendor-del-request' ? 'active' : '' %>">
+                                            <a href="/vendor-delete/request">
+                                                <i class="ti ti-trash fs-14 me-2"></i> Delete Requests
+                                                <% if (currentPage==='vendor-del-request' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+
+                                        <li class="<%= currentPage === 'vendor-help' ? 'active' : '' %>">
+                                            <a href="/vendor/help">
+                                                <i class="ti ti-headset fs-14 me-2"></i> Vendor Help
+                                                <% if (currentPage==='vendor-help' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+
+                                    </ul>
+                                </li>
+
+                                <!-- Customer Management -->
+                                <li class="<%= currentPage === 'customer' ? 'active' : '' %>">
+                                    <a href="/customer">
+                                        <i class="ti ti-users fs-16 me-2"></i>
+                                        <span>Customer Management</span>
+                                        <% if (currentPage==='customer' ) { %>
+                                            <span class="menu-dot"></span>
+                                            <% } %>
+                                    </a>
+                                </li>
+
+                                <!-- Booking Management -->
+                                <li class="<%= currentPage === 'bookings' ? 'active' : '' %>">
+                                    <a href="/bookings">
+                                        <i class="ti ti-calendar-event fs-16 me-2"></i>
+                                        <span>Booking Management</span>
+                                        <% if (currentPage==='bookings' ) { %>
+                                            <span class="menu-dot"></span>
+                                            <% } %>
+                                    </a>
+                                </li>
+
+                                <!-- Bids Management -->
+                                <li class="<%= currentPage === 'bids' ? 'active' : '' %>">
+                                    <a href="/bids">
+                                        <i class="ti ti-gavel fs-16 me-2"></i>
+                                        <span>Bids Management</span>
+                                        <% if (currentPage==='bids' ) { %>
+                                            <span class="menu-dot"></span>
+                                            <% } %>
+                                    </a>
+                                </li>
+
+                                <!-- Enquiry Management -->
+                                <li
+                                    class="submenu 
+                        <%= (currentPage === 'taxi-enquiry' || currentPage === 'hotel-enquiry' || currentPage === 'flight-enquiry' || currentPage === 'insurance') ? 'active' : '' %>">
+                                    <a href="javascript:void(0);">
+                                        <i class="ti ti-message-question fs-16 me-2"></i>
+                                        <span>Enquiry Management</span>
+                                        <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        <li class="<%= currentPage === 'taxi-enquiry' ? 'active' : '' %>">
+                                            <a href="/taxi-enquiry">
+                                                <i class="ti ti-taxi fs-14 me-2"></i>
+                                                Taxi Booking
+                                                <% if (currentPage==='taxi-enquiry' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'hotel-enquiry' ? 'active' : '' %>">
+                                            <a href="/hotel-enquiry">
+                                                <i class="ti ti-building-hotel fs-14 me-2"></i>
+                                                Hotel Booking
+                                                <% if (currentPage==='hotel-enquiry' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'flight-enquiry' ? 'active' : '' %>">
+                                            <a href="/flight-enquiry">
+                                                <i class="ti ti-plane fs-14 me-2"></i>
+                                                Flight Booking
+                                                <% if (currentPage==='flight-enquiry' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'insurance' ? 'active' : '' %>">
+                                            <a href="/insurance">
+                                                <i class="ti ti-shield-check fs-14 me-2"></i>
+                                                Insurance
+                                                <% if (currentPage==='insurance' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- Referral Management -->
+                                <li
+                                    class="submenu 
+                        <%= (currentPage === 'customer-referral' || currentPage === 'vendor-referral') ? 'active' : '' %>">
+                                    <a href="javascript:void(0);">
+                                        <i class="ti ti-share fs-16 me-2"></i>
+                                        <span>Referral Management</span>
+                                        <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        <li class="<%= currentPage === 'customer-referral' ? 'active' : '' %>">
+                                            <a href="/customer-referral">
+                                                <i class="ti ti-building-store fs-14 me-2"></i>
+                                                Customer
+                                                <% if (currentPage==='customer-referral' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'vendor-referral' ? 'active' : '' %>">
+                                            <a href="/vendor-referral">
+                                                <i class="ti ti-user fs-14 me-2"></i>
+                                                Vendor
+                                                <% if (currentPage==='vendor-referral' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- Payment Ledger -->
+                                <li class="submenu 
+                        <%= (currentPage === 'payment-today' || currentPage === 'payment-all') ? 'active' : '' %>">
+                                    <a href="javascript:void(0);">
+                                        <i class="ti ti-wallet fs-16 me-2"></i>
+                                        <span>Payment Ledger</span>
+                                        <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        <li class="<%= currentPage === 'payment-today' ? 'active' : '' %>">
+                                            <a href="/payment-today">
+                                                <i class="ti ti-clock fs-14 me-2"></i>
+                                                Today
+                                                <% if (currentPage==='payment-today' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'payment-all' ? 'active' : '' %>">
+                                            <a href="/payment-all">
+                                                <i class="ti ti-list fs-14 me-2"></i>
+                                                All
+                                                <% if (currentPage==='payment-all' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- Report Management -->
+                                <li class="<%= currentPage === 'report' ? 'active' : '' %>">
+                                    <a href="/report">
+                                        <i class="ti ti-report-analytics fs-16 me-2"></i>
+                                        <span>Report Management</span>
+                                        <% if (currentPage==='report' ) { %>
+                                            <span class="menu-dot"></span>
+                                            <% } %>
+                                    </a>
+                                </li>
+
+                                <!-- App Management -->
+                                <li
+                                    class="submenu 
+                        <%= (currentPage === 'counter' || currentPage === 'slider' || currentPage === 'booking-slider' || currentPage === 'videos' || currentPage === 'feedback' || currentPage === 'setting-content' || currentPage === 'faqs' || currentPage === 'about' || currentPage === 'service') ? 'active' : '' %>">
+                                    <a href="javascript:void(0);">
+                                        <i class="ti ti-apps fs-16 me-2"></i>
+                                        <span>App Management</span>
+                                        <span class="menu-arrow"></span>
+                                    </a>
+                                    <ul>
+                                        <li class="<%= currentPage === 'counter' ? 'active' : '' %>">
+                                            <a href="/counter">
+                                                <i class="ti ti-adjustments fs-14 me-2"></i>
+                                                Counters
+                                                <% if (currentPage==='counter' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'slider' ? 'active' : '' %>">
+                                            <a href="/slider">
+                                                <i class="ti ti-slideshow fs-14 me-2"></i>
+                                                Front Slider
+                                                <% if (currentPage==='slider' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'booking-slider' ? 'active' : '' %>">
+                                            <a href="/booking-slider">
+                                                <i class="ti ti-slideshow fs-14 me-2"></i>
+                                                Booking Slider
+                                                <% if (currentPage==='booking-slider' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'videos' ? 'active' : '' %>">
+                                            <a href="/videos">
+                                                <i class="ti ti-video fs-14 me-2"></i>
+                                                Help Videos
+                                                <% if (currentPage==='videos' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'feedback' ? 'active' : '' %>">
+                                            <a href="/feedback">
+                                                <i class="ti ti-message-dots fs-14 me-2"></i>
+                                                Feedback
+                                                <% if (currentPage==='feedback' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'service' ? 'active' : '' %>">
+                                            <a href="/services">
+                                                <i class="ti ti-settings fs-14 me-2"></i>
+                                                Services
+                                                <% if (currentPage==='service' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                        <li class="<%= currentPage === 'faqs' ? 'active' : '' %>">
+                                            <a href="/faqs">
+                                                <i class="ti ti-help-circle fs-14 me-2"></i>
+                                                Faqs
+                                                <% if (currentPage==='faqs' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+
+                                        <li class="<%= currentPage === 'about' ? 'active' : '' %>">
+                                            <a href="/about">
+                                                <i class="ti ti-info-circle fs-14 me-2"></i>
+                                                About
+                                                <% if (currentPage==='about' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+
+
+                                        <li class="<%= currentPage === 'setting-content' ? 'active' : '' %>">
+                                            <a href="/setting/content">
+                                                <i class="ti ti-settings fs-14 me-2"></i>
+                                                Settings
+                                                <% if (currentPage==='setting-content' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+
+                                <!-- Logout -->
+                                <li>
+                                    <a href="/logout">
+                                        <i class="ti ti-logout fs-16 me-2"></i>
+                                        <span>Logout</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>

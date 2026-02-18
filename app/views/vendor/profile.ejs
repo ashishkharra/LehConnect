@@ -1,0 +1,1169 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data : data }) %>
+    <!-- Page Wrapper -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Vendor Profile</h3>
+                        <% if (data && data.results && data.results.docs && data.results.docs[0]) { %>
+                            <p class="text-muted mb-0">Token: <%= data.results.docs[0].token %>
+                            </p>
+                            <% } %>
+                    </div>
+                    <div class="col-auto">
+                        <% if (data && data.results && data.results.docs && data.results.docs[0]) { %>
+                            <a href="/vendor-profile/edit/<%= data.results.docs[0].token %>"
+                                class="btn btn-warning btn-md me-2">
+                                <i class="ti ti-edit me-2"></i>Edit Profile
+                            </a>
+                            <% } %>
+                                <a href="/vendors" class="btn btn-secondary btn-md">
+                                    <i class="ti ti-arrow-left me-2"></i>Back to List
+                                </a>
+                    </div>
+                </div>
+            </div>
+            <!-- /Page Header -->
+
+            <% if (!data || !data.success || !data.results || !data.results.docs || data.results.docs.length===0) { %>
+                <div class="alert alert-danger">
+                    <i class="ti ti-alert-circle me-2"></i>Vendor not found or error loading vendor data.
+                </div>
+                <% } else { const vendor=data.results.docs[0]; %>
+                    <!-- Vendor Profile Header -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card vendor-profile-header">
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-3 text-center">
+                                            <div class="vendor-avatar-container">
+                                                <% if (vendor.profile_image) { %>
+                                                    <img src="<%= vendor.profile_image %>"
+                                                        alt="<%= vendor.first_name %> <%= vendor.last_name %>"
+                                                        class="vendor-avatar-large">
+                                                    <% } else { %>
+                                                        <img src="/assets/img/store/store-01.png" alt="Vendor"
+                                                            class="vendor-avatar-large">
+                                                        <% } %>
+                                                            <% if (vendor.status==='ACTIVE' ) { %>
+                                                                <div class="online-status online"></div>
+                                                                <% } else { %>
+                                                                    <div class="online-status offline"></div>
+                                                                    <% } %>
+                                            </div>
+                                            <button class="btn btn-sm btn-outline-primary mt-3">
+                                                <i class="ti ti-camera me-1"></i>Change Photo
+                                            </button>
+                                        </div>
+                                        <div class="col-md-9">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h2 class="mb-1">
+                                                        <%= vendor.first_name %>
+                                                            <%= vendor.last_name %>
+                                                    </h2>
+                                                    <p class="text-muted mb-2">
+                                                        <i class="ti ti-user me-1"></i>Vendor Profile
+                                                    </p>
+                                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                                        <% if (vendor.status==='ACTIVE' ) { %>
+                                                            <span class="badge bg-success">Active</span>
+                                                            <% } else if (vendor.status==='INACTIVE' ) { %>
+                                                                <span class="badge bg-secondary">Inactive</span>
+                                                                <% } else if (vendor.status==='SUSPENDED' ) { %>
+                                                                    <span class="badge bg-danger">Suspended</span>
+                                                                    <% } else { %>
+                                                                        <span class="badge bg-warning">
+                                                                            <%= vendor.status %>
+                                                                        </span>
+                                                                        <% } %>
+
+                                                                            <% if
+                                                                                (vendor.verification_status==='VERIFIED'
+                                                                                ) { %>
+                                                                                <span
+                                                                                    class="badge bg-primary">Verified</span>
+                                                                                <% } else if
+                                                                                    (vendor.verification_status==='SUBMITTED'
+                                                                                    ) { %>
+                                                                                    <span
+                                                                                        class="badge bg-info">Submitted</span>
+                                                                                    <% } else if
+                                                                                        (vendor.verification_status==='PENDING'
+                                                                                        ) { %>
+                                                                                        <span
+                                                                                            class="badge bg-warning">Pending</span>
+                                                                                        <% } else if
+                                                                                            (vendor.verification_status==='REJECTED'
+                                                                                            ) { %>
+                                                                                            <span
+                                                                                                class="badge bg-danger">Rejected</span>
+                                                                                            <% } else { %>
+                                                                                                <span
+                                                                                                    class="badge bg-secondary">
+                                                                                                    <%= vendor.verification_status
+                                                                                                        %>
+                                                                                                </span>
+                                                                                                <% } %>
+
+                                                                                                    <% if
+                                                                                                        (vendor.submitted_on)
+                                                                                                        { %>
+                                                                                                        <span
+                                                                                                            class="badge bg-purple">Submitted
+                                                                                                            on: <%= new
+                                                                                                                Date(vendor.submitted_on).toLocaleDateString()
+                                                                                                                %>
+                                                                                                                </span>
+                                                                                                        <% } %>
+                                                    </div>
+                                                </div>
+                                                <div class="dropdown">
+                                                    <button class="btn btn-icon" type="button"
+                                                        data-bs-toggle="dropdown">
+                                                        <i class="ti ti-dots-vertical"></i>
+                                                    </button>
+                                                    <div class="dropdown-menu dropdown-menu-end">
+                                                        <a class="dropdown-item" href="#">
+                                                            <i class="ti ti-mail me-2"></i>Send Message
+                                                        </a>
+                                                        <a class="dropdown-item" href="#">
+                                                            <i class="ti ti-bell me-2"></i>Send Notification
+                                                        </a>
+                                                        <% if (vendor.status==='ACTIVE' ) { %>
+                                                            <a class="dropdown-item text-warning" href="#">
+                                                                <i class="ti ti-user-off me-2"></i>Deactivate Vendor
+                                                            </a>
+                                                            <% } else { %>
+                                                                <a class="dropdown-item text-success" href="#">
+                                                                    <i class="ti ti-user-check me-2"></i>Activate Vendor
+                                                                </a>
+                                                                <% } %>
+                                                                    <div class="dropdown-divider"></div>
+                                                                    <a class="dropdown-item text-danger" href="#">
+                                                                        <i class="ti ti-trash me-2"></i>Delete Vendor
+                                                                    </a>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="contact-info">
+                                                        <% if (vendor.country || vendor.state || vendor.city) { %>
+                                                            <p class="mb-1">
+                                                                <i class="ti ti-map-pin me-2 text-primary"></i>
+                                                                <strong>Location:</strong>
+                                                                <%= vendor.city ? vendor.city + ', ' : '' %>
+                                                                    <%= vendor.state ? vendor.state + ', ' : '' %>
+                                                                        <%= vendor.country || '' %>
+                                                            </p>
+                                                            <% } %>
+                                                                <% if (vendor.contact) { %>
+                                                                    <p class="mb-1">
+                                                                        <i class="ti ti-phone me-2 text-success"></i>
+                                                                        <strong>Phone:</strong>
+                                                                        <%= vendor.contact %>
+                                                                    </p>
+                                                                    <% } %>
+                                                                        <p class="mb-1">
+                                                                            <i
+                                                                                class="ti ti-calendar me-2 text-info"></i>
+                                                                            <strong>Submitted On:</strong>
+                                                                            <% if (vendor.submitted_on) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.submitted_on).toLocaleDateString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        Not Submitted
+                                                                                        <% } %>
+                                                                        </p>
+                                                                        <p class="mb-1">
+                                                                            <i
+                                                                                class="ti ti-calendar-plus me-2 text-warning"></i>
+                                                                            <strong>Created Date:</strong>
+                                                                            <% if (vendor.create_date) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.create_date).toLocaleDateString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        N/A
+                                                                                        <% } %>
+                                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <% if (vendor.about_me) { %>
+                                                        <p class="mb-2">
+                                                            <strong>About:</strong>
+                                                            <%= vendor.about_me %>
+                                                        </p>
+                                                        <% } else { %>
+                                                            <p class="mb-2 text-muted">
+                                                                <strong>About:</strong> No description provided.
+                                                            </p>
+                                                            <% } %>
+                                                                <div class="d-flex align-items-center">
+                                                                    <span class="me-3">
+                                                                        <i class="ti ti-id me-1"></i>
+                                                                        <strong>Vendor ID:</strong>
+                                                                        <%= vendor.id %>
+                                                                    </span>
+                                                                    <span>
+                                                                        <i class="ti ti-key me-1"></i>
+                                                                        <strong>Token:</strong>
+                                                                        <%= vendor.token %>
+                                                                    </span>
+                                                                </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /Vendor Profile Header -->
+
+                    <!-- Tab Navigation -->
+                    <div class="row">
+                        <div class="col-12">
+                            <ul class="nav nav-tabs nav-tabs-bottom">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#documents">
+                                        <i class="ti ti-files me-1"></i>Documents & Verification
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#overview">
+                                        <i class="ti ti-info-circle me-1"></i>Overview
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#services">
+                                        <i class="ti ti-list me-1"></i>Services
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#activities">
+                                        <i class="ti ti-activity me-1"></i>Activity Log
+                                    </a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content pt-4">
+                                <!-- Documents Tab -->
+                                <div class="tab-pane show active" id="documents">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Identity & Verification Documents</h5>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="me-3">Verification Status: </span>
+                                                        <% if (vendor.verification_status==='VERIFIED' ) { %>
+                                                            <span class="badge bg-primary">VERIFIED</span>
+                                                            <% } else if (vendor.verification_status==='SUBMITTED' ) {
+                                                                %>
+                                                                <span class="badge bg-info">SUBMITTED</span>
+                                                                <% } else if (vendor.verification_status==='PENDING' ) {
+                                                                    %>
+                                                                    <span class="badge bg-warning">PENDING</span>
+                                                                    <% } else if
+                                                                        (vendor.verification_status==='REJECTED' ) { %>
+                                                                        <span class="badge bg-danger">REJECTED</span>
+                                                                        <% } else { %>
+                                                                            <span class="badge bg-secondary">
+                                                                                <%= vendor.verification_status %>
+                                                                            </span>
+                                                                            <% } %>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <!-- Profile Image -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-user"></i>
+                                                                </div>
+                                                                <h6>Profile Photo</h6>
+                                                                <p class="text-muted small">Vendor profile image</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.profile_image) { %>
+                                                                        <img src="<%= vendor.profile_image %>"
+                                                                            alt="Profile Image" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-user-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">No Image
+                                                                                    Uploaded</p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.profile_image) { %>
+                                                                        <a href="<%= vendor.profile_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.profile_image %>" download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Available</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Aadhaar Front -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-id"></i>
+                                                                </div>
+                                                                <h6>Aadhaar Card Front</h6>
+                                                                <p class="text-muted small">Government ID Proof</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.aadhaar_front_image) { %>
+                                                                        <img src="<%= vendor.aadhaar_front_image %>"
+                                                                            alt="Aadhaar Front" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-file-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">Not Uploaded
+                                                                                </p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.aadhaar_front_image) { %>
+                                                                        <a href="<%= vendor.aadhaar_front_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.aadhaar_front_image %>"
+                                                                            download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Uploaded</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Aadhaar Back -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-id"></i>
+                                                                </div>
+                                                                <h6>Aadhaar Card Back</h6>
+                                                                <p class="text-muted small">Government ID Proof</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.aadhaar_back_image) { %>
+                                                                        <img src="<%= vendor.aadhaar_back_image %>"
+                                                                            alt="Aadhaar Back" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-file-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">Not Uploaded
+                                                                                </p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.aadhaar_back_image) { %>
+                                                                        <a href="<%= vendor.aadhaar_back_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.aadhaar_back_image %>"
+                                                                            download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Uploaded</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- DL Front -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-license"></i>
+                                                                </div>
+                                                                <h6>Driving License Front</h6>
+                                                                <p class="text-muted small">Driving License Proof</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.dl_front_image) { %>
+                                                                        <img src="<%= vendor.dl_front_image %>"
+                                                                            alt="DL Front" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-file-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">Not Uploaded
+                                                                                </p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.dl_front_image) { %>
+                                                                        <a href="<%= vendor.dl_front_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.dl_front_image %>" download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Uploaded</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- DL Back -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-license"></i>
+                                                                </div>
+                                                                <h6>Driving License Back</h6>
+                                                                <p class="text-muted small">Driving License Proof</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.dl_back_image) { %>
+                                                                        <img src="<%= vendor.dl_back_image %>"
+                                                                            alt="DL Back" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-file-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">Not Uploaded
+                                                                                </p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.dl_back_image) { %>
+                                                                        <a href="<%= vendor.dl_back_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.dl_back_image %>" download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Uploaded</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Vehicle Image -->
+                                                        <div class="col-md-4 mb-4">
+                                                            <div class="document-card">
+                                                                <div class="document-icon">
+                                                                    <i class="ti ti-car"></i>
+                                                                </div>
+                                                                <h6>Vehicle Image</h6>
+                                                                <p class="text-muted small">Vehicle/Transport Proof</p>
+                                                                <div class="document-preview mb-3">
+                                                                    <% if (vendor.vehicle_image) { %>
+                                                                        <img src="<%= vendor.vehicle_image %>"
+                                                                            alt="Vehicle" class="img-thumbnail"
+                                                                            style="max-height: 150px; width: 100%; object-fit: cover;">
+                                                                        <% } else { %>
+                                                                            <div
+                                                                                class="text-center py-4 bg-light rounded">
+                                                                                <i class="ti ti-file-off text-muted"
+                                                                                    style="font-size: 48px;"></i>
+                                                                                <p class="text-muted mt-2">Not Uploaded
+                                                                                </p>
+                                                                            </div>
+                                                                            <% } %>
+                                                                </div>
+                                                                <div class="document-actions">
+                                                                    <% if (vendor.vehicle_image) { %>
+                                                                        <a href="<%= vendor.vehicle_image %>"
+                                                                            target="_blank"
+                                                                            class="btn btn-sm btn-outline-primary">View</a>
+                                                                        <a href="<%= vendor.vehicle_image %>" download
+                                                                            class="btn btn-sm btn-outline-success">Download</a>
+                                                                        <% } else { %>
+                                                                            <button
+                                                                                class="btn btn-sm btn-outline-secondary"
+                                                                                disabled>Not Uploaded</button>
+                                                                            <% } %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Verification Actions -->
+                                                    <% if (vendor.verification_status==='SUBMITTED' ) { %>
+                                                        <div class="card mt-4 border-info">
+                                                            <div class="card-header bg-info text-white">
+                                                                <h5 class="card-title mb-0">Verification Actions</h5>
+                                                            </div>
+                                                            <div class="card-body">
+                                                                <div class="row">
+                                                                    <div class="col-md-6">
+                                                                        <div class="alert alert-info">
+                                                                            <i class="ti ti-info-circle me-2"></i>
+                                                                            This vendor has submitted documents for
+                                                                            verification. Please review and take action.
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-md-6 text-end">
+                                                                        <button class="btn btn-success btn-lg me-2"
+                                                                            onclick="verifyVendor('<%= vendor.token %>', 'VERIFIED')">
+                                                                            <i class="ti ti-check me-1"></i>Approve &
+                                                                            Verify
+                                                                        </button>
+                                                                        <button class="btn btn-danger btn-lg"
+                                                                            onclick="verifyVendor('<%= vendor.token %>', 'REJECTED')">
+                                                                            <i class="ti ti-x me-1"></i>Reject
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <% } %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Overview Tab -->
+                                <div class="tab-pane" id="overview">
+                                    <div class="row">
+                                        <div class="col-lg-8">
+                                            <!-- Personal Information -->
+                                            <div class="card mb-4">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Personal Information</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>Full Name:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.first_name %>
+                                                                                <%= vendor.last_name %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Contact Number:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.contact || 'N/A' %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Status:</strong></td>
+                                                                        <td>
+                                                                            <% if (vendor.status==='ACTIVE' ) { %>
+                                                                                <span
+                                                                                    class="badge bg-success">ACTIVE</span>
+                                                                                <% } else if (vendor.status==='INACTIVE'
+                                                                                    ) { %>
+                                                                                    <span
+                                                                                        class="badge bg-secondary">INACTIVE</span>
+                                                                                    <% } else { %>
+                                                                                        <span class="badge bg-warning">
+                                                                                            <%= vendor.status %>
+                                                                                        </span>
+                                                                                        <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>Verification Status:</strong></td>
+                                                                        <td>
+                                                                            <% if
+                                                                                (vendor.verification_status==='VERIFIED'
+                                                                                ) { %>
+                                                                                <span
+                                                                                    class="badge bg-primary">VERIFIED</span>
+                                                                                <% } else if
+                                                                                    (vendor.verification_status==='SUBMITTED'
+                                                                                    ) { %>
+                                                                                    <span
+                                                                                        class="badge bg-info">SUBMITTED</span>
+                                                                                    <% } else if
+                                                                                        (vendor.verification_status==='PENDING'
+                                                                                        ) { %>
+                                                                                        <span
+                                                                                            class="badge bg-warning">PENDING</span>
+                                                                                        <% } else { %>
+                                                                                            <span
+                                                                                                class="badge bg-secondary">
+                                                                                                <%= vendor.verification_status
+                                                                                                    %>
+                                                                                            </span>
+                                                                                            <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Submitted On:</strong></td>
+                                                                        <td>
+                                                                            <% if (vendor.submitted_on) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.submitted_on).toLocaleDateString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        Not Submitted
+                                                                                        <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Created Date:</strong></td>
+                                                                        <td>
+                                                                            <% if (vendor.create_date) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.create_date).toLocaleDateString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        N/A
+                                                                                        <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Location Information -->
+                                            <div class="card mb-4">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Location Information</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>Country:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.country || 'N/A' %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>State:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.state || 'N/A' %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>City:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.city || 'N/A' %>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>About Vendor:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.about_me
+                                                                                || 'No description provided.' %>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- System Information -->
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">System Information</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>Vendor ID:</strong></td>
+                                                                        <td>
+                                                                            <%= vendor.id %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Unique Token:</strong></td>
+                                                                        <td><code><%= vendor.token %></code></td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Record Created:</strong></td>
+                                                                        <td>
+                                                                            <% if (vendor.create_date) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.create_date).toLocaleString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        N/A
+                                                                                        <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <table class="table table-borderless">
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><strong>Last Updated:</strong></td>
+                                                                        <td>
+                                                                            <% if (vendor.update_date) { %>
+                                                                                <%= new
+                                                                                    Date(vendor.update_date).toLocaleString()
+                                                                                    %>
+                                                                                    <% } else { %>
+                                                                                        N/A
+                                                                                        <% } %>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Profile Status:</strong></td>
+                                                                        <td>
+                                                                            <span
+                                                                                class="badge <%= vendor.status === 'ACTIVE' ? 'bg-success' : 'bg-warning' %>">
+                                                                                <%= vendor.status %>
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td><strong>Verification:</strong></td>
+                                                                        <td>
+                                                                            <span
+                                                                                class="badge <%= vendor.verification_status === 'VERIFIED' ? 'bg-primary' : vendor.verification_status === 'SUBMITTED' ? 'bg-info' : 'bg-warning' %>">
+                                                                                <%= vendor.verification_status %>
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-lg-4">
+                                            <!-- Quick Actions -->
+                                            <div class="card mb-4">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Quick Actions</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="d-grid gap-2">
+                                                        <% if (vendor.status==='ACTIVE' ) { %>
+                                                            <button class="btn btn-outline-warning"
+                                                                onclick="updateVendorStatus('<%= vendor.token %>', 'INACTIVE')">
+                                                                <i class="ti ti-user-off me-1"></i>Deactivate Vendor
+                                                            </button>
+                                                            <% } else { %>
+                                                                <button class="btn btn-outline-success"
+                                                                    onclick="updateVendorStatus('<%= vendor.token %>', 'ACTIVE')">
+                                                                    <i class="ti ti-user-check me-1"></i>Activate Vendor
+                                                                </button>
+                                                                <% } %>
+
+                                                                    <a href="/vendor-profile/edit/<%= vendor.token %>"
+                                                                        class="btn btn-outline-primary">
+                                                                        <i class="ti ti-edit me-1"></i>Edit Profile
+                                                                    </a>
+
+                                                                    <button class="btn btn-outline-info"
+                                                                        onclick="sendNotification('<%= vendor.token %>')">
+                                                                        <i class="ti ti-bell me-1"></i>Send Notification
+                                                                    </button>
+
+                                                                    <button class="btn btn-outline-secondary"
+                                                                        onclick="resetPassword('<%= vendor.token %>')">
+                                                                        <i class="ti ti-key me-1"></i>Reset Password
+                                                                    </button>
+
+                                                                    <button class="btn btn-outline-danger"
+                                                                        onclick="deleteVendor('<%= vendor.token %>')">
+                                                                        <i class="ti ti-trash me-1"></i>Delete Vendor
+                                                                    </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Status Timeline -->
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Status Timeline</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="timeline">
+                                                        <div
+                                                            class="timeline-item <%= vendor.create_date ? 'completed' : '' %>">
+                                                            <div class="timeline-marker"></div>
+                                                            <div class="timeline-content">
+                                                                <h6>Account Created</h6>
+                                                                <p class="text-muted small">
+                                                                    <% if (vendor.create_date) { %>
+                                                                        <%= new
+                                                                            Date(vendor.create_date).toLocaleDateString()
+                                                                            %>
+                                                                            <% } else { %>
+                                                                                N/A
+                                                                                <% } %>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            class="timeline-item <%= vendor.submitted_on ? 'completed' : '' %>">
+                                                            <div class="timeline-marker"></div>
+                                                            <div class="timeline-content">
+                                                                <h6>Documents Submitted</h6>
+                                                                <p class="text-muted small">
+                                                                    <% if (vendor.submitted_on) { %>
+                                                                        <%= new
+                                                                            Date(vendor.submitted_on).toLocaleDateString()
+                                                                            %>
+                                                                            <% } else { %>
+                                                                                Not Submitted
+                                                                                <% } %>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            class="timeline-item <%= vendor.verification_status === 'VERIFIED' ? 'completed' : vendor.verification_status === 'REJECTED' ? 'failed' : '' %>">
+                                                            <div class="timeline-marker"></div>
+                                                            <div class="timeline-content">
+                                                                <h6>Verification</h6>
+                                                                <p class="text-muted small">
+                                                                    <%= vendor.verification_status || 'Pending' %>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div
+                                                            class="timeline-item <%= vendor.status === 'ACTIVE' ? 'completed' : '' %>">
+                                                            <div class="timeline-marker"></div>
+                                                            <div class="timeline-content">
+                                                                <h6>Activation</h6>
+                                                                <p class="text-muted small">
+                                                                    <%= vendor.status || 'Inactive' %>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Services Tab -->
+                                <div class="tab-pane" id="services">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Vendor Services</h5>
+                                                    <div class="alert alert-info">
+                                                        <i class="ti ti-info-circle me-2"></i>
+                                                        Services functionality will be implemented in the next phase.
+                                                        This vendor <%= vendor.first_name %>
+                                                            <%= vendor.last_name %> will be able to add services once
+                                                                their account is fully activated and verified.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Activity Log Tab -->
+                                <div class="tab-pane" id="activities">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">Recent Activities</h5>
+                                                    <button class="btn btn-outline-primary btn-sm">
+                                                        <i class="ti ti-download me-1"></i>Export Log
+                                                    </button>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="table-responsive">
+                                                        <table class="table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Date & Time</th>
+                                                                    <th>Activity</th>
+                                                                    <th>Performed By</th>
+                                                                    <th>Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <% if (vendor.create_date) { %>
+                                                                    <tr>
+                                                                        <td>
+                                                                            <%= new
+                                                                                Date(vendor.create_date).toLocaleString()
+                                                                                %>
+                                                                        </td>
+                                                                        <td>Vendor account created</td>
+                                                                        <td>System</td>
+                                                                        <td><span
+                                                                                class="badge bg-success">Success</span>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% } %>
+
+                                                                        <% if (vendor.submitted_on) { %>
+                                                                            <tr>
+                                                                                <td>
+                                                                                    <%= new
+                                                                                        Date(vendor.submitted_on).toLocaleString()
+                                                                                        %>
+                                                                                </td>
+                                                                                <td>Documents submitted for verification
+                                                                                </td>
+                                                                                <td>
+                                                                                    <%= vendor.first_name %>
+                                                                                        <%= vendor.last_name %>
+                                                                                </td>
+                                                                                <td><span
+                                                                                        class="badge bg-info">Submitted</span>
+                                                                                </td>
+                                                                            </tr>
+                                                                            <% } %>
+
+                                                                                <tr>
+                                                                                    <td>
+                                                                                        <%= new Date().toLocaleString()
+                                                                                            %>
+                                                                                    </td>
+                                                                                    <td>Profile viewed by admin</td>
+                                                                                    <td>
+                                                                                        <%= admin ? admin.name
+                                                                                            : 'System' %>
+                                                                                    </td>
+                                                                                    <td><span
+                                                                                            class="badge bg-primary">Viewed</span>
+                                                                                    </td>
+                                                                                </tr>
+
+                                                                                <% if
+                                                                                    (vendor.verification_status==='VERIFIED'
+                                                                                    ) { %>
+                                                                                    <tr>
+                                                                                        <td>
+                                                                                            <%= vendor.submitted_on ?
+                                                                                                new
+                                                                                                Date(vendor.submitted_on).toLocaleString()
+                                                                                                : new
+                                                                                                Date().toLocaleString()
+                                                                                                %>
+                                                                                        </td>
+                                                                                        <td>Account verified and
+                                                                                            approved</td>
+                                                                                        <td>Admin</td>
+                                                                                        <td><span
+                                                                                                class="badge bg-success">Verified</span>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                    <% } %>
+
+                                                                                        <% if (vendor.status==='ACTIVE'
+                                                                                            ) { %>
+                                                                                            <tr>
+                                                                                                <td>
+                                                                                                    <%= vendor.create_date
+                                                                                                        ? new
+                                                                                                        Date(vendor.create_date).toLocaleString()
+                                                                                                        : new
+                                                                                                        Date().toLocaleString()
+                                                                                                        %>
+                                                                                                </td>
+                                                                                                <td>Account activated
+                                                                                                </td>
+                                                                                                <td>System</td>
+                                                                                                <td><span
+                                                                                                        class="badge bg-success">Active</span>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                            <% } %>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <% } %>
+        </div>
+    </div>
+    <!-- /Page Wrapper -->
+    </div>
+    <!-- /Main Wrapper -->
+
+    <!-- Vendor Profile Custom JS -->
+
+    <%- include('../shared/partials/footer') %>
+
+        <script>
+            $(document).ready(function () {
+                // Initialize tabs
+                $('.nav-tabs a').on('click', function (e) {
+                    e.preventDefault();
+                    $(this).tab('show');
+                });
+
+                // Initialize tooltips
+                $('[data-bs-toggle="tooltip"]').tooltip();
+            });
+
+            function verifyVendor(token, status) {
+                if (confirm(`Are you sure you want to ${status === 'VERIFIED' ? 'verify' : 'reject'} this vendor?`)) {
+                    $.ajax({
+                        url: '/admin/verify-vendor/' + token,
+                        type: 'POST',
+                        data: { status: status },
+                        success: function (response) {
+                            if (response.success) {
+                                alert(response.message);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('Error processing request');
+                        }
+                    });
+                }
+            }
+
+            function updateVendorStatus(token, status) {
+                const action = status === 'ACTIVE' ? 'activate' : 'deactivate';
+                if (confirm(`Are you sure you want to ${action} this vendor?`)) {
+                    $.ajax({
+                        url: '/admin/update-vendor-status/' + token,
+                        type: 'POST',
+                        data: { status: status },
+                        success: function (response) {
+                            if (response.success) {
+                                alert(response.message);
+                                location.reload();
+                            } else {
+                                alert('Error: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('Error processing request');
+                        }
+                    });
+                }
+            }
+
+            function deleteVendor(token) {
+                if (confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) {
+                    $.ajax({
+                        url: '/admin/delete-vendor/' + token,
+                        type: 'DELETE',
+                        success: function (response) {
+                            if (response.success) {
+                                alert(response.message);
+                                window.location.href = '/vendors';
+                            } else {
+                                alert('Error: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('Error processing request');
+                        }
+                    });
+                }
+            }
+
+            function sendNotification(token) {
+                const message = prompt('Enter notification message for the vendor:');
+                if (message) {
+                    $.ajax({
+                        url: '/admin/send-vendor-notification/' + token,
+                        type: 'POST',
+                        data: { message: message },
+                        success: function (response) {
+                            if (response.success) {
+                                alert('Notification sent successfully');
+                            } else {
+                                alert('Error: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('Error sending notification');
+                        }
+                    });
+                }
+            }
+
+            function resetPassword(token) {
+                if (confirm('Are you sure you want to reset this vendor\'s password? A new password will be generated and sent to their email.')) {
+                    $.ajax({
+                        url: '/admin/reset-vendor-password/' + token,
+                        type: 'POST',
+                        success: function (response) {
+                            if (response.success) {
+                                alert('Password reset successfully. New password has been sent to vendor\'s email.');
+                            } else {
+                                alert('Error: ' + response.message);
+                            }
+                        },
+                        error: function () {
+                            alert('Error processing request');
+                        }
+                    });
+                }
+            }
+        </script>

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket Test</title>
+</head>
+<body>
+  <h2>Socket Test Running…</h2>
+
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+  <script>
+    const socket = io("http://localhost:3000");
+
+    socket.on("connect", () => console.log("Socket connected:", socket.id));
+
+    socket.on('vendor:request', data => console.log('Vendor request response ->>> ', data))
+
+    socket.on("free_vehicle_request_received", (data) => console.log("REQUEST RECEIVED:", data));
+
+    socket.on("free_vehicle_event", (data) => console.log("VEHICLE BOOKED:", data));
+
+    socket.on('free_vehicle_request_event', (data) => console.log('ACTION ON REQUEST : ', data))
+
+    socket.on('new_booking', (data) => console.log('New booking data : ', data))
+    
+    socket.on('booking:request', (data) => console.log('request data : ', data))
+    
+    socket.on('booking:rejected', (data) => console.log('rejected data : ', data))
+
+    socket.on("disconnect", () => console.log("Socket disconnected"));
+  </script>
+</body>
+</html>

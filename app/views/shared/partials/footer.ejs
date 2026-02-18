@@ -1,0 +1,106 @@
+<!-- jQuery FIRST -->
+<script src="/assets/js/jquery-3.7.1.min.js"></script>
+
+<!-- Bootstrap 5 (MUST come before template JS) -->
+<script src="/assets/js/bootstrap.bundle.min.js"></script>
+
+<!-- ✅ Bootstrap 5 + jQuery Modal Compatibility Shim -->
+<script>
+  if (window.jQuery && !jQuery.fn.modal) {
+    jQuery.fn.modal = function (action) {
+      return this.each(function () {
+        if (!window.bootstrap || !bootstrap.Modal) return;
+
+        let instance = bootstrap.Modal.getInstance(this);
+        if (!instance) {
+          instance = new bootstrap.Modal(this);
+        }
+
+        if (action === 'show') instance.show();
+        if (action === 'hide') instance.hide();
+        if (action === 'toggle') instance.toggle();
+      });
+    };
+  }
+</script>
+
+<script src="/assets/js/feather.min.js"></script>
+
+<!-- Slimscroll JS -->
+<script src="/assets/js/jquery.slimscroll.min.js"></script>
+
+<!-- ApexChart JS -->
+<script src="/assets/plugins/apexchart/apexcharts.min.js"></script>
+<script src="/assets/plugins/apexchart/chart-data.js"></script>
+
+<!-- Chart JS -->
+<script src="/assets/plugins/chartjs/chart.min.js"></script>
+<script src="/assets/plugins/chartjs/chart-data.js"></script>
+
+<!-- Daterangepicker -->
+<script src="/assets/js/moment.min.js"></script>
+<script src="/assets/plugins/daterangepicker/daterangepicker.js"></script>
+
+<!-- Select2 -->
+<script src="/assets/plugins/select2/js/select2.min.js"></script>
+
+<!-- Color Picker -->
+<script src="/assets/plugins/@simonwep/pickr/pickr.es5.min.js"></script>
+
+<script src="/assets/plugins/datatables/datatables.min.js"></script>
+
+<!-- Theme / Template Core JS (THEY USE $.modal internally) -->
+<script src="/assets/js/theme-colorpicker.js"></script>
+<script src="/assets/js/script.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script> -->
+
+<script>
+  // Bootstrap Toast function
+  function showBootstrapToast(message, type = 'info') {
+    // Create toast HTML
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'primary'} border-0" 
+             id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    `;
+
+    // Add to toast container
+    $('#toastContainer').append(toastHtml);
+
+    // Show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, {
+      delay: 3000
+    });
+    toast.show();
+
+    // Remove after hidden
+    toastElement.addEventListener('hidden.bs.toast', function () {
+      $(this).remove();
+    });
+  }
+
+  // Add this container to your HTML (anywhere in body):
+</script>
+<script>
+    <% if (success_msg) { %>
+    toastr.success("<%= success_msg %>");
+    <% } %>
+ 
+    <% if (error_msg) { %>
+    toastr.error("<%= error_msg %>");
+    <% } %>
+</script>
+
+</body>
+
+</html>

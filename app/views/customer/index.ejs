@@ -1,0 +1,1108 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+        <!-- Page Wrapper -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">Customer Management</h3>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-success btn-md ms-2" id="exportCustomers">
+                                <i class="ti ti-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Page Header -->
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">1,248</h3>
+                                    <p class="mb-0">Total Customers</p>
+                                </div>
+                                <div class="stats-icon bg-white text-primary">
+                                    <i class="ti ti-users"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">984</h3>
+                                    <p class="mb-0">Active Customers</p>
+                                </div>
+                                <div class="stats-icon bg-white text-success">
+                                    <i class="ti ti-user-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-warning text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">234</h3>
+                                    <p class="mb-0">New This Month</p>
+                                </div>
+                                <div class="stats-icon bg-white text-warning">
+                                    <i class="ti ti-user-plus"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-info text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">₹42.8L</h3>
+                                    <p class="mb-0">Total Spending</p>
+                                </div>
+                                <div class="stats-icon bg-white text-info">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Statistics Cards -->
+
+                <!-- Filter & Search Section -->
+                <div class="filter-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="search-box">
+                                <i class="ti ti-search"></i>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search customers...">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="verified">Verified</option>
+                                <option value="blocked">Blocked</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="locationFilter">
+                                <option value="">All Locations</option>
+                                <option value="leh">Leh</option>
+                                <option value="delhi">Delhi</option>
+                                <option value="mumbai">Mumbai</option>
+                                <option value="bangalore">Bangalore</option>
+                                <option value="international">International</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="serviceFilter">
+                                <option value="">All Services</option>
+                                <option value="hotel">Hotel Booking</option>
+                                <option value="taxi">Taxi Service</option>
+                                <option value="tour">Tour Package</option>
+                                <option value="flight">Flight Booking</option>
+                                <option value="insurance">Insurance</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control datepicker" id="dateRange" placeholder="Select Date Range">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100" id="applyFilter">
+                                <i class="ti ti-filter me-2"></i>Apply Filters
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary w-100" id="clearFilters">
+                                <i class="ti ti-x me-2"></i>Clear All
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                <button class="btn btn-outline-primary btn-sm active">All Customers</button>
+                                <button class="btn btn-outline-primary btn-sm">High Value</button>
+                                <button class="btn btn-outline-primary btn-sm">Frequent Travelers</button>
+                                <button class="btn btn-outline-primary btn-sm">New Customers</button>
+                                <button class="btn btn-outline-primary btn-sm">VIP Customers</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Filter & Search Section -->
+
+                <!-- Customers Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-center mb-0" id="customersTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Customer ID</th>
+                                                <th>Customer Info</th>
+                                                <th>Contact Details</th>
+                                                <th>Location</th>
+                                                <th>Services Used</th>
+                                                <th>Bookings</th>
+                                                <th>Total Spend</th>
+                                                <th>Status</th>
+                                                <th class="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Customer 1 -->
+                                            <tr>
+                                                <td>#CUST001</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-01.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Rajesh Kumar</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Jan 15, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        rajesh.kumar@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543210
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        New Delhi, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Hotel Booking</span>
+                                                        <span class="badge bg-success-light text-success mb-1">Taxi Service</span>
+                                                        <span class="badge bg-warning-light text-warning">Tour Package</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">8</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-success small">Last: 2 days ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹85,400</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹10,675/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-primary mt-1">VIP</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 2 -->
+                                            <tr>
+                                                <td>#CUST002</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-02.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Priya Sharma</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Feb 20, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        priya.sharma@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543211
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Mumbai, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Hotel Booking</span>
+                                                        <span class="badge bg-success-light text-success mb-1">Flight Booking</span>
+                                                        <span class="badge bg-danger-light text-danger">Insurance</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">3</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-warning small">Last: 15 days ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹42,500</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹14,167/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-warning mt-1">Regular</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 3 -->
+                                            <tr>
+                                                <td>#CUST003</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-03.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Amit Patel</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Mar 5, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-x text-danger"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        amit.patel@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543212
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Bangalore, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Tour Package</span>
+                                                        <span class="badge bg-success-light text-success">Taxi Service</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">1</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-danger small">Last: 45 days ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹28,000</h6>
+                                                    <p class="text-muted small mb-0">Single booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning">Inactive</span>
+                                                    <span class="badge bg-info mt-1">New</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-danger" title="Block">
+                                                            <i class="ti ti-ban"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 4 -->
+                                            <tr>
+                                                <td>#CUST004</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-04.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Sneha Reddy</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Jan 28, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        sneha.reddy@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543213
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Hyderabad, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Hotel Booking</span>
+                                                        <span class="badge bg-success-light text-success mb-1">Tour Package</span>
+                                                        <span class="badge bg-warning-light text-warning mb-1">Taxi Service</span>
+                                                        <span class="badge bg-danger-light text-danger">Insurance</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">12</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-success small">Last: 1 week ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹1,52,800</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹12,733/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-purple mt-1">Premium</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 5 -->
+                                            <tr>
+                                                <td>#CUST005</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-05.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Rohit Verma</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Apr 15, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        rohit.verma@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543214
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Kolkata, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Flight Booking</span>
+                                                        <span class="badge bg-success-light text-success">Hotel Booking</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">5</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-success small">Last: 3 days ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹67,500</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹13,500/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-warning mt-1">Regular</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 6 -->
+                                            <tr>
+                                                <td>#CUST006</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-06.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Michael Smith</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Feb 10, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        michael.smith@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +1 234 567 8900
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        New York, USA
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Tour Package</span>
+                                                        <span class="badge bg-success-light text-success mb-1">Hotel Booking</span>
+                                                        <span class="badge bg-warning-light text-warning">Insurance</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">7</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-success small">Last: 1 month ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹2,15,000</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹30,714/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-gold mt-1">International</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 7 -->
+                                            <tr>
+                                                <td>#CUST007</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-07.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Anjali Desai</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Mar 25, 2024
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-x text-danger"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        anjali.desai@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543215
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Pune, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Taxi Service</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">2</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-danger small">Last: 60 days ago</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹8,500</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹4,250/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-danger">Blocked</span>
+                                                    <span class="badge bg-secondary mt-1">Unverified</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-success" title="Unblock">
+                                                            <i class="ti ti-lock-open"></i>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Customer 8 -->
+                                            <tr>
+                                                <td>#CUST008</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-md me-3">
+                                                            <img src="/assets/img/profiles/avatar-08.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Vikram Singh</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-calendar me-1"></i>
+                                                                Joined: Dec 15, 2023
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-id-badge me-1"></i>
+                                                                ID Verified: <i class="ti ti-check text-success"></i>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-mail me-1"></i>
+                                                        vikram.singh@email.com
+                                                    </p>
+                                                    <p class="mb-1">
+                                                        <i class="ti ti-phone me-1"></i>
+                                                        +91 9876543216
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-dark">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        Chandigarh, India
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div class="service-tags">
+                                                        <span class="badge bg-primary-light text-primary mb-1">Hotel Booking</span>
+                                                        <span class="badge bg-success-light text-success mb-1">Tour Package</span>
+                                                        <span class="badge bg-warning-light text-warning mb-1">Flight Booking</span>
+                                                        <span class="badge bg-danger-light text-danger mb-1">Taxi Service</span>
+                                                        <span class="badge bg-info-light text-info">Insurance</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">18</h6>
+                                                        <p class="text-muted small mb-0">Total Bookings</p>
+                                                        <span class="text-success small">Last: Yesterday</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹3,42,600</h6>
+                                                    <p class="text-muted small mb-0">Avg: ₹19,033/booking</p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <span class="badge bg-purple mt-1">Premium</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="actions">
+                                                        <a href="customer-profile.html" class="btn btn-sm btn-outline-primary me-1" title="View Profile">
+                                                            <i class="ti ti-eye"></i>
+                                                        </a>
+                                                        <a href="edit-customer.html" class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                                                            <i class="ti ti-edit"></i>
+                                                        </a>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" title="Send Message">
+                                                            <i class="ti ti-message"></i>
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Customers Table -->
+
+                <!-- Pagination -->
+                <div class="row">
+                    <div class="col-12">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">
+                                        <i class="ti ti-chevron-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <li class="page-item active">
+                                    <a class="page-link" href="?page=1">1</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=2">2</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=3">3</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=4">4</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=5">5</a>
+                                </li>
+                                
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=2">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                <!-- /Pagination -->
+
+                <!-- Summary Card -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-4">
+                                        <div class="customer-insight">
+                                            <h6 class="mb-2">Customer Insights</h6>
+                                            <p class="text-muted small mb-1">
+                                                <i class="ti ti-trending-up text-success me-1"></i>
+                                                65% of customers are active users
+                                            </p>
+                                            <p class="text-muted small mb-1">
+                                                <i class="ti ti-users text-primary me-1"></i>
+                                                78% have used multiple services
+                                            </p>
+                                            <p class="text-muted small">
+                                                <i class="ti ti-star text-warning me-1"></i>
+                                                Average rating: 4.3/5.0
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="service-distribution">
+                                            <h6 class="mb-2">Top Services Used</h6>
+                                            <div class="d-flex justify-content-center flex-wrap gap-2">
+                                                <span class="badge bg-primary">Hotel Booking: 85%</span>
+                                                <span class="badge bg-success">Taxi Service: 65%</span>
+                                                <span class="badge bg-warning">Tour Package: 45%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <button class="btn btn-outline-primary me-2" id="sendBulkMessage">
+                                            <i class="ti ti-mail me-1"></i>Bulk Message
+                                        </button>
+                                        <button class="btn btn-outline-success" id="exportReport">
+                                            <i class="ti ti-chart-bar me-1"></i>Generate Report
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Summary Card -->
+            </div>
+        </div>
+        <!-- /Page Wrapper -->
+
+        <!-- Bulk Message Modal -->
+        <div class="modal fade" id="bulkMessageModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Send Bulk Message</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="bulkMessageForm">
+                            <div class="mb-3">
+                                <label class="form-label">Select Recipients</label>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="allCustomers" checked>
+                                    <label class="form-check-label" for="allCustomers">
+                                        All Customers (1,248)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="activeCustomers">
+                                    <label class="form-check-label" for="activeCustomers">
+                                        Active Customers Only (984)
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="vipCustomers">
+                                    <label class="form-check-label" for="vipCustomers">
+                                        VIP & Premium Customers (156)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="newCustomers">
+                                    <label class="form-check-label" for="newCustomers">
+                                        New Customers (Last 30 days)
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Message Type</label>
+                                <select class="form-control">
+                                    <option value="promotional">Promotional Offer</option>
+                                    <option value="notification">System Notification</option>
+                                    <option value="update">Service Update</option>
+                                    <option value="holiday">Holiday Greeting</option>
+                                    <option value="custom">Custom Message</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Subject</label>
+                                <input type="text" class="form-control" placeholder="Enter message subject">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Message Content</label>
+                                <textarea class="form-control" rows="5" placeholder="Type your message here..."></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Send Via</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sendEmail" checked>
+                                    <label class="form-check-label" for="sendEmail">
+                                        Email
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sendSMS">
+                                    <label class="form-check-label" for="sendSMS">
+                                        SMS
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sendPush">
+                                    <label class="form-check-label" for="sendPush">
+                                        Push Notification
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <i class="ti ti-info-circle me-2"></i>
+                                This message will be sent to approximately <strong>1,248</strong> customers.
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" form="bulkMessageForm" class="btn btn-primary">Send Message</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /Bulk Message Modal -->
+    </div>
+    <!-- /Main Wrapper -->
+
+    <!-- Customer Management Custom JS -->
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2
+            $('.select2').select2({
+                width: '100%'
+            });
+
+            // Initialize Date Range Picker
+            $('#dateRange').daterangepicker({
+                opens: 'left',
+                locale: {
+                    format: 'YYYY-MM-DD'
+                }
+            });
+
+            // Search functionality
+            $('#searchInput').on('keyup', function() {
+                var value = $(this).val().toLowerCase();
+                $('#customersTable tbody tr').filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+                });
+            });
+
+            // Filter functionality
+            $('#applyFilter').on('click', function() {
+                applyFilters();
+            });
+
+            // Clear filters
+            $('#clearFilters').on('click', function() {
+                $('#searchInput').val('');
+                $('#statusFilter').val('').trigger('change');
+                $('#locationFilter').val('').trigger('change');
+                $('#serviceFilter').val('').trigger('change');
+                $('#dateRange').val('');
+                $('#customersTable tbody tr').show();
+            });
+
+            // Export functionality
+            $('#exportCustomers').on('click', function() {
+                alert('Exporting customer data to CSV (demo)');
+            });
+
+            // Generate report
+            $('#exportReport').on('click', function() {
+                alert('Generating customer analytics report (demo)');
+            });
+
+            // Bulk message modal
+            $('#sendBulkMessage').on('click', function() {
+                $('#bulkMessageModal').modal('show');
+            });
+
+            // Customer action buttons
+            $('.btn-outline-success[title="Send Message"]').on('click', function(e) {
+                e.preventDefault();
+                var customerName = $(this).closest('tr').find('h6').text();
+                alert('Send message to: ' + customerName + ' (demo)');
+            });
+
+            $('.btn-outline-danger[title="Block"]').on('click', function(e) {
+                e.preventDefault();
+                var customerName = $(this).closest('tr').find('h6').text();
+                if (confirm('Block customer: ' + customerName + '?')) {
+                    alert('Customer blocked (demo)');
+                }
+            });
+
+            $('.btn-outline-success[title="Unblock"]').on('click', function(e) {
+                e.preventDefault();
+                var customerName = $(this).closest('tr').find('h6').text();
+                if (confirm('Unblock customer: ' + customerName + '?')) {
+                    alert('Customer unblocked (demo)');
+                }
+            });
+
+            // Apply filters function
+            function applyFilters() {
+                var status = $('#statusFilter').val();
+                var location = $('#locationFilter').val();
+                var service = $('#serviceFilter').val();
+                var searchTerm = $('#searchInput').val().toLowerCase();
+                
+                $('#customersTable tbody tr').each(function() {
+                    var row = $(this);
+                    var rowStatus = row.find('td:nth-child(8) .badge').first().text().toLowerCase();
+                    var rowLocation = row.find('td:nth-child(4) .badge').text().toLowerCase();
+                    var rowServices = row.find('td:nth-child(5)').text().toLowerCase();
+                    var rowText = row.text().toLowerCase();
+                    
+                    var show = true;
+                    
+                    if (status && !rowStatus.includes(status)) {
+                        show = false;
+                    }
+                    
+                    if (location && !rowLocation.includes(location)) {
+                        show = false;
+                    }
+                    
+                    if (service && !rowServices.includes(service)) {
+                        show = false;
+                    }
+                    
+                    if (searchTerm && rowText.indexOf(searchTerm) === -1) {
+                        show = false;
+                    }
+                    
+                    if (show) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            }
+
+            // Quick filter buttons
+            $('.btn-outline-primary.btn-sm').on('click', function() {
+                $('.btn-outline-primary.btn-sm').removeClass('active');
+                $(this).addClass('active');
+                
+                var filterType = $(this).text().trim();
+                $('#customersTable tbody tr').each(function() {
+                    var row = $(this);
+                    var show = true;
+                    
+                    switch(filterType) {
+                        case 'High Value':
+                            var spend = parseFloat(row.find('td:nth-child(7) h6').text().replace('₹', '').replace(',', ''));
+                            show = spend > 100000;
+                            break;
+                        case 'Frequent Travelers':
+                            var bookings = parseInt(row.find('td:nth-child(6) h6').text());
+                            show = bookings > 5;
+                            break;
+                        case 'New Customers':
+                            var joinDate = row.find('td:nth-child(2) .text-muted.small').first().text();
+                            show = joinDate.includes('2024') && (joinDate.includes('Apr') || joinDate.includes('May'));
+                            break;
+                        case 'VIP Customers':
+                            var badges = row.find('td:nth-child(8) .badge').text();
+                            show = badges.includes('VIP') || badges.includes('Premium');
+                            break;
+                        case 'All Customers':
+                            show = true;
+                            break;
+                    }
+                    
+                    if (show) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            });
+        });
+    </script>
+<%- include('../shared/partials/footer') %>

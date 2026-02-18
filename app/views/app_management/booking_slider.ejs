@@ -1,0 +1,898 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data: data }) %>
+    <!-- Page Wrapper -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Booking Slider Management</h3>
+                        <p class="page-subtitle">Manage the main slider displayed on your Booking</p>
+                    </div>
+                    <div class="col-auto">
+                        <!-- Bulk Actions Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button"
+                                id="bulkActionsDropdown" data-bs-toggle="dropdown">
+                                <i class="ti ti-settings me-1"></i> Bulk Actions
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" id="saveReorderBtn"><i
+                                            class="ti ti-check me-2"></i> Save Reorder</a></li>
+                                <li>
+                                    <form action="/booking-slider/enable-all" method="post">
+                                        <input type="hidden" name="_method" value="PATCH">
+                                        <button class="dropdown-item" id="enableAllBtn"><i
+                                                class="ti ti-toggle-right me-2"></i> Enable All</button>
+                                    </form>
+                                </li>
+                                <li>
+                                    <form action="/booking-slider/disable-all" method="post">
+                                        <input type="hidden" name="_method" value="PATCH">
+                                        <button class="dropdown-item" id="disableAllBtn"><i
+                                                class="ti ti-toggle-left me-2"></i> Disable All</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Page Header -->
+
+            <!-- Reorder Controls -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="mb-0"><i class="ti ti-arrows-sort me-2"></i>Reorder Slides</h6>
+                                    <small class="text-muted">Drag and drop cards to reorder or use the arrow
+                                        buttons</small>
+                                </div>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-outline-primary" id="reorderUp">
+                                        <i class="ti ti-arrow-up"></i> Move Up
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary" id="reorderDown">
+                                        <i class="ti ti-arrow-down"></i> Move Down
+                                    </button>
+                                    <form action="/booking-slider/clear-all" method="post" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger" id="clearAllImages">
+                                            <i class="ti ti-trash"></i> Clear All
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slider Management Section -->
+            <div class="row">
+                <div class="col-12">
+                    <!-- Image Upload Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Slider Configuration</h5>
+                            <small class="text-muted">Drag cards to reorder, click toggle to enable/disable</small>
+                        </div>
+                        <div class="card-body">
+                            <form action="/booking-slider/upload" method="POST" enctype="multipart/form-data"
+                                id="sliderForm">
+                                <input type="hidden" name="totalImages" id="totalImages">
+                                <div class="row g-4" id="imageCardsContainer"></div>
+
+                                <div class="row mt-4">
+                                    <div class="col-12 text-center">
+                                        <button type="button" class="btn btn-outline-primary" id="addImageBtn">
+                                            <i class="ti ti-plus me-1"></i> Add More Slides
+                                        </button>
+
+                                        <button type="button" class="btn btn-outline-danger" id="removeImageBtn"
+                                            style="display:none">
+                                            <i class="ti ti-minus me-1"></i> Remove Last Slide
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <div class="row mt-4">
+                                    <div class="col-12 text-center">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="ti ti-device-floppy me-2"></i> Save All Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Slider Management Section -->
+
+            <!-- Usage Instructions -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title"><i class="ti ti-help me-2"></i>Usage Instructions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="instruction-item">
+                                        <div class="instruction-icon bg-primary">
+                                            <i class="ti ti-photo"></i>
+                                        </div>
+                                        <h6>Image Guidelines</h6>
+                                        <p class="text-muted small">Use high-resolution images (1920x600px) with minimal
+                                            text. Ensure good contrast for readability.</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="instruction-item">
+                                        <div class="instruction-icon bg-success">
+                                            <i class="ti ti-text-size"></i>
+                                        </div>
+                                        <h6>Reorder & Status</h6>
+                                        <p class="text-muted small">Drag cards to reorder, toggle status with the
+                                            switch. Save reorder with the top dropdown.</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="instruction-item">
+                                        <div class="instruction-icon bg-info">
+                                            <i class="ti ti-device-desktop"></i>
+                                        </div>
+                                        <h6>Responsive Design</h6>
+                                        <p class="text-muted small">Preview on different devices to ensure your slider
+                                            looks great on all screen sizes.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Usage Instructions -->
+        </div>
+    </div>
+    <!-- /Page Wrapper -->
+
+    <%- include('../shared/partials/footer') %>
+
+        <script>
+            $(function () {
+                const MAX_IMAGES = 10;
+                let images = [];
+
+        <% if (data?.results && data.results.length > 0) { %>
+                    images =[
+                <% data.results.forEach((slide, index) => { %>
+                    {
+                        file: null, // File input starts empty
+                        preview: '<%= slide.image %>',
+                        title: '<%= slide.title || "" %>',
+                        subtitle: '<%= slide.subtitle || "" %>',
+                        description: '<%= slide.description || "" %>',
+                        buttonText: '<%= slide.buttonText || "" %>',
+                        buttonLink: '<%= slide.buttonLink || "" %>',
+                        id: '<%= slide.id %>',       // Optional: store DB id for updates
+                        token: '<%= slide.token %>',  // Optional: store DB token
+                        is_active: <%= slide.is_active %>,  // Status from DB
+                        position: <%= slide.position || index + 1 %>,  // Position from DB
+                        hasChangedImage: false, // Track if image was changed
+                        hasChangedDetails: false // Track if details were changed
+                    } <%= index !== data.results.length - 1 ? ',' : '' %>
+                <% }) %>
+            ];
+
+                    // Sort by position
+                    images.sort((a, b) => a.position - b.position);
+        <% } else { %>
+                    images =[
+                        { file: null, preview: '', is_active: true, position: 1, hasChangedImage: false, hasChangedDetails: false },
+                        { file: null, preview: '', is_active: true, position: 2, hasChangedImage: false, hasChangedDetails: false },
+                        { file: null, preview: '', is_active: true, position: 3, hasChangedImage: false, hasChangedDetails: false },
+                        { file: null, preview: '', is_active: true, position: 4, hasChangedImage: false, hasChangedDetails: false }
+                    ];
+        <% } %>
+
+                    let activeIndex = 0;
+                let draggedIndex = null;
+
+                // Initialize
+                initialize();
+
+                function initialize() {
+                    renderImageCards();
+                    setupEventListeners();
+                    updateRemoveButton();
+                    updateHiddenFields();
+                }
+
+                // Update hidden form fields
+                function updateHiddenFields() {
+                    $('#totalImages').val(images.length);
+                    $('#activeIndex').val(activeIndex);
+                }
+
+                // Function to show/hide remove button
+                function updateRemoveButton() {
+                    if (images.length > 4) {
+                        $('#removeImageBtn').show();
+                    } else {
+                        $('#removeImageBtn').hide();
+                    }
+                }
+
+                // Render Image Cards with Toggle Status Button
+                function renderImageCards() {
+                    const container = $('#imageCardsContainer');
+                    container.empty();
+
+                    images.forEach((img, index) => {
+                        const isChanged = img.hasChangedImage || img.hasChangedDetails;
+
+                        const cardHtml = `
+        <div class="col-md-6 col-lg-4 image-card" data-index="${index}" draggable="true">
+            <div class="card h-100 ${isChanged ? 'border-warning' : ''}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">Image ${index + 1} 
+                            <span class="badge bg-secondary ms-1">Pos: ${img.position || index + 1}</span>
+                            ${isChanged ? '<span class="badge bg-warning ms-1">Unsaved</span>' : ''}
+                            ${index === 0 ? '<span class="text-danger ms-1">*</span>' : ''}
+                        </h6>
+                        <small class="text-muted">${index === 0 ? 'Main image' : 'Optional'}</small>
+                    </div>
+                    <form method="POST" action="/booking-slider/${img.token}/status" class="form-check form-switch">
+                        <input type="hidden" name="_method" value="PATCH">
+
+                        <input class="form-check-input status-toggle" type="checkbox" 
+                        name="is_active"
+                        value="1"
+                        ${img.is_active ? 'checked' : ''}
+                        id="toggle${index}"
+                        onchange="this.form.submit()">
+                        <label class="form-check-label" for="toggle${index}">
+                            <small>${img.is_active ? 'Active' : 'Inactive'}</small>
+                        </label>
+                    </form>
+                </div>
+
+                <div class="card-body p-2">
+                    <!-- Image Preview -->
+                    <div class="image-preview-container mb-3" id="imagePreview${index}">
+                        ${img.preview ?
+                                `<img src="${img.preview}" alt="Slide ${index + 1}" class="img-fluid rounded">
+                             <div class="image-overlay">
+                                 <span class="badge ${!img.is_active ? 'bg-secondary' : (index === 0 ? 'bg-primary' : 'bg-success')}">
+                                     ${!img.is_active ? 'Inactive' : (index === 0 ? 'Primary' : 'Active')}
+                                 </span>
+                             </div>
+                             ${img.hasChangedImage ? '<div class="image-overlay-bottom"><span class="badge bg-warning">New Image</span></div>' : ''}
+                             <div class="image-actions">
+                                 <button type="button" class="btn btn-sm btn-outline-danger btn-remove-image" data-index="${index}">
+                                     <i class="ti ti-trash"></i>
+                                 </button>
+                             </div>` :
+                                `<div class="image-placeholder">
+                                 <i class="ti ti-photo" style="font-size: 2rem; color: #ccc;"></i>
+                                 <p class="text-muted mt-2 mb-0">No image</p>
+                             </div>`}
+                    </div>
+
+                    <!-- File Upload -->
+                    <div class="mb-3">
+                        <label class="form-label small">Upload/Replace Image</label>
+                        <div class="input-group input-group-sm">
+                            <input type="file" 
+                                   class="form-control image-file-input"
+                                   name="slider[]"
+                                   data-index="${index}" 
+                                   accept="image/*">
+                        </div>
+                        <small class="text-muted">1920x600px • Max 2MB • Replaces current image</small>
+                    </div>
+
+                    <!-- Hidden fields for backend -->
+                    <input type="hidden" name="position" value="${img.position || index + 1}">
+                    <input type="hidden" name="isActive" value="${img.is_active ? '1' : '0'}">
+                    <input type="hidden" name="token" value="${img.token || ''}">
+
+                    <!-- Accordion for slide details -->
+                    <div class="accordion" id="accordion${index}">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading${index}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse${index}" aria-expanded="false" aria-controls="collapse${index}">
+                                    <i class="ti ti-edit me-2"></i> Edit Slide Details
+                                    ${img.hasChangedDetails ? '<span class="badge bg-warning ms-2">Unsaved</span>' : ''}
+                                </button>
+                            </h2>
+                            <div id="collapse${index}" class="accordion-collapse collapse" aria-labelledby="heading${index}" 
+                                 data-bs-parent="#accordion${index}">
+                                <form method="POST" action="/booking-slider/${img.token}/update" enctype="multipart/form-data" class="accordion-body p-2">
+                                    <input type="hidden" name="_method" value="PATCH">
+
+                                    <div class="mb-2">
+                                        <label class="form-label small">Image</label>
+                                        <input type="file" 
+                                            class="form-control image-file-input"
+                                            name="slider"
+                                            data-index="${index}" 
+                                            accept="image/*">
+                                    </div>
+
+                                    <!-- Title -->
+                                    <div class="mb-2">
+                                        <label class="form-label small">Title</label>
+                                        <input type="text" name="title" class="form-control form-control-sm" 
+                                               placeholder="Slide title (max 100 chars)" 
+                                               value="${img.title || ''}" maxlength="100">
+                                        <small class="text-muted">Appears as large heading</small>
+                                    </div>
+
+                                    <!-- Subtitle -->
+                                    <div class="mb-2">
+                                        <label class="form-label small">Subtitle</label>
+                                        <input type="text" name="subtitle" class="form-control form-control-sm" 
+                                               placeholder="Slide subtitle (max 200 chars)" 
+                                               value="${img.subtitle || ''}" maxlength="200">
+                                        <small class="text-muted">Appears below title</small>
+                                    </div>
+
+                                    <!-- Description -->
+                                    <div class="mb-2">
+                                        <label class="form-label small">Description</label>
+                                        <textarea name="description" class="form-control form-control-sm" rows="2" maxlength="500"
+                                                  placeholder="Slide description">${img.description || ''}</textarea>
+                                        <small class="text-muted">Brief description text</small>
+                                    </div>
+
+                                    <!-- Button Text -->
+                                    <div class="mb-2">
+                                        <label class="form-label small">Button Text</label>
+                                        <input type="text" name="buttonText" class="form-control form-control-sm" 
+                                               placeholder="e.g., Explore Now" value="${img.buttonText || ''}" maxlength="50">
+                                    </div>
+
+                                    <!-- Button Link -->
+                                    <div class="mb-2">
+                                        <label class="form-label small">Button Link</label>
+                                        <input type="text" name="buttonLink" class="form-control form-control-sm" 
+                                               placeholder="e.g., /explore or https://..." value="${img.buttonLink || ''}" maxlength="500">
+                                        <small class="text-muted">Internal path or external URL</small>
+                                    </div>
+
+                                    <!-- Submit Button -->
+                                    <div class="row g-2 mt-3">
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                                <i class="ti ti-check me-1"></i> Update details
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer text-center py-2">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary btn-move-up" data-index="${index}" ${index === 0 ? 'disabled' : ''}>
+                            <i class="ti ti-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-move-down" data-index="${index}" ${index === images.length - 1 ? 'disabled' : ''}>
+                            <i class="ti ti-arrow-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+                        container.append(cardHtml);
+                    });
+
+                    updateHiddenFields();
+                }
+
+                // Setup Event Listeners
+                function setupEventListeners() {
+                    // File Input Change
+                    $(document).on('change', '.image-file-input', handleFileSelect);
+
+                    // Remove Image button on each card
+                    $(document).on('click', '.btn-remove-image', handleRemoveImage);
+
+                    // Gallery Thumb Click
+                    $(document).on('click', '.gallery-thumb', handleGalleryClick);
+
+                    // Add More Images Button
+                    $('#addImageBtn').on('click', addNewImage);
+
+                    // Remove Last Image Button
+                    $('#removeImageBtn').on('click', removeLastImage);
+
+                    // Reorder Buttons
+                    $('#reorderUp').on('click', moveUp);
+                    $('#reorderDown').on('click', moveDown);
+                    $('#clearAllImages').on('click', clearAllImages);
+
+                    // Individual Move Up/Down buttons
+                    $(document).on('click', '.btn-move-up', handleIndividualMoveUp);
+                    $(document).on('click', '.btn-move-down', handleIndividualMoveDown);
+
+                    // Toggle Status
+                    $(document).on('change', '.status-toggle', handleToggleStatus);
+
+                    // Text Input Changes
+                    $(document).on('input', '.slide-title, .slide-subtitle, .slide-description, .slide-button-text, .slide-button-link', handleTextChange);
+
+                    // Bulk Actions
+                    $('#saveReorderBtn').on('click', saveReorder);
+                    $('#enableAllBtn').on('click', enableAll);
+                    $('#disableAllBtn').on('click', disableAll);
+
+                    $(document).on('click', '.btn-update-slide', function () {
+                        const index = $(this).data('index');
+                        const token = $(this).data('token');
+
+                        updateSlideOnServer(index, token, true, true);
+                    });
+
+
+                    $('#sliderForm').on('submit', function () {
+                        updateHiddenFields();
+                    });
+
+                    // Setup Drag and Drop
+                    setupDragAndDrop();
+                }
+
+                // Handle File Selection
+                function handleFileSelect(e) {
+                    const index = $(e.target).data('index');
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('File must be under 2MB');
+                        e.target.value = '';
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        // Store file reference
+                        images[index].file = file;
+                        images[index].hasChangedImage = true;
+                        images[index].preview = ev.target.result;
+
+                        // Enable update buttons
+                        $(`.btn-update-single-image[data-index="${index}"]`).prop('disabled', false);
+                        $(`.btn-update-slide[data-index="${index}"]`).prop('disabled', false);
+
+                        // Update preview
+                        updateCardPreview(index);
+                    };
+                    reader.readAsDataURL(file);
+                }
+
+                function updateCardPreview(index) {
+                    const card = $(`.image-card[data-index="${index}"]`);
+                    const previewContainer = card.find('.image-preview-container');
+
+                    previewContainer.html(`
+                <img src="${images[index].preview}" class="img-fluid rounded">
+                <div class="image-overlay">
+                    <span class="badge ${!images[index].is_active ? 'bg-secondary' : (index === 0 ? 'bg-primary' : 'bg-success')}">
+                        ${!images[index].is_active ? 'Inactive' : (index === 0 ? 'Primary' : 'Active')}
+                    </span>
+                </div>
+                ${images[index].hasChangedImage ? '<div class="image-overlay-bottom"><span class="badge bg-warning">New Image</span></div>' : ''}
+                <div class="image-actions">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-image" data-index="${index}">
+                        <i class="ti ti-trash"></i>
+                    </button>
+                </div>
+            `);
+                }
+
+                async function updateSlideOnServer(index, token) {
+                    const formData = new FormData();
+                    if (images[index].file) {
+                        formData.append('slider', images[index].file);
+                    }
+
+                    if (images[index].hasChangedDetails) {
+                        formData.append('title', images[index].title || '');
+                        formData.append('subtitle', images[index].subtitle || '');
+                        formData.append('description', images[index].description || '');
+                        formData.append('button_text', images[index].buttonText || '');
+                        formData.append('button_link', images[index].buttonLink || '');
+                    }
+
+                    if (![...formData.keys()].length) {
+                        toastr.info('No changes to update');
+                        return;
+                    }
+
+                    const response = await fetch(`/booking-slider/${token}/update`, {
+                        method: 'PUT',
+                        body: formData
+                    });
+
+                    const result = await response.json();
+
+                    if (!result.success) {
+                        toastr.error(result.message || 'Update failed');
+                        return;
+                    }
+
+                    toastr.success('Slide updated successfully');
+                }
+                // Handle Text Changes
+                function handleTextChange(e) {
+                    const index = $(e.target).data('index');
+                    const field = e.target.className.split(' ')[0].replace('slide-', '');
+                    const value = $(e.target).val();
+
+                    // Update local state
+                    images[index][field] = value;
+                    images[index].hasChangedDetails = true;
+
+                    // Enable update buttons
+                    $(`.btn-update-details[data-index="${index}"]`).prop('disabled', false);
+                    $(`.btn-update-slide[data-index="${index}"]`).prop('disabled', false);
+                }
+
+                // Handle Remove Image from individual card
+                // Handle Remove Image from individual card
+                function handleRemoveImage(e) {
+                    e.stopPropagation();
+                    const index = $(e.target).closest('.btn-remove-image').data('index');
+
+                    if (index === 0) {
+                        alert('Primary image cannot be removed');
+                        return;
+                    }
+
+                    // Check minimum image slots (4)
+                    if (images.length <= 4) {
+                        alert('Minimum 4 slides must be maintained. Use "Clear" to remove image content instead.');
+                        return;
+                    }
+
+                    if (confirm('Are you sure you want to remove this slide?')) {
+                        // Remove the slide at this index
+                        images.splice(index, 1);
+
+                        // Re-index positions
+                        images.forEach((img, idx) => {
+                            img.position = idx + 1;
+                        });
+
+                        // Update active index if needed
+                        if (activeIndex >= index && activeIndex > 0) {
+                            activeIndex--;
+                        }
+
+                        renderImageCards();
+                        updateRemoveButton();
+                    }
+                }
+                function removeLastImage() {
+                    images.pop();
+
+                    // Re-index positions
+                    images.forEach((img, index) => {
+                        img.position = index + 1;
+                    });
+
+                    // Update UI
+                    renderImageCards();
+                    updateRemoveButton();
+                }
+
+                // Handle Gallery Click
+                function handleGalleryClick(e) {
+                    const index = $(e.target).closest('.gallery-thumb').data('index');
+                    if (images[index].preview) {
+                        activeIndex = index;
+                        renderImageCards();
+                        renderGallery();
+                    }
+                }
+
+                // Add New Image
+                // Add New Image
+                function addNewImage() {
+                    if (images.length >= MAX_IMAGES) {
+                        alert(`Maximum ${MAX_IMAGES} images allowed`);
+                        return;
+                    }
+
+                    images.push({
+                        file: null,
+                        preview: '',
+                        title: '',
+                        subtitle: '',
+                        description: '',
+                        buttonText: '',
+                        buttonLink: '',
+                        is_active: true,
+                        position: images.length + 1,
+                        hasChangedImage: false,
+                        hasChangedDetails: false,
+                        token: null
+                    });
+
+                    renderImageCards();
+                    updateRemoveButton();
+                }
+
+                // Move Up (Global)
+                function moveUp() {
+                    if (activeIndex > 0) {
+                        swapImages(activeIndex, activeIndex - 1);
+                        activeIndex--;
+                        renderImageCards();
+                        renderGallery();
+                    }
+                }
+
+                // Move Down (Global)
+                function moveDown() {
+                    if (activeIndex < images.length - 1) {
+                        swapImages(activeIndex, activeIndex + 1);
+                        activeIndex++;
+                        renderImageCards();
+                        renderGallery();
+                    }
+                }
+
+                // Handle Individual Move Up
+                function handleIndividualMoveUp(e) {
+                    e.stopPropagation();
+                    const index = $(e.target).closest('.btn-move-up').data('index');
+                    if (index > 0) {
+                        swapImages(index, index - 1);
+                        if (activeIndex === index) activeIndex--;
+                        else if (activeIndex === index - 1) activeIndex++;
+                        renderImageCards();
+                        renderGallery();
+                    }
+                }
+
+                // Handle Individual Move Down
+                function handleIndividualMoveDown(e) {
+                    e.stopPropagation();
+                    const index = $(e.target).closest('.btn-move-down').data('index');
+                    if (index < images.length - 1) {
+                        swapImages(index, index + 1);
+                        if (activeIndex === index) activeIndex++;
+                        else if (activeIndex === index + 1) activeIndex--;
+                        renderImageCards();
+                        renderGallery();
+                    }
+                }
+
+                // Swap images and update positions
+                function swapImages(index1, index2) {
+                    // Swap the images
+                    [images[index1], images[index2]] = [images[index2], images[index1]];
+
+                    // Update positions
+                    images[index1].position = index1 + 1;
+                    images[index2].position = index2 + 1;
+                }
+
+                // Clear All Images
+                function clearAllImages() {
+                    if (confirm('Clear all images except the first one?')) {
+                        images = images.map((img, index) => {
+                            if (index === 0) return img;
+                            return {
+                                file: null,
+                                preview: '',
+                                is_active: img.is_active,
+                                position: index + 1,
+                                hasChangedImage: false,
+                                hasChangedDetails: false
+                            };
+                        });
+                        activeIndex = 0;
+                        renderImageCards();
+                        renderGallery();
+                        updateRemoveButton();
+                    }
+                }
+
+                // Handle Toggle Status
+                async function handleToggleStatus(e) {
+                    const index = $(e.target).data('index');
+                    const token = $(e.target).data('token');
+                    const isActive = e.target.checked;
+
+                    // Update local state
+                    images[index].is_active = isActive;
+                    images[index].hasChangedDetails = true;
+
+                    // Update UI
+                    renderImageCards();
+                    renderGallery();
+
+                    // Enable update button
+                    $(`.btn-update-details[data-index="${index}"]`).prop('disabled', false);
+                    $(`.btn-update-slide[data-index="${index}"]`).prop('disabled', false);
+
+                    // If we have a token, update on server
+                    if (token) {
+                        try {
+                            const response = await fetch(`/booking-slider/${token}/status`, {
+                                method: 'PATCH',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+
+                            if (!response.ok) {
+                                // Revert if failed
+                                images[index].is_active = !isActive;
+                                $(e.target).prop('checked', !isActive);
+                                renderImageCards();
+                                renderGallery();
+                                alert('Failed to update status');
+                            }
+                        } catch (error) {
+                            console.error('Error updating status:', error);
+                            // Revert if failed
+                            images[index].is_active = !isActive;
+                            $(e.target).prop('checked', !isActive);
+                            renderImageCards();
+                            renderGallery();
+                            alert('Error updating status');
+                        }
+                    }
+                }
+
+                // Save Reorder
+                async function saveReorder() {
+                    const order = images.map((img, index) => ({
+                        token: img.token,
+                        position: index + 1
+                    })).filter(img => img.token);
+
+                    try {
+                        const response = await fetch('/booking-slider/reorder', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ order })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            toastr.success('Slide order saved successfully!');
+                            images.forEach((img, index) => {
+                                img.position = index + 1;
+                            });
+                        } else {
+                            toastr.error('Failed to save order');
+                        }
+                    } catch (error) {
+                        console.error('Error saving reorder:', error);
+                        toastr.error('Error saving order');
+                    }
+                }
+
+                // Enable All
+                async function enableAll() {
+                    if (confirm('Enable all slides?')) {
+                        // Update local state
+                        images.forEach(img => {
+                            img.is_active = true;
+                            img.hasChangedDetails = true;
+                        });
+
+                        renderImageCards();
+                        renderGallery();
+
+                        // Update each slide status on server
+                        for (const img of images.filter(img => img.token)) {
+                            try {
+                                await fetch(`/booking-slider/${img.token}/status`, {
+                                    method: 'PATCH'
+                                });
+                            } catch (error) {
+                                console.error('Error enabling slide:', error);
+                            }
+                        }
+
+                        toastr.success('All slides enabled');
+                    }
+                }
+
+                // Disable All
+                async function disableAll() {
+                    if (confirm('Disable all slides except the first one?')) {
+                        // Update local state
+                        images.forEach((img, index) => {
+                            img.is_active = index === 0; // Keep first one active
+                            img.hasChangedDetails = true;
+                        });
+
+                        renderImageCards();
+                        renderGallery();
+
+                        // Update each slide status on server
+                        for (const img of images.filter((img, index) => img.token && index !== 0)) {
+                            try {
+                                await fetch(`/booking-slider/${img.token}/status`, {
+                                    method: 'PATCH'
+                                });
+                            } catch (error) {
+                                console.error('Error disabling slide:', error);
+                            }
+                        }
+
+                        toastr.success('Slides disabled');
+                    }
+                }
+
+                // Setup Drag and Drop
+                function setupDragAndDrop() {
+                    // Drag start for image cards
+                    $(document).on('dragstart', '.image-card', function (e) {
+                        draggedIndex = parseInt($(this).data('index'));
+                        $(this).addClass('dragging');
+                        e.originalEvent.dataTransfer.setData('text/plain', draggedIndex);
+                        e.originalEvent.dataTransfer.effectAllowed = 'move';
+                    });
+
+                    $(document).on('dragend', '.image-card', function () {
+                        $('.image-card').removeClass('dragging drag-over');
+                        draggedIndex = null;
+                    });
+
+                    $(document).on('dragover', '.image-card', function (e) {
+                        e.preventDefault();
+                        $(this).addClass('drag-over');
+                        e.originalEvent.dataTransfer.dropEffect = 'move';
+                    });
+
+                    $(document).on('dragleave', '.image-card', function () {
+                        $(this).removeClass('drag-over');
+                    });
+
+                    $(document).on('drop', '.image-card', function (e) {
+                        e.preventDefault();
+                        const targetIndex = parseInt($(this).data('index'));
+
+                        if (draggedIndex !== null && draggedIndex !== targetIndex) {
+                            swapImages(draggedIndex, targetIndex);
+
+                            // Update active index if needed
+                            if (activeIndex === draggedIndex) {
+                                activeIndex = targetIndex;
+                            } else if (activeIndex === targetIndex) {
+                                activeIndex = draggedIndex;
+                            }
+
+                            renderImageCards();
+                            renderGallery();
+                        }
+
+                        $(this).removeClass('drag-over');
+                    });
+                }
+            });
+        </script>

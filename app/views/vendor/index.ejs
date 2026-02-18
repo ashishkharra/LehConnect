@@ -1,0 +1,339 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data: data, currentPage:currentPage }) %>
+
+    <% const q=data.query || {}; const limit=Number(q.limit) || 12; const currentSearch=q.search || '' ; const
+        currentStatus=q.status || '' ; const currentService=q.service || '' ; %>
+
+        <!-- Page Wrapper -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">Vendor Management</h3>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Page Header -->
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <!-- Total Vendors -->
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.statusCounts?.total %>
+                                    </h3>
+                                    <p class="mb-0">Total Vendors</p>
+                                </div>
+                                <div class="stats-icon bg-white text-primary">
+                                    <i class="ti ti-building-store"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Vendors -->
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.statusCounts?.active %>
+                                    </h3>
+                                    <p class="mb-0">Active Vendors</p>
+                                </div>
+                                <div class="stats-icon bg-white text-success">
+                                    <i class="ti ti-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Approval -->
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-warning text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.statusCounts?.not_verified %>
+                                    </h3>
+                                    <p class="mb-0">Not verified</p>
+                                </div>
+                                <div class="stats-icon bg-white text-warning">
+                                    <i class="ti ti-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Inactive Vendors -->
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-danger text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.statusCounts?.soft_deleted %>
+                                    </h3>
+                                    <p class="mb-0">Removed Vendors</p>
+                                </div>
+                                <div class="stats-icon bg-white text-danger">
+                                    <i class="ti ti-x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Statistics Cards -->
+
+                <!-- Filter & Search Section -->
+                <div class="filter-section">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="search-box">
+                                <i class="ti ti-search"></i>
+                                <input type="text" class="form-control" id="searchVendors"
+                                    placeholder="Search vendors..." value="<%= currentSearch %>">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="active" <%=currentStatus==='active' ? 'selected' : '' %>>Active</option>
+                                <option value="inactive" <%=currentStatus==='inactive' ? 'selected' : '' %>>Inactive
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Filter & Search Section -->
+
+                <!-- Vendors Grid -->
+                <div class="row" id="vendorsGrid">
+                    <% if (data?.docs?.length) { %>
+                        <% data.docs.forEach(vendor=> { %>
+                            <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                                <div class="card vendor-card">
+                                    <div class="card-body">
+                                        <div class="text-center mb-3">
+                                            <img src="<%= vendor.profile_image || '/assets/img/store/store-01.png' %>"
+                                                alt="Vendor" class="vendor-avatar mb-2">
+
+                                            <h5 class="mb-1">
+                                                <%= vendor.first_name && vendor.last_name ? `${vendor.first_name}
+                                                    ${vendor.last_name}` : vendor.shop_name || 'N/A' %>
+                                            </h5>
+
+                                            <p class="text-muted mb-2">
+                                                <i class="ti ti-building-store me-1"></i>
+                                                <%= vendor.service || vendor.vendor_type || 'N/A' %>
+                                            </p>
+
+                                            <span class="status-badge 
+                                        <%= vendor.status === 'active' ? 'status-active' : 
+                                            vendor.status === 'not_verified' ? 'status-pending' : 
+                                            'status-inactive' %>">
+                                                <%= vendor.status.replace('_', ' ' ) %>
+                                            </span>
+                                        </div>
+
+                                        <div class="vendor-info mb-3">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">
+                                                            <%= vendor.rating || 0 %>
+                                                        </h6>
+                                                        <small class="text-muted">Rating</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="text-center">
+                                                        <h6 class="mb-1">
+                                                            <%= vendor.total_bookings || 0 %>
+                                                        </h6>
+                                                        <small class="text-muted">Bookings</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <p class="text-muted small mb-2">
+                                                <i class="ti ti-map-pin me-1"></i>
+                                                <%= vendor.address || vendor.city || 'N/A' %>
+                                            </p>
+                                            <p class="text-muted small mb-2">
+                                                <i class="ti ti-phone me-1"></i>
+                                                <%= vendor.contact || vendor.mobile || 'N/A' %>
+                                            </p>
+                                            <p class="text-muted small">
+                                                <i class="ti ti-calendar me-1"></i>
+                                                Joined: <%= new Date(vendor.create_date ||
+                                                    vendor.createdAt).toLocaleDateString() %>
+                                            </p>
+                                        </div>
+
+                                        <div class="vendor-actions d-flex justify-content-between">
+                                            <a href="/vendor-profile/<%= vendor.token%>"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="ti ti-eye me-1"></i>View
+                                            </a>
+
+                                            <a href="/admin/vendor/<%= vendor.token%>/edit"
+                                                class="btn btn-sm btn-outline-warning">
+                                                <i class="ti ti-edit me-1"></i>Edit
+                                            </a>
+
+                                            <button class="btn btn-sm btn-outline-danger suspend-btn"
+                                                data-id="<%= vendor.token || vendor.id %>">
+                                                <i class="ti ti-ban me-1"></i>
+                                                <%= vendor.status==='active' ? 'Suspend' : 'Activate' %>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }) %>
+                                <% } else { %>
+                                    <div class="col-12 text-center text-muted">
+                                        No vendors found
+                                    </div>
+                                    <% } %>
+                </div>
+                <!-- /Vendors Grid -->
+
+                <!-- Pagination -->
+                <div class="row">
+                    <div class="col-12">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+
+                                <!-- Previous -->
+                                <li class="page-item <%= data.page <= 1 ? 'disabled' : '' %>">
+                                    <a class="page-link"
+                                        href="?page=<%= data.page - 1 %>&limit=<%= limit %>&search=<%= currentSearch %>&status=<%= currentStatus %>&service=<%= currentService %>">
+                                        <i class="ti ti-chevron-left"></i>
+                                    </a>
+                                </li>
+
+                                <!-- Page Numbers -->
+                                <% for (let i=1; i <=data.totalPages; i++) { %>
+                                    <li class="page-item <%= i === data.page ? 'active' : '' %>">
+                                        <a class="page-link"
+                                            href="?page=<%= i %>&limit=<%= limit %>&search=<%= currentSearch %>&status=<%= currentStatus %>&service=<%= currentService %>">
+                                            <%= i %>
+                                        </a>
+                                    </li>
+                                    <% } %>
+
+                                        <!-- Next -->
+                                        <li class="page-item <%= data.page >= data.totalPages ? 'disabled' : '' %>">
+                                            <a class="page-link"
+                                                href="?page=<%= data.page + 1 %>&limit=<%= limit %>&search=<%= currentSearch %>&status=<%= currentStatus %>&service=<%= currentService %>">
+                                                <i class="ti ti-chevron-right"></i>
+                                            </a>
+                                        </li>
+
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                <!-- /Pagination -->
+
+                <!-- Summary -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="text-center">
+                                            <h5 class="mb-1">Showing <%= data.docs.length %> of <%=
+                                                        data.statusCounts.total %> vendors</h5>
+                                            <p class="text-muted mb-0">Page <%= data?.page %> of <%= data?.totalPages %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="btn-group" role="group">
+                                            <button type="button"
+                                                class="btn btn-outline-primary <%= limit === 12 ? 'active' : '' %>"
+                                                data-perpage="12">12 per page</button>
+
+                                            <button type="button"
+                                                class="btn btn-outline-primary <%= limit === 24 ? 'active' : '' %>"
+                                                data-perpage="24">24 per page</button>
+
+                                            <button type="button"
+                                                class="btn btn-outline-primary <%= limit === 48 ? 'active' : '' %>"
+                                                data-perpage="48">48 per page</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        <a href="/vendor/exports" class="btn btn-success" id="exportVendors">
+                                            <i class="ti ti-download me-2"></i>Export CSV
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Summary -->
+            </div>
+        </div>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const searchInput = document.getElementById('searchVendors');
+                const statusFilter = document.getElementById('statusFilter');
+
+                const params = new URLSearchParams(window.location.search);
+                let debounceTimer;
+
+                if (searchInput) {
+                    searchInput.value = params.get('search') || '';
+
+                    searchInput.addEventListener('input', (e) => {
+                        clearTimeout(debounceTimer);
+
+                        debounceTimer = setTimeout(() => {
+                            const value = e.target.value.trim();
+
+                            if (value) {
+                                params.set('search', value);
+                            } else {
+                                params.delete('search');
+                            }
+
+                            params.delete('page');
+                            window.location.search = params.toString();
+                        }, 500);
+                    });
+                }
+
+                if (statusFilter) {
+                    statusFilter.value = params.get('status') || '';
+
+                    statusFilter.addEventListener('change', (e) => {
+                        const value = e.target.value;
+
+                        if (value) {
+                            params.set('status', value);
+                        } else {
+                            params.delete('status');
+                        }
+
+                        params.delete('page');
+                        window.location.search = params.toString();
+                    });
+                }
+            });
+        </script>
+
+
+        <%- include('../shared/partials/footer') %>

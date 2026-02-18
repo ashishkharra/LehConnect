@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<!-- PAGE TITLE HERE -->
+	<title>
+		<%= title %>
+	</title>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="author" content="DexignLab">
+	<meta name="robots" content="index, follow">
+	<link rel="canonical" href="page-error-404.html">
+	<meta name="keywords"
+		content="WorldNIC admin dashboard, Bootstrap admin template, HTML admin panel, admin dashboard design, Bootstrap admin HTML, management dashboard, data visualization template, WorldNIC Bootstrap, admin panel features, web admin template, Bootstrap admin dashboard">
+	<meta name="description" content="WorldNIC is a versatile admin dashboard Bootstrap HTML template. It offers a clean design and robust features for effective management and
+                data visualization.">
+	<!-- OG:META TAGS -->
+	<meta property="og:title" content="WorldNIC - Admin Dashboard Bootstrap HTML Template">
+	<meta property="og:description"
+		content="WorldNIC is a versatile admin dashboard Bootstrap HTML template. It offers a clean design and robust features for effective management and data visualization.">
+	<meta property="og:image" content="social-image.png">
+	<meta name="format-detection" content="telephone=no">
+	<!-- TWITTER:META TAGS -->
+	<meta name="twitter:title" content="WorldNIC - Admin Dashboard Bootstrap HTML Template">
+	<meta name="twitter:description"
+		content="WorldNIC is a versatile admin dashboard Bootstrap HTML template. It offers a clean design and robust features for effective management and data visualization">
+	<meta name="twitter:image" content="social-image.png">
+	<meta name="twitter:card" content="summary_large_image">
+
+	<!-- MOBILE SPECIFIC -->
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<!-- FAVICONS ICON -->
+	<link rel="shortcut icon" type="image/png" href="/assets/images/favicon.png">
+	<link href="/assets/css/style.css" rel="stylesheet">
+
+	<!-- Custom Rugged CSS -->
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+		}
+
+		body {
+			background-color: #0c0c0c;
+			overflow-x: hidden;
+			color: #fff;
+		}
+
+		.glitch::before,
+		.glitch::after {
+			content: attr(data-text);
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background: transparent;
+			/* Ensure no background blocks the main text */
+			overflow: hidden;
+			/* Keep glitch parts inside the text area */
+		}
+
+		.tgda-container {
+			min-height: 100vh;
+			width: 100%;
+			overflow-x: hidden;
+			background:
+				radial-gradient(circle at 20% 30%, rgba(255, 20, 20, 0.15) 0%, transparent 40%),
+				radial-gradient(circle at 80% 70%, rgba(20, 100, 255, 0.15) 0%, transparent 40%),
+				linear-gradient(to bottom, #0a0a0a, #111111, #0a0a0a);
+			position: relative;
+			padding: 20px;
+		}
+
+		/* Grunge texture overlay */
+		.tgda-container::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.05"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100" height="100" filter="url(%23noise)"/></svg>');
+			pointer-events: none;
+			z-index: 1;
+		}
+
+		.error-content {
+			position: relative;
+			z-index: 2;
+			max-width: 900px;
+			margin: 0 auto;
+			padding: 40px 20px;
+			text-align: center;
+		}
+
+		/* Main error number - BIG and BOLD */
+		.error-number {
+			/* Use clamp to set a min size, a fluid size, and a max size */
+			font-size: clamp(5rem, 20vw, 10rem);
+			font-weight: 900;
+			line-height: 1;
+			margin-bottom: 0;
+			color: #0051ff;
+			text-shadow:
+				5px 5px 0 #000,
+				10px 10px 0 rgba(34, 0, 255, 0.3),
+				15px 15px 0 rgba(0, 0, 0, 0.5),
+				0 0 30px rgba(38, 0, 255, 0.7);
+			letter-spacing: -5px;
+			position: relative;
+			display: inline-block;
+			transform: skew(-5deg, -2deg);
+			animation: pulse 2s infinite alternate;
+
+			/* FIX: Prevents the glitch effect from pushing the page width */
+			max-width: 100%;
+			word-wrap: break-word;
+		}
+
+		@keyframes pulse {
+			0% {
+				text-shadow: 5px 5px 0 #000, 10px 10px 0 rgba(55, 0, 255, 0.3), 15px 15px 0 rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 0, 34, 0.7);
+			}
+
+			100% {
+				text-shadow: 5px 5px 0 #000, 10px 10px 0 rgba(51, 0, 255, 0.5), 15px 15px 0 rgba(0, 0, 0, 0.7), 0 0 50px rgba(255, 0, 34, 0.9);
+			}
+		}
+
+		.error-number::after {
+			content: '';
+			position: absolute;
+			bottom: -15px;
+			left: 10%;
+			width: 80%;
+			height: 10px;
+			background: linear-gradient(90deg, transparent, #1900ff, transparent);
+			border-radius: 50%;
+			filter: blur(5px);
+		}
+
+		/* Error title */
+		.error-title {
+			font-size: 1.5rem;
+			font-weight: 800;
+			margin: 30px 0 20px;
+			color: #fff;
+			text-transform: uppercase;
+			letter-spacing: 3px;
+			text-shadow: 3px 3px 0 #000, 5px 5px 0 rgba(0, 0, 0, 0.5);
+			position: relative;
+			display: inline-block;
+			padding: 10px 30px;
+			background: linear-gradient(90deg, rgba(30, 0, 255, 0.2), rgba(20, 100, 255, 0.2));
+			border-left: 5px solid #2200ff;
+			border-right: 5px solid #1464ff;
+			transform: rotate(1deg);
+		}
+
+		/* Error message */
+		.error-message {
+			font-size: 1.4rem;
+			line-height: 1.6;
+			color: #ccc;
+			max-width: 700px;
+			margin: 30px auto 50px;
+			padding: 20px;
+			background-color: rgba(0, 0, 0, 0.5);
+			border: 2px solid #333;
+			border-left: 5px solid #2200ff;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+			position: relative;
+			transform: rotate(-0.5deg);
+		}
+
+		.error-message::before {
+			content: '';
+			position: absolute;
+			top: -10px;
+			left: 50%;
+			transform: translateX(-50%);
+			width: 80%;
+			height: 5px;
+			background: linear-gradient(90deg, #0015ff, #1464ff);
+			border-radius: 5px;
+		}
+
+		/* Zordar button */
+		.zordar-button {
+			display: inline-block;
+			padding: 18px 45px;
+			background: linear-gradient(45deg, #0011ff, #1464ff);
+			color: white;
+			text-decoration: none;
+			font-weight: 800;
+			font-size: 1.3rem;
+			text-transform: uppercase;
+			letter-spacing: 2px;
+			border: none;
+			border-radius: 0;
+			position: relative;
+			overflow: hidden;
+			transition: all 0.3s;
+			box-shadow:
+				0 10px 20px rgba(0, 0, 0, 0.5),
+				0 0 0 5px #000,
+				0 0 0 7px #1100ff,
+				0 0 0 9px #000,
+				0 0 0 11px #1464ff;
+			transform: skew(-10deg);
+			margin-top: 20px;
+		}
+
+		.zordar-button span {
+			display: inline-block;
+			transform: skew(10deg);
+		}
+
+		.zordar-button:hover {
+			transform: skew(-10deg) scale(1.05);
+			box-shadow:
+				0 15px 30px rgba(0, 0, 0, 0.7),
+				0 0 0 5px #000,
+				0 0 0 7px #001aff,
+				0 0 0 9px #000,
+				0 0 0 11px #1464ff,
+				0 0 30px rgba(55, 0, 255, 0.7);
+			background: linear-gradient(45deg, #3a33ff, #3388ff);
+		}
+
+		.zordar-button:active {
+			transform: skew(-10deg) scale(0.98);
+		}
+
+		/* Crack effect */
+		.crack {
+			position: absolute;
+			background: linear-gradient(to right, transparent, #fff, transparent);
+			z-index: 1;
+		}
+
+		.crack-1 {
+			top: 20%;
+			left: 10%;
+			width: 30%;
+			height: 3px;
+			transform: rotate(30deg);
+			opacity: 0.3;
+		}
+
+		.crack-2 {
+			bottom: 30%;
+			right: 15%;
+			width: 25%;
+			height: 3px;
+			transform: rotate(-15deg);
+			opacity: 0.3;
+		}
+
+		.crack-3 {
+			top: 50%;
+			left: 5%;
+			width: 20%;
+			height: 2px;
+			transform: rotate(45deg);
+			opacity: 0.2;
+		}
+
+		/* Warning triangles */
+		.warning-icon {
+			position: absolute;
+			color: #ff9900;
+			font-size: 2rem;
+			opacity: 0.5;
+			z-index: 1;
+		}
+
+		.warning-1 {
+			top: 10%;
+			left: 5%;
+			animation: float 6s infinite ease-in-out;
+		}
+
+		.warning-2 {
+			top: 15%;
+			right: 10%;
+			animation: float 8s infinite ease-in-out reverse;
+		}
+
+		.warning-3 {
+			bottom: 20%;
+			left: 12%;
+			animation: float 7s infinite ease-in-out;
+		}
+
+		.warning-4 {
+			bottom: 10%;
+			right: 8%;
+			animation: float 9s infinite ease-in-out reverse;
+		}
+
+		@keyframes float {
+
+			0%,
+			100% {
+				transform: translateY(0) rotate(0deg);
+			}
+
+			50% {
+				transform: translateY(-20px) rotate(10deg);
+			}
+		}
+
+		/* Glitch effect for error number */
+		.glitch {
+			position: relative;
+		}
+
+		.glitch::before,
+		.glitch::after {
+			content: attr(data-text);
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+
+		.glitch::before {
+			left: 2px;
+			text-shadow: -2px 0 #00ffff;
+			clip: rect(44px, 450px, 56px, 0);
+			animation: glitch-anim 5s infinite linear alternate-reverse;
+		}
+
+		.glitch::after {
+			left: -2px;
+			text-shadow: -2px 0 #ff00ff;
+			clip: rect(44px, 450px, 56px, 0);
+			animation: glitch-anim2 3s infinite linear alternate-reverse;
+		}
+
+		@keyframes glitch-anim {
+			0% {
+				clip: rect(31px, 9999px, 94px, 0);
+			}
+
+			5% {
+				clip: rect(112px, 9999px, 76px, 0);
+			}
+
+			10% {
+				clip: rect(85px, 9999px, 77px, 0);
+			}
+
+			15% {
+				clip: rect(27px, 9999px, 97px, 0);
+			}
+
+			20% {
+				clip: rect(64px, 9999px, 98px, 0);
+			}
+
+			25% {
+				clip: rect(61px, 9999px, 85px, 0);
+			}
+
+			30% {
+				clip: rect(99px, 9999px, 114px, 0);
+			}
+
+			35% {
+				clip: rect(1px, 9999px, 60px, 0);
+			}
+
+			40% {
+				clip: rect(80px, 9999px, 103px, 0);
+			}
+
+			45% {
+				clip: rect(66px, 9999px, 80px, 0);
+			}
+
+			50% {
+				clip: rect(40px, 9999px, 82px, 0);
+			}
+
+			55% {
+				clip: rect(31px, 9999px, 73px, 0);
+			}
+
+			60% {
+				clip: rect(64px, 9999px, 70px, 0);
+			}
+
+			65% {
+				clip: rect(85px, 9999px, 73px, 0);
+			}
+
+			70% {
+				clip: rect(75px, 9999px, 57px, 0);
+			}
+
+			75% {
+				clip: rect(71px, 9999px, 85px, 0);
+			}
+
+			80% {
+				clip: rect(17px, 9999px, 54px, 0);
+			}
+
+			85% {
+				clip: rect(53px, 9999px, 62px, 0);
+			}
+
+			90% {
+				clip: rect(14px, 9999px, 35px, 0);
+			}
+
+			95% {
+				clip: rect(77px, 9999px, 14px, 0);
+			}
+
+			100% {
+				clip: rect(86px, 9999px, 53px, 0);
+			}
+		}
+
+		@keyframes glitch-anim2 {
+			0% {
+				clip: rect(65px, 9999px, 119px, 0);
+			}
+
+			5% {
+				clip: rect(52px, 9999px, 55px, 0);
+			}
+
+			10% {
+				clip: rect(120px, 9999px, 108px, 0);
+			}
+
+			15% {
+				clip: rect(15px, 9999px, 85px, 0);
+			}
+
+			20% {
+				clip: rect(35px, 9999px, 69px, 0);
+			}
+
+			25% {
+				clip: rect(5px, 9999px, 64px, 0);
+			}
+
+			30% {
+				clip: rect(105px, 9999px, 89px, 0);
+			}
+
+			35% {
+				clip: rect(85px, 9999px, 103px, 0);
+			}
+
+			40% {
+				clip: rect(65px, 9999px, 147px, 0);
+			}
+
+			45% {
+				clip: rect(98px, 9999px, 101px, 0);
+			}
+
+			50% {
+				clip: rect(1px, 9999px, 133px, 0);
+			}
+
+			55% {
+				clip: rect(68px, 9999px, 97px, 0);
+			}
+
+			60% {
+				clip: rect(101px, 9999px, 113px, 0);
+			}
+
+			65% {
+				clip: rect(84px, 9999px, 37px, 0);
+			}
+
+			70% {
+				clip: rect(28px, 9999px, 140px, 0);
+			}
+
+			75% {
+				clip: rect(102px, 9999px, 117px, 0);
+			}
+
+			80% {
+				clip: rect(48px, 9999px, 52px, 0);
+			}
+
+			85% {
+				clip: rect(45px, 9999px, 136px, 0);
+			}
+
+			90% {
+				clip: rect(33px, 9999px, 59px, 0);
+			}
+
+			95% {
+				clip: rect(129px, 9999px, 85px, 0);
+			}
+
+			100% {
+				clip: rect(34px, 9999px, 145px, 0);
+			}
+		}
+
+		/* Responsive adjustments */
+		@media (max-width: 768px) {
+			.error-number {
+				font-size: 10rem;
+				letter-spacing: -3px;
+			}
+
+			.error-title {
+				font-size: 2rem;
+				padding: 8px 15px;
+			}
+
+			.error-message {
+				font-size: 1.2rem;
+				padding: 15px;
+			}
+
+			.zordar-button {
+				padding: 15px 30px;
+				font-size: 1.1rem;
+			}
+
+			.warning-icon {
+				font-size: 1.5rem;
+			}
+		}
+
+		@media (max-width: 480px) {
+			.error-number {
+				font-size: 7rem;
+			}
+
+			.error-title {
+				font-size: 1.5rem;
+			}
+
+			.error-message {
+				font-size: 1rem;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="tgda-container">
+		<!-- Crack effects -->
+		<div class="crack crack-1"></div>
+		<div class="crack crack-2"></div>
+		<div class="crack crack-3"></div>
+
+		<!-- Warning icons -->
+		<div class="warning-icon warning-1">▲</div>
+		<div class="warning-icon warning-2">▲</div>
+		<div class="warning-icon warning-3">▲</div>
+		<div class="warning-icon warning-4">▲</div>
+
+		<div class="error-content">
+			<!-- Error number with glitch effect -->
+			<h1 class="error-number glitch" data-text="<%= status %>">
+				<%= status %>
+			</h1>
+
+			<!-- Error title -->
+			<h2 class="error-title">
+				<%= err_title %>
+			</h2>
+
+			<!-- Error message -->
+			<div class="error-message">
+				<p>
+					<%= message %>
+				</p>
+			</div>
+
+			<!-- Back button -->
+			<a href="<%= back_url %>" class="zordar-button">
+				<span>GO BACK NOW</span>
+			</a>
+		</div>
+	</div>
+
+	<!--**********************************
+    Scripts
+    ***********************************-->
+
+	<!-- Additional effects script -->
+	<script>
+		// Add random glitch effect to error number
+		document.addEventListener('DOMContentLoaded', function () {
+			const errorNumber = document.querySelector('.error-number');
+
+			// Random glitch effect
+			setInterval(() => {
+				if (Math.random() > 0.7) {
+					errorNumber.style.transform = `skew(${Math.random() * 10 - 5}deg, ${Math.random() * 4 - 2}deg) translate(${Math.random() * 10 - 5}px, ${Math.random() * 5 - 2.5}px)`;
+
+					setTimeout(() => {
+						errorNumber.style.transform = 'skew(-5deg, -2deg)';
+					}, 100);
+				}
+			}, 3000);
+
+			// Add click effect to button
+			const button = document.querySelector('.zordar-button');
+			button.addEventListener('click', function (e) {
+				// Create ripple effect
+				const ripple = document.createElement('span');
+				const rect = this.getBoundingClientRect();
+				const size = Math.max(rect.width, rect.height);
+				const x = e.clientX - rect.left - size / 2;
+				const y = e.clientY - rect.top - size / 2;
+
+				ripple.style.cssText = `
+                    position: absolute;
+                    border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.7);
+                    transform: scale(0);
+                    animation: ripple-animation 0.6s linear;
+                    width: ${size}px;
+                    height: ${size}px;
+                    top: ${y}px;
+                    left: ${x}px;
+                    pointer-events: none;
+                `;
+
+				this.appendChild(ripple);
+
+				// Remove ripple after animation
+				setTimeout(() => {
+					ripple.remove();
+				}, 600);
+			});
+
+			// Add CSS for ripple animation
+			const style = document.createElement('style');
+			style.textContent = `
+                @keyframes ripple-animation {
+                    to {
+                        transform: scale(4);
+                        opacity: 0;
+                    }
+                }
+            `;
+			document.head.appendChild(style);
+		});
+	</script>
+</body>
+
+</html>

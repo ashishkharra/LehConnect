@@ -1,0 +1,1295 @@
+<%- include('../shared/partials/header', { admin : admin, title: title}) %>
+
+        <!-- Page Content -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col-sm-8">
+                            <h3 class="page-title">Today's Payment Ledger</h3>
+                        </div>
+                        <div class="col-sm-4 text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-primary" onclick="processDailySettlement()">
+                                    <i class="ti ti-cash me-2"></i>Process Settlement
+                                </button>
+                                <button class="btn btn-success" onclick="exportTodayPayments()">
+                                    <i class="ti ti-download me-2"></i>Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Summary Cards -->
+                <div class="row">
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="dash-widget-header">
+                                    <span class="dash-widget-icon bg-primary">
+                                        <i class="ti ti-currency-rupee"></i>
+                                    </span>
+                                    <div class="dash-widget-info text-end">
+                                        <h3>₹<%= summary.totalAmount ? summary.totalAmount.toLocaleString('en-IN') : 0 %></h3>
+                                        <h6 class="text-muted">Total Collection</h6>
+                                    </div>
+                                </div>
+                                <div class="dash-widget-footer">
+                                    <span class="text-success"><%= summary.transactionCount || 0 %> transactions</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="dash-widget-header">
+                                    <span class="dash-widget-icon bg-success">
+                                        <i class="ti ti-wallet"></i>
+                                    </span>
+                                    <div class="dash-widget-info text-end">
+                                        <h3>₹<%= summary.successAmount ? summary.successAmount.toLocaleString('en-IN') : 0 %></h3>
+                                        <h6 class="text-muted">Successful</h6>
+                                    </div>
+                                </div>
+                                <div class="dash-widget-footer">
+                                    <span class="text-success"><%= summary.successCount || 0 %> successful</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="dash-widget-header">
+                                    <span class="dash-widget-icon bg-warning">
+                                        <i class="ti ti-clock"></i>
+                                    </span>
+                                    <div class="dash-widget-info text-end">
+                                        <h3>₹<%= summary.pendingAmount ? summary.pendingAmount.toLocaleString('en-IN') : 0 %></h3>
+                                        <h6 class="text-muted">Pending</h6>
+                                    </div>
+                                </div>
+                                <div class="dash-widget-footer">
+                                    <span class="text-warning"><%= summary.pendingCount || 0 %> pending</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="dash-widget-header">
+                                    <span class="dash-widget-icon bg-info">
+                                        <i class="ti ti-building-bank"></i>
+                                    </span>
+                                    <div class="dash-widget-info text-end">
+                                        <h3>₹<%= summary.settledAmount ? summary.settledAmount.toLocaleString('en-IN') : 0 %></h3>
+                                        <h6 class="text-muted">To Settle</h6>
+                                    </div>
+                                </div>
+                                <div class="dash-widget-footer">
+                                    <span class="text-info"><%= summary.toSettleCount || 0 %> to settle</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Left Column: Payment Methods & Real-time Updates -->
+                    <div class="col-lg-4">
+                        <!-- Payment Methods Breakdown -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Payment Methods</h5>
+                            </div>
+                            <div class="card-body">
+                                <% if (paymentMethods && paymentMethods.length > 0) { %>
+                                    <% paymentMethods.forEach(method => { %>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="payment-method-icon" 
+                                                 style="background: <%= getMethodColor(method.method) %>">
+                                                <i class="ti <%= getMethodIcon(method.method) %> text-white"></i>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1"><%= getMethodName(method.method) %></h6>
+                                                <div class="progress" style="height: 5px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: <%= method.percentage %>%;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="text-end">
+                                                <h6 class="mb-1">₹<%= method.amount %></h6>
+                                                <small class="text-muted"><%= method.count %> transactions</small>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                <% } else { %>
+                                    <div class="text-center py-3">
+                                        <p class="text-muted">No payment data available</p>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <!-- Real-time Updates -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Real-time Updates</h5>
+                                <span class="badge bg-success" id="liveBadge">
+                                    <i class="ti ti-circle-filled"></i> LIVE
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="recent-transactions" id="recentTransactions">
+                                    <% if (recentTransactions && recentTransactions.length > 0) { %>
+                                        <% recentTransactions.forEach(txn => { %>
+                                            <div class="timeline-item">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <h6 class="mb-1"><%= txn.description %></h6>
+                                                        <p class="text-muted mb-1 small">
+                                                            <%= new Date(txn.created_at).toLocaleTimeString() %>
+                                                        </p>
+                                                        <span class="badge bg-<%= getStatusColor(txn.status) %>">
+                                                            <%= txn.status %>
+                                                        </span>
+                                                    </div>
+                                                    <div class="text-end">
+                                                        <h6 class="<%= txn.amount > 0 ? 'text-success' : 'text-danger' %> mb-0">
+                                                            <%= txn.amount > 0 ? '+' : '' %>₹<%= Math.abs(txn.amount) %>
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            <%= getMethodName(txn.payment_method) %>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <div class="text-center py-3">
+                                            <p class="text-muted">No recent transactions</p>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Quick Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" onclick="initiateManualPayment()">
+                                        <i class="ti ti-plus me-2"></i>Add Manual Payment
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="processFailedPayments()">
+                                        <i class="ti ti-refresh me-2"></i>Retry Failed Payments
+                                    </button>
+                                    <button class="btn btn-outline-warning" onclick="generateDailyReport()">
+                                        <i class="ti ti-report me-2"></i>Generate Daily Report
+                                    </button>
+                                    <button class="btn btn-outline-info" onclick="reconcilePayments()">
+                                        <i class="ti ti-adjustments me-2"></i>Reconcile Payments
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Today's Transactions -->
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Today's Transactions</h5>
+                                <div class="card-action">
+                                    <div class="input-group" style="width: 300px;">
+                                        <input type="text" class="form-control" placeholder="Search transactions..." 
+                                               id="searchTodayTransactions" onkeyup="searchTodayTransactions()">
+                                        <button class="btn btn-outline-secondary" type="button">
+                                            <i class="ti ti-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Filters -->
+                                <div class="row mb-3">
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filterStatus" onchange="filterTodayTransactions()">
+                                            <option value="">All Status</option>
+                                            <option value="success">Success</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="failed">Failed</option>
+                                            <option value="refunded">Refunded</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filterType" onchange="filterTodayTransactions()">
+                                            <option value="">All Types</option>
+                                            <option value="booking_payment">Booking Payment</option>
+                                            <option value="vendor_payout">Vendor Payout</option>
+                                            <option value="customer_refund">Customer Refund</option>
+                                            <option value="commission">Commission</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="filterMethod" onchange="filterTodayTransactions()">
+                                            <option value="">All Methods</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="credit_card">Credit Card</option>
+                                            <option value="debit_card">Debit Card</option>
+                                            <option value="netbanking">Net Banking</option>
+                                            <option value="wallet">Wallet</option>
+                                            <option value="cash">Cash</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-outline-secondary w-100" onclick="clearTodayFilters()">
+                                            <i class="ti ti-x"></i> Clear Filters
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Transactions Table -->
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-center mb-0" id="todayTransactionsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    <input type="checkbox" id="selectAllToday" onclick="toggleSelectAllToday()">
+                                                </th>
+                                                <th>Transaction ID</th>
+                                                <th>User</th>
+                                                <th>Type</th>
+                                                <th>Amount</th>
+                                                <th>Method</th>
+                                                <th>Status</th>
+                                                <th>Time</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% if (todayTransactions && todayTransactions.length > 0) { %>
+                                                <% todayTransactions.forEach(txn => { %>
+                                                    <tr data-status="<%= txn.status %>" 
+                                                        data-type="<%= txn.transaction_type %>"
+                                                        data-method="<%= txn.payment_method %>">
+                                                        <td>
+                                                            <input type="checkbox" class="transaction-checkbox" 
+                                                                   value="<%= txn.id %>" 
+                                                                   <%= txn.status === 'success' ? '' : 'disabled' %>>
+                                                        </td>
+                                                        <td>
+                                                            <strong><%= txn.transaction_id %></strong>
+                                                            <% if (txn.gateway_transaction_id) { %>
+                                                                <br><small class="text-muted">Gateway: <%= txn.gateway_transaction_id %></small>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <% if (txn.user_type === 'customer') { %>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="avatar avatar-sm me-2">
+                                                                        <img src="<%= txn.user_avatar || 'assets/img/profiles/avatar-02.jpg' %>" 
+                                                                             class="rounded-circle" alt="User">
+                                                                    </div>
+                                                                    <div>
+                                                                        <h6 class="mb-0"><%= txn.user_name %></h6>
+                                                                        <small class="text-muted">Customer</small>
+                                                                    </div>
+                                                                </div>
+                                                            <% } else if (txn.user_type === 'vendor') { %>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="avatar avatar-sm me-2">
+                                                                        <img src="<%= txn.user_avatar || 'assets/img/store/store-01.png' %>" 
+                                                                             class="rounded-circle" alt="Vendor">
+                                                                    </div>
+                                                                    <div>
+                                                                        <h6 class="mb-0"><%= txn.user_name %></h6>
+                                                                        <small class="text-muted">Vendor</small>
+                                                                    </div>
+                                                                </div>
+                                                            <% } else { %>
+                                                                <div class="d-flex align-items-center">
+                                                                    <div class="avatar avatar-sm me-2">
+                                                                        <span class="avatar-title bg-primary rounded-circle">
+                                                                            <i class="ti ti-user"></i>
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h6 class="mb-0">System</h6>
+                                                                        <small class="text-muted">Admin</small>
+                                                                    </div>
+                                                                </div>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-<%= getTypeColor(txn.transaction_type) %>">
+                                                                <%= getTypeName(txn.transaction_type) %>
+                                                            </span>
+                                                            <% if (txn.booking_id) { %>
+                                                                <br><small class="text-muted">Booking #<%= txn.booking_id %></small>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <h6 class="<%= txn.amount > 0 ? 'text-success' : 'text-danger' %> mb-0">
+                                                                <%= txn.amount > 0 ? '+' : '' %>₹<%= Math.abs(txn.amount).toLocaleString('en-IN') %>
+                                                            </h6>
+                                                            <small class="text-muted"><%= txn.currency %></small>
+                                                        </td>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <i class="ti <%= getMethodIcon(txn.payment_method) %> me-2"></i>
+                                                                <span><%= getMethodName(txn.payment_method) %></span>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-<%= getStatusColor(txn.status) %>">
+                                                                <%= txn.status.charAt(0).toUpperCase() + txn.status.slice(1) %>
+                                                            </span>
+                                                            <% if (txn.status === 'failed') { %>
+                                                                <br><small class="text-danger">Retry available</small>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <%= new Date(txn.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                                                            <br><small class="text-muted">
+                                                                <%= new Date(txn.created_at).toLocaleDateString() %>
+                                                            </small>
+                                                        </td>
+                                                        <td>
+                                                            <div class="actions">
+                                                                <a href="javascript:void(0);" class="btn btn-sm bg-info-light me-2" 
+                                                                   onclick="viewTransactionDetails('<%= txn.id %>')">
+                                                                    <i class="ti ti-eye"></i>
+                                                                </a>
+                                                                <% if (txn.status === 'pending') { %>
+                                                                    <a href="javascript:void(0);" class="btn btn-sm bg-success-light me-2"
+                                                                       onclick="approveTransaction('<%= txn.id %>')">
+                                                                        <i class="ti ti-check"></i>
+                                                                    </a>
+                                                                <% } %>
+                                                                <% if (txn.status === 'failed') { %>
+                                                                    <a href="javascript:void(0);" class="btn btn-sm bg-warning-light"
+                                                                       onclick="retryTransaction('<%= txn.id %>')">
+                                                                        <i class="ti ti-refresh"></i>
+                                                                    </a>
+                                                                <% } else { %>
+                                                                    <a href="javascript:void(0);" class="btn btn-sm bg-primary-light"
+                                                                       onclick="editTransaction('<%= txn.id %>')">
+                                                                        <i class="ti ti-pencil"></i>
+                                                                    </a>
+                                                                <% } %>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                <% }); %>
+                                            <% } else { %>
+                                                <tr>
+                                                    <td colspan="9" class="text-center">
+                                                        <div class="empty-state">
+                                                            <i class="ti ti-receipt fs-48 text-muted mb-3"></i>
+                                                            <h5>No transactions today</h5>
+                                                            <p class="text-muted">All transactions will appear here</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Batch Actions -->
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="d-flex gap-2">
+                                            <select class="form-select" id="batchAction" style="width: auto;">
+                                                <option value="">Batch Actions</option>
+                                                <option value="settle">Mark as Settled</option>
+                                                <option value="export">Export Selected</option>
+                                                <option value="refund">Initiate Refund</option>
+                                                <option value="reconcile">Mark for Reconciliation</option>
+                                            </select>
+                                            <button class="btn btn-primary" onclick="applyBatchAction()">
+                                                Apply
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 text-end">
+                                        <div class="d-flex align-items-center justify-content-end gap-2">
+                                            <span class="text-muted" id="selectedCount">0 selected</span>
+                                            <span class="text-success" id="selectedAmount">₹0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Settlement Summary -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="card-title">Daily Settlement Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="settlement-batch">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h6 class="mb-1">Vendor Payouts</h6>
+                                            <p class="text-muted mb-0">Total amount to be settled to vendors</p>
+                                        </div>
+                                        <div class="text-end">
+                                            <h4 class="text-success mb-0">₹<%= settlementSummary.vendorPayouts || 0 %></h4>
+                                            <small><%= settlementSummary.vendorCount || 0 %> vendors</small>
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 8px;">
+                                        <div class="progress-bar bg-success" style="width: <%= settlementSummary.vendorProgress || 0 %>%;"></div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button class="btn btn-success" onclick="initiateVendorSettlement()">
+                                            <i class="ti ti-send me-2"></i>Initiate Vendor Settlement
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="settlement-batch">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h6 class="mb-1">Commission Payouts</h6>
+                                            <p class="text-muted mb-0">Referral and affiliate commissions</p>
+                                        </div>
+                                        <div class="text-end">
+                                            <h4 class="text-primary mb-0">₹<%= settlementSummary.commissionPayouts || 0 %></h4>
+                                            <small><%= settlementSummary.commissionCount || 0 %> recipients</small>
+                                        </div>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 8px;">
+                                        <div class="progress-bar bg-primary" style="width: <%= settlementSummary.commissionProgress || 0 %>%;"></div>
+                                    </div>
+                                    <div class="text-end">
+                                        <button class="btn btn-primary" onclick="initiateCommissionSettlement()">
+                                            <i class="ti ti-cash me-2"></i>Process Commissions
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Settlement Stats -->
+                                <div class="row text-center mt-4">
+                                    <div class="col-4">
+                                        <div class="p-3 border rounded">
+                                            <h4 class="text-success mb-1">₹<%= settlementSummary.settledToday || 0 %></h4>
+                                            <p class="small mb-0">Settled Today</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-3 border rounded">
+                                            <h4 class="text-warning mb-1">₹<%= settlementSummary.pendingSettlement || 0 %></h4>
+                                            <p class="small mb-0">Pending Settlement</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="p-3 border rounded">
+                                            <h4 class="text-info mb-1"><%= settlementSummary.settlementCount || 0 %></h4>
+                                            <p class="small mb-0">Settlements</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Details Modal -->
+        <div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Transaction Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="transactionDetailsContent">
+                        <!-- Details loaded here -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="printTransaction()">
+                            <i class="ti ti-printer me-2"></i>Print Receipt
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Payment Modal -->
+        <div class="modal fade" id="manualPaymentModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Manual Payment</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form id="manualPaymentForm">
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Transaction Type</label>
+                                        <select class="form-select" name="transaction_type" required>
+                                            <option value="">Select Type</option>
+                                            <option value="booking_payment">Booking Payment</option>
+                                            <option value="vendor_payout">Vendor Payout</option>
+                                            <option value="customer_refund">Customer Refund</option>
+                                            <option value="commission">Commission</option>
+                                            <option value="subscription">Subscription</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">User Type</label>
+                                        <select class="form-select" name="user_type" required>
+                                            <option value="">Select User Type</option>
+                                            <option value="customer">Customer</option>
+                                            <option value="vendor">Vendor</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">User</label>
+                                        <select class="form-select" name="user_id" id="userSelect" required>
+                                            <option value="">Select User</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Amount (₹)</label>
+                                        <input type="number" class="form-control" name="amount" 
+                                               step="0.01" min="0" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Payment Method</label>
+                                        <select class="form-select" name="payment_method" required>
+                                            <option value="">Select Method</option>
+                                            <option value="cash">Cash</option>
+                                            <option value="bank_transfer">Bank Transfer</option>
+                                            <option value="cheque">Cheque</option>
+                                            <option value="upi">UPI</option>
+                                            <option value="credit_card">Credit Card</option>
+                                            <option value="debit_card">Debit Card</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" name="status" required>
+                                            <option value="success">Success</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="failed">Failed</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-control" name="description" rows="3" required></textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Reference Number</label>
+                                        <input type="text" class="form-control" name="reference_number">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date</label>
+                                        <input type="datetime-local" class="form-control" name="transaction_date" 
+                                               value="<%= new Date().toISOString().slice(0,16) %>">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label class="form-label">Additional Notes</label>
+                                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Add Payment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Helper functions
+        function getMethodColor(method) {
+            const colors = {
+                'upi': '#667eea',
+                'credit_card': '#28a745',
+                'debit_card': '#17a2b8',
+                'netbanking': '#ffc107',
+                'wallet': '#dc3545',
+                'cash': '#6c757d',
+                'bank_transfer': '#20c997'
+            };
+            return colors[method] || '#6c757d';
+        }
+
+        function getMethodIcon(method) {
+            const icons = {
+                'upi': 'ti-device-mobile',
+                'credit_card': 'ti-credit-card',
+                'debit_card': 'ti-credit-card',
+                'netbanking': 'ti-building-bank',
+                'wallet': 'ti-wallet',
+                'cash': 'ti-cash',
+                'bank_transfer': 'ti-building-bank'
+            };
+            return icons[method] || 'ti-currency-rupee';
+        }
+
+        function getMethodName(method) {
+            const names = {
+                'upi': 'UPI',
+                'credit_card': 'Credit Card',
+                'debit_card': 'Debit Card',
+                'netbanking': 'Net Banking',
+                'wallet': 'Wallet',
+                'cash': 'Cash',
+                'bank_transfer': 'Bank Transfer'
+            };
+            return names[method] || method;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'success': return 'success';
+                case 'pending': return 'warning';
+                case 'failed': return 'danger';
+                case 'refunded': return 'info';
+                case 'cancelled': return 'secondary';
+                case 'disputed': return 'danger';
+                default: return 'secondary';
+            }
+        }
+
+        function getTypeColor(type) {
+            switch(type) {
+                case 'booking_payment': return 'primary';
+                case 'vendor_payout': return 'success';
+                case 'customer_refund': return 'warning';
+                case 'commission': return 'info';
+                case 'subscription': return 'secondary';
+                default: return 'dark';
+            }
+        }
+
+        function getTypeName(type) {
+            const names = {
+                'booking_payment': 'Booking Payment',
+                'vendor_payout': 'Vendor Payout',
+                'customer_refund': 'Customer Refund',
+                'commission': 'Commission',
+                'subscription': 'Subscription',
+                'other': 'Other'
+            };
+            return names[type] || type;
+        }
+
+        // Real-time updates
+        let socket;
+        function initWebSocket() {
+            // WebSocket for real-time updates
+            socket = new WebSocket(`ws://${window.location.host}/ws/payments`);
+            
+            socket.onopen = function() {
+                document.getElementById('liveBadge').classList.add('bg-success');
+            };
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'new_transaction') {
+                    addNewTransaction(data.transaction);
+                } else if (data.type === 'status_update') {
+                    updateTransactionStatus(data.transactionId, data.status);
+                }
+            };
+
+            socket.onclose = function() {
+                document.getElementById('liveBadge').classList.remove('bg-success');
+                document.getElementById('liveBadge').classList.add('bg-secondary');
+                // Attempt to reconnect after 5 seconds
+                setTimeout(initWebSocket, 5000);
+            };
+        }
+
+        function addNewTransaction(transaction) {
+            const container = document.getElementById('recentTransactions');
+            const newItem = document.createElement('div');
+            newItem.className = 'timeline-item';
+            newItem.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${transaction.description}</h6>
+                        <p class="text-muted mb-1 small">
+                            ${new Date(transaction.created_at).toLocaleTimeString()}
+                        </p>
+                        <span class="badge bg-${getStatusColor(transaction.status)}">
+                            ${transaction.status}
+                        </span>
+                    </div>
+                    <div class="text-end">
+                        <h6 class="${transaction.amount > 0 ? 'text-success' : 'text-danger'} mb-0">
+                            ${transaction.amount > 0 ? '+' : ''}₹${Math.abs(transaction.amount)}
+                        </h6>
+                        <small class="text-muted">
+                            ${getMethodName(transaction.payment_method)}
+                        </small>
+                    </div>
+                </div>
+            `;
+            container.insertBefore(newItem, container.firstChild);
+            
+            // Limit to 10 items
+            if (container.children.length > 10) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        // View transaction details
+        function viewTransactionDetails(transactionId) {
+            fetch(`/admin/payments/transaction/${transactionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    const details = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Transaction ID:</h6>
+                                <p><strong>${data.transaction_id}</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Gateway Transaction ID:</h6>
+                                <p>${data.gateway_transaction_id || 'N/A'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>User:</h6>
+                                <p><strong>${data.user_name}</strong> (${data.user_type})</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Amount:</h6>
+                                <h4 class="text-${data.amount > 0 ? 'success' : 'danger'}">
+                                    ${data.amount > 0 ? '+' : ''}₹${Math.abs(data.amount)}
+                                </h4>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Payment Method:</h6>
+                                <p>
+                                    <i class="ti ${getMethodIcon(data.payment_method)} me-2"></i>
+                                    ${getMethodName(data.payment_method)}
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Status:</h6>
+                                <span class="badge bg-${getStatusColor(data.status)}">
+                                    ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Transaction Type:</h6>
+                                <span class="badge bg-${getTypeColor(data.transaction_type)}">
+                                    ${getTypeName(data.transaction_type)}
+                                </span>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Date & Time:</h6>
+                                <p>${new Date(data.created_at).toLocaleString()}</p>
+                            </div>
+                            <div class="col-12">
+                                <h6>Description:</h6>
+                                <p>${data.description}</p>
+                            </div>
+                            ${data.booking_id ? `
+                                <div class="col-md-6">
+                                    <h6>Booking ID:</h6>
+                                    <p>#${data.booking_id}</p>
+                                </div>
+                            ` : ''}
+                            ${data.vendor_id ? `
+                                <div class="col-md-6">
+                                    <h6>Vendor ID:</h6>
+                                    <p>#${data.vendor_id}</p>
+                                </div>
+                            ` : ''}
+                            <div class="col-12">
+                                <h6>Notes:</h6>
+                                <p>${data.notes || 'No notes'}</p>
+                            </div>
+                            ${data.metadata ? `
+                                <div class="col-12">
+                                    <h6>Additional Information:</h6>
+                                    <pre class="bg-light p-3">${JSON.stringify(data.metadata, null, 2)}</pre>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                    document.getElementById('transactionDetailsContent').innerHTML = details;
+                    $('#transactionDetailsModal').modal('show');
+                });
+        }
+
+        // Process daily settlement
+        function processDailySettlement() {
+            Swal.fire({
+                title: 'Process Daily Settlement',
+                html: `
+                    <div class="text-start">
+                        <p>Total amount to settle: <strong>₹${summary.toSettleAmount || 0}</strong></p>
+                        <p>Number of transactions: <strong>${summary.toSettleCount || 0}</strong></p>
+                        <div class="mb-3">
+                            <label class="form-label">Settlement Method</label>
+                            <select class="form-select" id="settlementMethod">
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="upi_batch">UPI Batch</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Settlement Date</label>
+                            <input type="date" class="form-control" id="settlementDate" 
+                                   value="${new Date().toISOString().split('T')[0]}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Reference Notes</label>
+                            <textarea class="form-control" id="settlementNotes" rows="2"></textarea>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Process Settlement',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const method = document.getElementById('settlementMethod').value;
+                    const date = document.getElementById('settlementDate').value;
+                    const notes = document.getElementById('settlementNotes').value;
+                    
+                    return fetch('/admin/payments/process-settlement', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            method, 
+                            date, 
+                            notes,
+                            type: 'daily' 
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message);
+                        }
+                        return data;
+                    });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Settlement Initiated!',
+                        html: `
+                            <p>Settlement ID: <strong>${result.data.settlement_id}</strong></p>
+                            <p>Total Amount: <strong>₹${result.data.total_amount}</strong></p>
+                            <p>Transactions: <strong>${result.data.transaction_count}</strong></p>
+                        `,
+                        timer: 3000
+                    }).then(() => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+
+        // Export today's payments
+        function exportTodayPayments() {
+            Swal.fire({
+                title: 'Export Today\'s Payments',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Export Format</label>
+                            <select class="form-select" id="exportFormat">
+                                <option value="excel">Excel (.xlsx)</option>
+                                <option value="csv">CSV (.csv)</option>
+                                <option value="pdf">PDF (.pdf)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Include</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeSuccess" checked>
+                                <label class="form-check-label" for="includeSuccess">Successful Transactions</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includePending" checked>
+                                <label class="form-check-label" for="includePending">Pending Transactions</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="includeFailed">
+                                <label class="form-check-label" for="includeFailed">Failed Transactions</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Columns</label>
+                            <select class="form-select" id="exportColumns" multiple>
+                                <option value="transaction_id" selected>Transaction ID</option>
+                                <option value="user" selected>User</option>
+                                <option value="type" selected>Type</option>
+                                <option value="amount" selected>Amount</option>
+                                <option value="method" selected>Method</option>
+                                <option value="status" selected>Status</option>
+                                <option value="date" selected>Date</option>
+                            </select>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Export',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const format = document.getElementById('exportFormat').value;
+                    const includeSuccess = document.getElementById('includeSuccess').checked;
+                    const includePending = document.getElementById('includePending').checked;
+                    const includeFailed = document.getElementById('includeFailed').checked;
+                    const columns = Array.from(document.getElementById('exportColumns').selectedOptions)
+                                       .map(opt => opt.value);
+                    
+                    return { format, includeSuccess, includePending, includeFailed, columns };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const { format, includeSuccess, includePending, includeFailed, columns } = result.value;
+                    
+                    let url = `/admin/payments/export/today?format=${format}&columns=${columns.join(',')}`;
+                    if (!includeSuccess) url += '&exclude=success';
+                    if (!includePending) url += '&exclude=pending';
+                    if (!includeFailed) url += '&exclude=failed';
+                    
+                    window.open(url, '_blank');
+                    
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Export Started!',
+                        text: 'Your export is being prepared',
+                        timer: 2000
+                    });
+                }
+            });
+        }
+
+        // Search today's transactions
+        function searchTodayTransactions() {
+            const searchTerm = document.getElementById('searchTodayTransactions').value.toLowerCase();
+            const rows = document.querySelectorAll('#todayTransactionsTable tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        // Filter transactions
+        function filterTodayTransactions() {
+            const statusFilter = document.getElementById('filterStatus').value;
+            const typeFilter = document.getElementById('filterType').value;
+            const methodFilter = document.getElementById('filterMethod').value;
+            
+            const rows = document.querySelectorAll('#todayTransactionsTable tbody tr');
+            
+            rows.forEach(row => {
+                const status = row.getAttribute('data-status');
+                const type = row.getAttribute('data-type');
+                const method = row.getAttribute('data-method');
+                
+                const statusMatch = !statusFilter || status === statusFilter;
+                const typeMatch = !typeFilter || type === typeFilter;
+                const methodMatch = !methodFilter || method === methodFilter;
+                
+                row.style.display = (statusMatch && typeMatch && methodMatch) ? '' : 'none';
+            });
+        }
+
+        // Clear filters
+        function clearTodayFilters() {
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterMethod').value = '';
+            document.getElementById('searchTodayTransactions').value = '';
+            
+            const rows = document.querySelectorAll('#todayTransactionsTable tbody tr');
+            rows.forEach(row => row.style.display = '');
+        }
+
+        // Toggle select all
+        function toggleSelectAllToday() {
+            const selectAll = document.getElementById('selectAllToday').checked;
+            const checkboxes = document.querySelectorAll('.transaction-checkbox:enabled');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll;
+            });
+            
+            updateSelectedSummary();
+        }
+
+        // Update selected summary
+        function updateSelectedSummary() {
+            const checkboxes = document.querySelectorAll('.transaction-checkbox:checked');
+            let totalAmount = 0;
+            
+            checkboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const amountText = row.querySelector('h6').textContent;
+                const amount = parseFloat(amountText.replace(/[^0-9.-]+/g, ''));
+                totalAmount += amount;
+            });
+            
+            document.getElementById('selectedCount').textContent = `${checkboxes.length} selected`;
+            document.getElementById('selectedAmount').textContent = `₹${totalAmount.toLocaleString('en-IN')}`;
+        }
+
+        // Apply batch action
+        function applyBatchAction() {
+            const action = document.getElementById('batchAction').value;
+            const selectedIds = Array.from(document.querySelectorAll('.transaction-checkbox:checked'))
+                                   .map(cb => cb.value);
+            
+            if (selectedIds.length === 0) {
+                Swal.fire('Error', 'Please select at least one transaction', 'error');
+                return;
+            }
+            
+            switch(action) {
+                case 'settle':
+                    batchSettle(selectedIds);
+                    break;
+                case 'export':
+                    batchExport(selectedIds);
+                    break;
+                case 'refund':
+                    batchRefund(selectedIds);
+                    break;
+                case 'reconcile':
+                    batchReconcile(selectedIds);
+                    break;
+                default:
+                    Swal.fire('Error', 'Please select an action', 'error');
+            }
+        }
+
+        // Batch settle
+        function batchSettle(transactionIds) {
+            Swal.fire({
+                title: 'Mark as Settled',
+                text: `Mark ${transactionIds.length} transactions as settled?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Mark as Settled'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('/admin/payments/batch-settle', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ transactionIds })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Success', 'Transactions marked as settled', 'success');
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Initiate manual payment
+        function initiateManualPayment() {
+            // Load users based on type
+            document.querySelector('select[name="user_type"]').addEventListener('change', function() {
+                const userType = this.value;
+                const userSelect = document.getElementById('userSelect');
+                
+                if (userType) {
+                    fetch(`/admin/payments/get-users/${userType}`)
+                        .then(response => response.json())
+                        .then(users => {
+                            userSelect.innerHTML = '<option value="">Select User</option>';
+                            users.forEach(user => {
+                                const option = document.createElement('option');
+                                option.value = user.id;
+                                option.textContent = user.name;
+                                userSelect.appendChild(option);
+                            });
+                        });
+                }
+            });
+            
+            $('#manualPaymentModal').modal('show');
+        }
+
+        // Process failed payments
+        function processFailedPayments() {
+            fetch('/admin/payments/process-failed')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Processing Failed Payments',
+                            text: `Processing ${data.count} failed payments`,
+                            timer: 2000
+                        });
+                    }
+                });
+        }
+
+        // Generate daily report
+        function generateDailyReport() {
+            window.open('/admin/payments/daily-report', '_blank');
+        }
+
+        // Reconcile payments
+        function reconcilePayments() {
+            Swal.fire({
+                title: 'Reconcile Payments',
+                text: 'This will match bank statements with ledger entries',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Start Reconciliation'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.open('/admin/payments/reconcile', '_blank');
+                }
+            });
+        }
+
+        // Approve transaction
+        function approveTransaction(transactionId) {
+            Swal.fire({
+                title: 'Approve Transaction',
+                text: 'Approve this pending transaction?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Approve'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/payments/approve/${transactionId}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Approved!', 'Transaction approved successfully', 'success');
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Retry transaction
+        function retryTransaction(transactionId) {
+            Swal.fire({
+                title: 'Retry Failed Transaction',
+                text: 'Retry this failed transaction?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Retry'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/payments/retry/${transactionId}`, {
+                        method: 'POST'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Retry Initiated!', 'Transaction retry initiated', 'success');
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Initiate vendor settlement
+        function initiateVendorSettlement() {
+            window.location.href = '/admin/payments/vendor-settlement';
+        }
+
+        // Initiate commission settlement
+        function initiateCommissionSettlement() {
+            window.location.href = '/admin/payments/commission-settlement';
+        }
+
+        // Print transaction receipt
+        function printTransaction() {
+            window.print();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update selected summary on checkbox change
+            document.addEventListener('change', function(e) {
+                if (e.target.classList.contains('transaction-checkbox')) {
+                    updateSelectedSummary();
+                }
+            });
+
+            // Initialize WebSocket
+            initWebSocket();
+
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                fetch('/admin/payments/today-summary')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Update summary cards
+                        document.querySelectorAll('.dash-widget-info h3').forEach((el, index) => {
+                            const values = [
+                                `₹${data.totalAmount?.toLocaleString('en-IN') || 0}`,
+                                `₹${data.successAmount?.toLocaleString('en-IN') || 0}`,
+                                `₹${data.pendingAmount?.toLocaleString('en-IN') || 0}`,
+                                `₹${data.settledAmount?.toLocaleString('en-IN') || 0}`
+                            ];
+                            if (values[index]) {
+                                el.textContent = values[index];
+                            }
+                        });
+                    });
+            }, 30000);
+        });
+    </script>
+    <%- include('../shared/partials/footer') %>

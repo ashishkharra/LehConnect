@@ -1,0 +1,178 @@
+<%- include('../shared/partials/header', { admin: admin, title: title, currentPage: currentPage }) %>
+
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Vendor Help Desk</h3>
+                    </div>
+                </div>
+            </div>
+            <!-- /Page Header -->
+
+            <!-- Help List -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Help Requests</h5>
+                </div>
+
+                <div class="card-body table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Latest Answer</th>
+                                <th>Date</th>
+                                <th width="160">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (data && data.docs && data.docs.length> 0) { %>
+                                <% data.docs.forEach((help, index)=> { %>
+                                    <tr>
+                                        <td>
+                                            <%= ((data.page - 1) * data.limit) + index + 1 %>
+                                        </td>
+
+                                        <td>
+                                            <%= help.title %>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge bg-info">
+                                                <%= help.category %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <span
+                                                class="badge <%= help.status === 'OPEN' ? 'bg-danger PENDING' : (help.status === 'ANSWERED' ? 'bg-success' : 'bg-secondary') %>">
+                                                <%= help.status==='OPEN' ? 'PENDING' : 'COMPLETED' %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <%= help.VendorHelpAnswers && help.VendorHelpAnswers.length> 0 ?
+                                                help.VendorHelpAnswers[0].message : 'No answer yet' %>
+                                        </td>
+
+                                        <td>
+                                            <%= new Date(help.create_date).toLocaleString() %>
+                                        </td>
+
+                                        <td>
+                                            <a href="/vendor/help/<%= help.token %>" class="btn btn-sm btn-primary">
+                                                <i class="ti ti-eye"></i>
+                                            </a>
+
+                                            <!-- Reply Popup Button -->
+                                            <button type="button" class="btn btn-sm btn-warning replyBtn"
+                                                data-bs-toggle="modal" data-bs-target="#replyModal"
+                                                data-token="<%= help.token %>" data-title="<%= help.title %>">
+                                                <i class="ti ti-message-circle"></i>
+                                            </button>
+
+                                            <a href="/vendor/help/delete/<%= help.token %>" class="btn btn-sm btn-danger">
+                                                <i class="ti ti-lock"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                                        <% } else { %>
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">
+                                                    No help requests found
+                                                </td>
+                                            </tr>
+                                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <% if (data && data.totalPages && data.totalPages> 1) { %>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <nav>
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item <%= data.page <= 1 ? 'disabled' : '' %>">
+                                    <a class="page-link" href="?page=<%= data.page - 1 %>">
+                                        <i class="ti ti-chevron-left"></i>
+                                    </a>
+                                </li>
+
+                                <% for (let i=1; i <=data.totalPages; i++) { %>
+                                    <li class="page-item <%= i === data.page ? 'active' : '' %>">
+                                        <a class="page-link" href="?page=<%= i %>">
+                                            <%= i %>
+                                        </a>
+                                    </li>
+                                    <% } %>
+
+                                        <li class="page-item <%= data.page >= data.totalPages ? 'disabled' : '' %>">
+                                            <a class="page-link" href="?page=<%= data.page + 1 %>">
+                                                <i class="ti ti-chevron-right"></i>
+                                            </a>
+                                        </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                <% } %>
+
+        </div>
+    </div>
+
+    <!-- Reply Modal -->
+    <div class="modal fade" id="replyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="replyModalTitle">Reply</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form id="replyForm" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Message</label>
+                            <textarea name="message" class="form-control" rows="5" placeholder="Type your reply here..."
+                                required></textarea>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-send"></i> Send Reply
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.replyBtn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const token = this.getAttribute('data-token');
+                const title = this.getAttribute('data-title');
+
+                document.getElementById('replyModalTitle').innerText = 'Reply to: ' + title;
+                document.getElementById('replyForm').action = '/reply-help/' + token;
+            });
+        });
+    </script>
+
+    <%- include('../shared/partials/footer') %>

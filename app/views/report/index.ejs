@@ -1,0 +1,2283 @@
+<%- include('../shared/partials/header', { admin : admin, title: title}) %>
+        <!-- Page Content -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col-sm-6">
+                            <h3 class="page-title">Report Management</h3>
+                        </div>
+                        <div class="col-sm-6 text-end">
+                            <div class="btn-group">
+                                <button class="btn btn-primary" onclick="generateCustomReport()">
+                                    <i class="ti ti-plus me-2"></i>Create Custom Report
+                                </button>
+                                <button class="btn btn-success" onclick="scheduleReport()">
+                                    <i class="ti ti-clock me-2"></i>Schedule Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date Range Picker -->
+                <div class="date-range-picker">
+                    <div class="row align-items-center">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Report Period</label>
+                                <select class="form-select" id="reportPeriod" onchange="changeReportPeriod()">
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="week">This Week</option>
+                                    <option value="last_week">Last Week</option>
+                                    <option value="month" selected>This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="quarter">This Quarter</option>
+                                    <option value="year">This Year</option>
+                                    <option value="custom">Custom Range</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4" id="customDateRange" style="display: none;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">From Date</label>
+                                        <input type="date" class="form-control" id="fromDate">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">To Date</label>
+                                        <input type="date" class="form-control" id="toDate">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="mb-3">
+                                <label class="form-label">Compare With</label>
+                                <select class="form-select" id="comparePeriod" onchange="toggleComparison()">
+                                    <option value="">No Comparison</option>
+                                    <option value="previous_period">Previous Period</option>
+                                    <option value="same_period_last_year">Same Period Last Year</option>
+                                    <option value="custom_comparison">Custom Period</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex gap-2" style="margin-top: 28px;">
+                                <button class="btn btn-primary w-50" onclick="applyDateFilter()">
+                                    <i class="ti ti-filter me-2"></i>Apply
+                                </button>
+                                <button class="btn btn-secondary w-50" onclick="resetFilters()">
+                                    <i class="ti ti-refresh me-2"></i>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Performance Indicators -->
+                <div class="row">
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="kpi-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Total Revenue</h6>
+                                    <h3 class="mb-0">₹<%= kpis.revenue ? kpis.revenue.toLocaleString('en-IN') : 0 %></h3>
+                                </div>
+                                <div class="text-end">
+                                    <span class="trend-indicator <%= kpis.revenueTrend > 0 ? 'bg-success' : 'bg-danger' %>">
+                                        <i class="ti ti-arrow-<%= kpis.revenueTrend > 0 ? 'up' : 'down' %> me-1"></i>
+                                        <%= Math.abs(kpis.revenueTrend) %>%
+                                    </span>
+                                    <p class="text-muted mb-0">vs Last Month</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="kpi-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Total Bookings</h6>
+                                    <h3 class="mb-0"><%= kpis.bookings ? kpis.bookings.toLocaleString('en-IN') : 0 %></h3>
+                                </div>
+                                <div class="text-end">
+                                    <span class="trend-indicator <%= kpis.bookingsTrend > 0 ? 'bg-success' : 'bg-danger' %>">
+                                        <i class="ti ti-arrow-<%= kpis.bookingsTrend > 0 ? 'up' : 'down' %> me-1"></i>
+                                        <%= Math.abs(kpis.bookingsTrend) %>%
+                                    </span>
+                                    <p class="text-muted mb-0">vs Last Month</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="kpi-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">New Customers</h6>
+                                    <h3 class="mb-0"><%= kpis.newCustomers ? kpis.newCustomers.toLocaleString('en-IN') : 0 %></h3>
+                                </div>
+                                <div class="text-end">
+                                    <span class="trend-indicator <%= kpis.customersTrend > 0 ? 'bg-success' : 'bg-danger' %>">
+                                        <i class="ti ti-arrow-<%= kpis.customersTrend > 0 ? 'up' : 'down' %> me-1"></i>
+                                        <%= Math.abs(kpis.customersTrend) %>%
+                                    </span>
+                                    <p class="text-muted mb-0">vs Last Month</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-sm-6 col-12">
+                        <div class="kpi-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-muted">Avg. Booking Value</h6>
+                                    <h3 class="mb-0">₹<%= kpis.avgBookingValue ? kpis.avgBookingValue.toLocaleString('en-IN') : 0 %></h3>
+                                </div>
+                                <div class="text-end">
+                                    <span class="trend-indicator <%= kpis.avgValueTrend > 0 ? 'bg-success' : 'bg-danger' %>">
+                                        <i class="ti ti-arrow-<%= kpis.avgValueTrend > 0 ? 'up' : 'down' %> me-1"></i>
+                                        <%= Math.abs(kpis.avgValueTrend) %>%
+                                    </span>
+                                    <p class="text-muted mb-0">vs Last Month</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Navigation Tabs -->
+                <div class="report-tabs">
+                    <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#financial-reports">
+                                <i class="ti ti-currency-rupee me-2"></i>Financial
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#booking-reports">
+                                <i class="ti ti-calendar me-2"></i>Booking
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#customer-reports">
+                                <i class="ti ti-users me-2"></i>Customer
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#vendor-reports">
+                                <i class="ti ti-building-store me-2"></i>Vendor
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#referral-reports">
+                                <i class="ti ti-share me-2"></i>Referral
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#operational-reports">
+                                <i class="ti ti-chart-bar me-2"></i>Operational
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#custom-reports">
+                                <i class="ti ti-settings me-2"></i>Custom
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Financial Reports Tab -->
+                    <div class="tab-pane fade show active" id="financial-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Revenue Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Revenue Overview</h5>
+                                        <div class="card-action">
+                                            <select class="form-select form-select-sm" style="width: auto;" 
+                                                    onchange="updateRevenueChart(this.value)">
+                                                <option value="daily">Daily</option>
+                                                <option value="weekly">Weekly</option>
+                                                <option value="monthly" selected>Monthly</option>
+                                                <option value="quarterly">Quarterly</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="revenueChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Income vs Expense -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="card-title">Income Breakdown</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="incomePieChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h5 class="card-title">Expense Breakdown</h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <div class="chart-container">
+                                                    <canvas id="expensePieChart"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Financial Summary -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Financial Summary</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="summary-widget" style="background: linear-gradient(135deg, #28a745, #20c997);">
+                                            <h4>₹<%= financialSummary.totalIncome ? financialSummary.totalIncome.toLocaleString('en-IN') : 0 %></h4>
+                                            <p class="mb-0">Total Income</p>
+                                        </div>
+                                        <div class="summary-widget" style="background: linear-gradient(135deg, #dc3545, #fd7e14);">
+                                            <h4>₹<%= financialSummary.totalExpense ? financialSummary.totalExpense.toLocaleString('en-IN') : 0 %></h4>
+                                            <p class="mb-0">Total Expense</p>
+                                        </div>
+                                        <div class="summary-widget" style="background: linear-gradient(135deg, #007bff, #6610f2);">
+                                            <h4>₹<%= financialSummary.netProfit ? financialSummary.netProfit.toLocaleString('en-IN') : 0 %></h4>
+                                            <p class="mb-0">Net Profit</p>
+                                        </div>
+                                        <div class="summary-widget" style="background: linear-gradient(135deg, #6c757d, #343a40);">
+                                            <h4><%= financialSummary.profitMargin ? financialSummary.profitMargin + '%' : '0%' %></h4>
+                                            <p class="mb-0">Profit Margin</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Revenue Sources -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Top Revenue Sources</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <% if (topRevenueSources && topRevenueSources.length > 0) { %>
+                                            <% topRevenueSources.forEach((source, index) => { %>
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="flex-shrink-0">
+                                                        <span class="badge bg-primary me-2">#<%= index + 1 %></span>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1"><%= source.category %></h6>
+                                                        <div class="progress" style="height: 5px;">
+                                                            <div class="progress-bar" role="progressbar" 
+                                                                 style="width: <%= source.percentage %>%;"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-shrink-0 text-end">
+                                                        <h6 class="mb-1">₹<%= source.amount %></h6>
+                                                        <small class="text-muted"><%= source.percentage %>%</small>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center">No data available</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+
+                                <!-- Download Options -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Export Financial Reports</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="download-options">
+                                            <a href="/admin/reports/financial/export/excel" class="download-btn" 
+                                               style="background: #28a745;">
+                                                <i class="ti ti-file-spreadsheet"></i> Excel
+                                            </a>
+                                            <a href="/admin/reports/financial/export/pdf" class="download-btn" 
+                                               style="background: #dc3545;">
+                                                <i class="ti ti-file-invoice"></i> PDF
+                                            </a>
+                                            <a href="/admin/reports/financial/export/csv" class="download-btn" 
+                                               style="background: #17a2b8;">
+                                                <i class="ti ti-file-text"></i> CSV
+                                            </a>
+                                            <a href="/admin/reports/financial/export/json" class="download-btn" 
+                                               style="background: #6c757d;">
+                                                <i class="ti ti-code"></i> JSON
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Monthly Financial Performance</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover comparison-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Month</th>
+                                                        <th>Revenue</th>
+                                                        <th>Expenses</th>
+                                                        <th>Profit</th>
+                                                        <th>Margin</th>
+                                                        <th>Growth</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (monthlyPerformance && monthlyPerformance.length > 0) { %>
+                                                        <% monthlyPerformance.forEach(month => { %>
+                                                            <tr>
+                                                                <td><%= month.month %></td>
+                                                                <td class="fw-bold">₹<%= month.revenue %></td>
+                                                                <td class="text-danger">₹<%= month.expenses %></td>
+                                                                <td class="<%= month.profit > 0 ? 'text-success' : 'text-danger' %> fw-bold">
+                                                                    ₹<%= month.profit %>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= month.margin > 20 ? 'success' : month.margin > 10 ? 'warning' : 'danger' %>">
+                                                                        <%= month.margin %>%
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= month.growth > 0 ? 'success' : 'danger' %>">
+                                                                        <i class="ti ti-arrow-<%= month.growth > 0 ? 'up' : 'down' %>"></i>
+                                                                        <%= Math.abs(month.growth) %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Payment Method Analysis</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Payment Method</th>
+                                                        <th>Transaction Count</th>
+                                                        <th>Total Amount</th>
+                                                        <th>Avg. Transaction</th>
+                                                        <th>Success Rate</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (paymentMethodAnalysis && paymentMethodAnalysis.length > 0) { %>
+                                                        <% paymentMethodAnalysis.forEach(method => { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <i class="ti <%= getMethodIcon(method.method) %> me-2"></i>
+                                                                    <%= getMethodName(method.method) %>
+                                                                </td>
+                                                                <td><%= method.count %></td>
+                                                                <td class="fw-bold">₹<%= method.amount %></td>
+                                                                <td>₹<%= method.avgTransaction %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= method.successRate > 95 ? 'success' : method.successRate > 90 ? 'warning' : 'danger' %>">
+                                                                        <%= method.successRate %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Booking Reports Tab -->
+                    <div class="tab-pane fade" id="booking-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Bookings Trend Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Booking Trends</h5>
+                                        <div class="card-action">
+                                            <select class="form-select form-select-sm" style="width: auto;" 
+                                                    onchange="updateBookingTrendChart(this.value)">
+                                                <option value="daily">Daily</option>
+                                                <option value="weekly" selected>Weekly</option>
+                                                <option value="monthly">Monthly</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="bookingTrendChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Service Type Distribution -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Service Type Distribution</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="serviceDistributionChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Booking Statistics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Booking Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-primary mb-1"><%= bookingStats.totalBookings || 0 %></h4>
+                                                    <p class="small mb-0">Total Bookings</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-success mb-1"><%= bookingStats.completed || 0 %></h4>
+                                                    <p class="small mb-0">Completed</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-warning mb-1"><%= bookingStats.pending || 0 %></h4>
+                                                    <p class="small mb-0">Pending</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-danger mb-1"><%= bookingStats.cancelled || 0 %></h4>
+                                                    <p class="small mb-0">Cancelled</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1">Conversion Rate: <strong><%= bookingStats.conversionRate || 0 %>%</strong></p>
+                                            <p class="mb-1">Avg. Booking Value: <strong>₹<%= bookingStats.avgValue || 0 %></strong></p>
+                                            <p class="mb-0">Avg. Processing Time: <strong><%= bookingStats.avgProcessingTime || 0 %> hours</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Performing Services -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Top Performing Services</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <% if (topServices && topServices.length > 0) { %>
+                                            <% topServices.forEach((service, index) => { %>
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="flex-shrink-0">
+                                                        <span class="badge bg-<%= index === 0 ? 'warning' : index === 1 ? 'secondary' : index === 2 ? 'danger' : 'primary' %> me-2">
+                                                            #<%= index + 1 %>
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1"><%= service.name %></h6>
+                                                        <div class="progress" style="height: 5px;">
+                                                            <div class="progress-bar" role="progressbar" 
+                                                                 style="width: <%= service.percentage %>%;"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-shrink-0 text-end">
+                                                        <h6 class="mb-1">₹<%= service.revenue %></h6>
+                                                        <small class="text-muted"><%= service.bookings %> bookings</small>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center">No data available</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Booking Details Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Booking Status Breakdown</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Status</th>
+                                                        <th>Count</th>
+                                                        <th>Percentage</th>
+                                                        <th>Revenue</th>
+                                                        <th>Avg. Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (statusBreakdown && statusBreakdown.length > 0) { %>
+                                                        <% statusBreakdown.forEach(status => { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <span class="badge bg-<%= getBookingStatusColor(status.status) %>">
+                                                                        <%= status.status %>
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= status.count %></td>
+                                                                <td><%= status.percentage %>%</td>
+                                                                <td class="fw-bold">₹<%= status.revenue %></td>
+                                                                <td>₹<%= status.avgValue %></td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Booking Source Analysis</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Source</th>
+                                                        <th>Bookings</th>
+                                                        <th>Conversion Rate</th>
+                                                        <th>Revenue</th>
+                                                        <th>CAC</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (sourceAnalysis && sourceAnalysis.length > 0) { %>
+                                                        <% sourceAnalysis.forEach(source => { %>
+                                                            <tr>
+                                                                <td><%= source.source %></td>
+                                                                <td><%= source.bookings %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= source.conversionRate > 5 ? 'success' : source.conversionRate > 2 ? 'warning' : 'danger' %>">
+                                                                        <%= source.conversionRate %>%
+                                                                    </span>
+                                                                </td>
+                                                                <td class="fw-bold">₹<%= source.revenue %></td>
+                                                                <td>₹<%= source.cac %></td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Reports Tab -->
+                    <div class="tab-pane fade" id="customer-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Customer Growth Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Customer Growth</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="customerGrowthChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Customer Segmentation -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Customer Segmentation</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="customerSegmentationChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Customer Metrics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Customer Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-primary mb-1"><%= customerMetrics.totalCustomers || 0 %></h4>
+                                                    <p class="small mb-0">Total Customers</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-success mb-1"><%= customerMetrics.activeCustomers || 0 %></h4>
+                                                    <p class="small mb-0">Active (30 days)</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-warning mb-1"><%= customerMetrics.newCustomers || 0 %></h4>
+                                                    <p class="small mb-0">New This Month</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-info mb-1">₹<%= customerMetrics.avgLTV || 0 %></h4>
+                                                    <p class="small mb-0">Avg. LTV</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1">Retention Rate: <strong><%= customerMetrics.retentionRate || 0 %>%</strong></p>
+                                            <p class="mb-1">Churn Rate: <strong><%= customerMetrics.churnRate || 0 %>%</strong></p>
+                                            <p class="mb-0">Avg. Purchase Frequency: <strong><%= customerMetrics.avgFrequency || 0 %></strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Customers -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Top Customers</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <% if (topCustomers && topCustomers.length > 0) { %>
+                                            <% topCustomers.forEach((customer, index) => { %>
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="flex-shrink-0">
+                                                        <img src="<%= customer.avatar || 'assets/img/profiles/avatar-02.jpg' %>" 
+                                                             class="rounded-circle" width="40" height="40" alt="Customer">
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <h6 class="mb-1"><%= customer.name %></h6>
+                                                        <p class="text-muted mb-1 small">
+                                                            <%= customer.bookings %> bookings | <%= customer.location %>
+                                                        </p>
+                                                    </div>
+                                                    <div class="flex-shrink-0 text-end">
+                                                        <h6 class="mb-1">₹<%= customer.totalSpent %></h6>
+                                                        <small class="text-success">LTV: ₹<%= customer.ltv %></small>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center">No data available</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Analysis Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Customer Demographics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Location</th>
+                                                        <th>Customers</th>
+                                                        <th>Percentage</th>
+                                                        <th>Avg. Value</th>
+                                                        <th>Growth</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (demographics && demographics.length > 0) { %>
+                                                        <% demographics.forEach(demo => { %>
+                                                            <tr>
+                                                                <td><%= demo.location %></td>
+                                                                <td><%= demo.customers %></td>
+                                                                <td><%= demo.percentage %>%</td>
+                                                                <td class="fw-bold">₹<%= demo.avgValue %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= demo.growth > 0 ? 'success' : 'danger' %>">
+                                                                        <i class="ti ti-arrow-<%= demo.growth > 0 ? 'up' : 'down' %>"></i>
+                                                                        <%= Math.abs(demo.growth) %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Customer Acquisition Cost (CAC)</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Channel</th>
+                                                        <th>New Customers</th>
+                                                        <th>Marketing Cost</th>
+                                                        <th>CAC</th>
+                                                        <th>ROI</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (cacAnalysis && cacAnalysis.length > 0) { %>
+                                                        <% cacAnalysis.forEach(channel => { %>
+                                                            <tr>
+                                                                <td><%= channel.channel %></td>
+                                                                <td><%= channel.customers %></td>
+                                                                <td class="text-danger">₹<%= channel.cost %></td>
+                                                                <td class="fw-bold">₹<%= channel.cac %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= channel.roi > 200 ? 'success' : channel.roi > 100 ? 'warning' : 'danger' %>">
+                                                                        <%= channel.roi %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="5" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vendor Reports Tab -->
+                    <div class="tab-pane fade" id="vendor-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Vendor Performance Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Vendor Performance Trend</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="vendorPerformanceChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Vendor Rating Distribution -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Vendor Rating Distribution</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="vendorRatingChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Vendor Statistics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Vendor Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-primary mb-1"><%= vendorStats.totalVendors || 0 %></h4>
+                                                    <p class="small mb-0">Total Vendors</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-success mb-1"><%= vendorStats.activeVendors || 0 %></h4>
+                                                    <p class="small mb-0">Active Vendors</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-warning mb-1"><%= vendorStats.newVendors || 0 %></h4>
+                                                    <p class="small mb-0">New This Month</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-info mb-1"><%= vendorStats.avgRating || 0 %>/5</h4>
+                                                    <p class="small mb-0">Avg. Rating</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1">Total Payouts: <strong>₹<%= vendorStats.totalPayouts || 0 %></strong></p>
+                                            <p class="mb-1">Commission Paid: <strong>₹<%= vendorStats.commissionPaid || 0 %></strong></p>
+                                            <p class="mb-0">Avg. Response Time: <strong><%= vendorStats.avgResponseTime || 0 %> mins</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Performing Vendors -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Top Performing Vendors</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <% if (topVendors && topVendors.length > 0) { %>
+                                            <% topVendors.forEach((vendor, index) => { %>
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="flex-shrink-0">
+                                                        <img src="<%= vendor.logo || 'assets/img/store/store-01.png' %>" 
+                                                             class="rounded-circle" width="40" height="40" alt="Vendor">
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-3">
+                                                        <h6 class="mb-1"><%= vendor.name %></h6>
+                                                        <p class="text-muted mb-1 small">
+                                                            <%= vendor.category %> | <%= vendor.bookings %> bookings
+                                                        </p>
+                                                        <div class="star-rating">
+                                                            <% for(let i = 1; i <= 5; i++) { %>
+                                                                <i class="ti ti-star<%= i <= vendor.rating ? '-filled' : '' %> text-warning"></i>
+                                                            <% } %>
+                                                            <span class="ms-1"><%= vendor.rating %></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-shrink-0 text-end">
+                                                        <h6 class="mb-1">₹<%= vendor.revenue %></h6>
+                                                        <small class="text-success">+<%= vendor.growth %>% growth</small>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center">No data available</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vendor Analysis Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Vendor Performance Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Category</th>
+                                                        <th>Vendors</th>
+                                                        <th>Bookings</th>
+                                                        <th>Revenue</th>
+                                                        <th>Avg. Rating</th>
+                                                        <th>Complaints</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (vendorMetrics && vendorMetrics.length > 0) { %>
+                                                        <% vendorMetrics.forEach(metric => { %>
+                                                            <tr>
+                                                                <td><%= metric.category %></td>
+                                                                <td><%= metric.vendors %></td>
+                                                                <td><%= metric.bookings %></td>
+                                                                <td class="fw-bold">₹<%= metric.revenue %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= metric.avgRating > 4 ? 'success' : metric.avgRating > 3 ? 'warning' : 'danger' %>">
+                                                                        <%= metric.avgRating %>/5
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= metric.complaints %></td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Vendor Commission Analysis</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Vendor Type</th>
+                                                        <th>Total Revenue</th>
+                                                        <th>Commission %</th>
+                                                        <th>Commission Paid</th>
+                                                        <th>Net Revenue</th>
+                                                        <th>Margin</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (commissionAnalysis && commissionAnalysis.length > 0) { %>
+                                                        <% commissionAnalysis.forEach(analysis => { %>
+                                                            <tr>
+                                                                <td><%= analysis.type %></td>
+                                                                <td class="fw-bold">₹<%= analysis.totalRevenue %></td>
+                                                                <td><%= analysis.commissionPercent %>%</td>
+                                                                <td class="text-danger">₹<%= analysis.commissionPaid %></td>
+                                                                <td class="text-success">₹<%= analysis.netRevenue %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= analysis.margin > 30 ? 'success' : analysis.margin > 20 ? 'warning' : 'danger' %>">
+                                                                        <%= analysis.margin %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referral Reports Tab -->
+                    <div class="tab-pane fade" id="referral-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Referral Growth Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Referral Program Growth</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="referralGrowthChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Referral Source Analysis -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Referral Source Performance</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="referralSourceChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Referral Statistics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Referral Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-primary mb-1"><%= referralStats.totalReferrals || 0 %></h4>
+                                                    <p class="small mb-0">Total Referrals</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-success mb-1"><%= referralStats.successfulReferrals || 0 %></h4>
+                                                    <p class="small mb-0">Successful</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-warning mb-1"><%= referralStats.pendingReferrals || 0 %></h4>
+                                                    <p class="small mb-0">Pending</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-info mb-1">₹<%= referralStats.totalCommission || 0 %></h4>
+                                                    <p class="small mb-0">Commission Paid</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1">Conversion Rate: <strong><%= referralStats.conversionRate || 0 %>%</strong></p>
+                                            <p class="mb-1">Avg. Commission: <strong>₹<%= referralStats.avgCommission || 0 %></strong></p>
+                                            <p class="mb-0">ROI: <strong><%= referralStats.roi || 0 %>%</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Referrers -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Top Referrers</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <% if (topReferrers && topReferrers.length > 0) { %>
+                                            <% topReferrers.forEach((referrer, index) => { %>
+                                                <div class="d-flex align-items-center mb-3">
+                                                    <div class="flex-shrink-0">
+                                                        <span class="badge bg-<%= index === 0 ? 'warning' : index === 1 ? 'secondary' : index === 2 ? 'danger' : 'primary' %> me-2">
+                                                            #<%= index + 1 %>
+                                                        </span>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="mb-1"><%= referrer.name %></h6>
+                                                        <p class="text-muted mb-1 small">
+                                                            <%= referrer.type %> | <%= referrer.referrals %> referrals
+                                                        </p>
+                                                        <div class="progress" style="height: 5px;">
+                                                            <div class="progress-bar" role="progressbar" 
+                                                                 style="width: <%= referrer.performance %>%;"></div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-shrink-0 text-end">
+                                                        <h6 class="mb-1">₹<%= referrer.earnings %></h6>
+                                                        <small class="text-success">+<%= referrer.growth %>%</small>
+                                                    </div>
+                                                </div>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center">No data available</p>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Referral Analysis Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Referral Performance by Channel</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Channel</th>
+                                                        <th>Referrals</th>
+                                                        <th>Conversion Rate</th>
+                                                        <th>Commission Paid</th>
+                                                        <th>Customer LTV</th>
+                                                        <th>ROI</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (referralChannels && referralChannels.length > 0) { %>
+                                                        <% referralChannels.forEach(channel => { %>
+                                                            <tr>
+                                                                <td><%= channel.channel %></td>
+                                                                <td><%= channel.referrals %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= channel.conversionRate > 30 ? 'success' : channel.conversionRate > 20 ? 'warning' : 'danger' %>">
+                                                                        <%= channel.conversionRate %>%
+                                                                    </span>
+                                                                </td>
+                                                                <td class="fw-bold">₹<%= channel.commission %></td>
+                                                                <td class="text-success">₹<%= channel.ltv %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= channel.roi > 300 ? 'success' : channel.roi > 200 ? 'warning' : 'danger' %>">
+                                                                        <%= channel.roi %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Referral Fraud Detection</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Risk Level</th>
+                                                        <th>Referrals</th>
+                                                        <th>Amount at Risk</th>
+                                                        <th>Avg. Fraud Score</th>
+                                                        <th>Action Taken</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (fraudAnalysis && fraudAnalysis.length > 0) { %>
+                                                        <% fraudAnalysis.forEach(fraud => { %>
+                                                            <tr>
+                                                                <td>
+                                                                    <span class="badge bg-<%= fraud.riskLevel === 'High' ? 'danger' : fraud.riskLevel === 'Medium' ? 'warning' : 'secondary' %>">
+                                                                        <%= fraud.riskLevel %>
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= fraud.referrals %></td>
+                                                                <td class="text-danger">₹<%= fraud.amount %></td>
+                                                                <td><%= fraud.fraudScore %>/100</td>
+                                                                <td><%= fraud.action %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= fraud.status === 'Resolved' ? 'success' : fraud.status === 'Pending' ? 'warning' : 'danger' %>">
+                                                                        <%= fraud.status %>
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operational Reports Tab -->
+                    <div class="tab-pane fade" id="operational-reports">
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <!-- Operational Efficiency Chart -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Operational Efficiency</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="operationalEfficiencyChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Support Ticket Analysis -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Support Ticket Analysis</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="chart-container">
+                                            <canvas id="supportTicketChart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-4">
+                                <!-- Operational Metrics -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Operational Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-primary mb-1"><%= operationalMetrics.avgResponseTime || 0 %>m</h4>
+                                                    <p class="small mb-0">Avg. Response Time</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-success mb-1"><%= operationalMetrics.resolutionRate || 0 %>%</h4>
+                                                    <p class="small mb-0">Resolution Rate</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-warning mb-1"><%= operationalMetrics.slaCompliance || 0 %>%</h4>
+                                                    <p class="small mb-0">SLA Compliance</p>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="p-3 border rounded">
+                                                    <h4 class="text-info mb-1"><%= operationalMetrics.customerSatisfaction || 0 %>/5</h4>
+                                                    <p class="small mb-0">Customer Satisfaction</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <p class="mb-1">System Uptime: <strong><%= operationalMetrics.systemUptime || 0 %>%</strong></p>
+                                            <p class="mb-1">Avg. Booking Processing: <strong><%= operationalMetrics.avgProcessingTime || 0 %> mins</strong></p>
+                                            <p class="mb-0">Error Rate: <strong><%= operationalMetrics.errorRate || 0 %>%</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- System Performance -->
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5 class="card-title">System Performance</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <h6>Server Uptime</h6>
+                                            <div class="progress" style="height: 10px;">
+                                                <div class="progress-bar bg-success" style="width: <%= systemPerformance.serverUptime || 0 %>%;"></div>
+                                            </div>
+                                            <small class="text-muted"><%= systemPerformance.serverUptime || 0 %>% uptime</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <h6>API Response Time</h6>
+                                            <div class="progress" style="height: 10px;">
+                                                <div class="progress-bar bg-<%= systemPerformance.apiResponseTime < 100 ? 'success' : systemPerformance.apiResponseTime < 200 ? 'warning' : 'danger' %>" 
+                                                     style="width: <%= Math.min(systemPerformance.apiResponseTime / 3, 100) %>%;">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted"><%= systemPerformance.apiResponseTime || 0 %> ms avg</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <h6>Database Performance</h6>
+                                            <div class="progress" style="height: 10px;">
+                                                <div class="progress-bar bg-<%= systemPerformance.dbPerformance > 90 ? 'success' : systemPerformance.dbPerformance > 80 ? 'warning' : 'danger' %>" 
+                                                     style="width: <%= systemPerformance.dbPerformance || 0 %>%;">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted"><%= systemPerformance.dbPerformance || 0 %>% efficiency</small>
+                                        </div>
+                                        <div class="mb-0">
+                                            <h6>Active Users</h6>
+                                            <h3 class="text-primary"><%= systemPerformance.activeUsers || 0 %></h3>
+                                            <small class="text-muted">Currently online</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Operational Tables -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Performance by Department</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Department</th>
+                                                        <th>Tasks Completed</th>
+                                                        <th>Avg. Time</th>
+                                                        <th>Accuracy</th>
+                                                        <th>Satisfaction</th>
+                                                        <th>Efficiency</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (departmentPerformance && departmentPerformance.length > 0) { %>
+                                                        <% departmentPerformance.forEach(dept => { %>
+                                                            <tr>
+                                                                <td><%= dept.department %></td>
+                                                                <td><%= dept.tasks %></td>
+                                                                <td><%= dept.avgTime %> mins</td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= dept.accuracy > 95 ? 'success' : dept.accuracy > 90 ? 'warning' : 'danger' %>">
+                                                                        <%= dept.accuracy %>%
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= dept.satisfaction %>/5</td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= dept.efficiency > 90 ? 'success' : dept.efficiency > 80 ? 'warning' : 'danger' %>">
+                                                                        <%= dept.efficiency %>%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="card-title">Quality Metrics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Metric</th>
+                                                        <th>Current</th>
+                                                        <th>Target</th>
+                                                        <th>Status</th>
+                                                        <th>Trend</th>
+                                                        <th>Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% if (qualityMetrics && qualityMetrics.length > 0) { %>
+                                                        <% qualityMetrics.forEach(metric => { %>
+                                                            <tr>
+                                                                <td><%= metric.metric %></td>
+                                                                <td class="fw-bold"><%= metric.current %></td>
+                                                                <td><%= metric.target %></td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= metric.status === 'Achieved' ? 'success' : metric.status === 'On Track' ? 'warning' : 'danger' %>">
+                                                                        <%= metric.status %>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge bg-<%= metric.trend > 0 ? 'success' : 'danger' %>">
+                                                                        <i class="ti ti-arrow-<%= metric.trend > 0 ? 'up' : 'down' %>"></i>
+                                                                        <%= Math.abs(metric.trend) %>%
+                                                                    </span>
+                                                                </td>
+                                                                <td><%= metric.action %></td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="6" class="text-center">No data available</td>
+                                                        </tr>
+                                                    <% } %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Reports Tab -->
+                    <div class="tab-pane fade" id="custom-reports">
+                        <div class="custom-report-builder">
+                            <h5 class="mb-3"><i class="ti ti-settings me-2"></i>Custom Report Builder</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Report Type</label>
+                                        <select class="form-select" id="customReportType">
+                                            <option value="">Select Report Type</option>
+                                            <option value="financial">Financial Report</option>
+                                            <option value="booking">Booking Analysis</option>
+                                            <option value="customer">Customer Insights</option>
+                                            <option value="vendor">Vendor Performance</option>
+                                            <option value="referral">Referral Analysis</option>
+                                            <option value="operational">Operational Metrics</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Date Range</label>
+                                        <select class="form-select" id="customDateRangeSelect">
+                                            <option value="custom">Custom Range</option>
+                                            <option value="today">Today</option>
+                                            <option value="week">This Week</option>
+                                            <option value="month">This Month</option>
+                                            <option value="quarter">This Quarter</option>
+                                            <option value="year">This Year</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Output Format</label>
+                                        <select class="form-select" id="customOutputFormat">
+                                            <option value="excel">Excel</option>
+                                            <option value="pdf">PDF</option>
+                                            <option value="csv">CSV</option>
+                                            <option value="json">JSON</option>
+                                            <option value="html">HTML</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label class="form-label">Select Metrics</label>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricRevenue">
+                                                    <label class="form-check-label" for="metricRevenue">Revenue</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricBookings">
+                                                    <label class="form-check-label" for="metricBookings">Bookings</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricCustomers">
+                                                    <label class="form-check-label" for="metricCustomers">Customers</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricVendors">
+                                                    <label class="form-check-label" for="metricVendors">Vendors</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricCommissions">
+                                                    <label class="form-check-label" for="metricCommissions">Commissions</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricReferrals">
+                                                    <label class="form-check-label" for="metricReferrals">Referrals</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricOperations">
+                                                    <label class="form-check-label" for="metricOperations">Operations</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="metricQuality">
+                                                    <label class="form-check-label" for="metricQuality">Quality Metrics</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label">Include Charts</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                                            <label class="form-check-label" for="includeCharts">Yes, include charts</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeTrends" checked>
+                                            <label class="form-check-label" for="includeTrends">Include trends</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="includeComparison">
+                                            <label class="form-check-label" for="includeComparison">Include comparison</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Report Name</label>
+                                <input type="text" class="form-control" id="customReportName" 
+                                       placeholder="Enter report name">
+                            </div>
+                            <div class="text-end">
+                                <button class="btn btn-secondary" onclick="previewCustomReport()">
+                                    <i class="ti ti-eye me-2"></i>Preview
+                                </button>
+                                <button class="btn btn-primary" onclick="generateCustomReportNow()">
+                                    <i class="ti ti-download me-2"></i>Generate Report
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Saved Reports -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="card-title">Saved Reports</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <% if (savedReports && savedReports.length > 0) { %>
+                                        <% savedReports.forEach(report => { %>
+                                            <div class="col-md-4">
+                                                <div class="report-card" onclick="viewSavedReport('<%= report.id %>')">
+                                                    <div class="report-icon" 
+                                                         style="background: <%= getReportColor(report.type) %>; color: white;">
+                                                        <i class="ti <%= getReportIcon(report.type) %>"></i>
+                                                    </div>
+                                                    <h6><%= report.name %></h6>
+                                                    <p class="text-muted small mb-2"><%= report.description %></p>
+                                                    <div class="d-flex justify-content-between">
+                                                        <small class="text-muted">
+                                                            <i class="ti ti-calendar me-1"></i>
+                                                            <%= new Date(report.created_at).toLocaleDateString() %>
+                                                        </small>
+                                                        <span class="badge bg-<%= report.status === 'active' ? 'success' : 'secondary' %>">
+                                                            <%= report.status %>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <% }); %>
+                                    <% } else { %>
+                                        <div class="col-12 text-center py-4">
+                                            <i class="ti ti-file-text fs-48 text-muted mb-3"></i>
+                                            <h5>No saved reports</h5>
+                                            <p class="text-muted">Create your first custom report</p>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scheduled Reports -->
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="card-title">Scheduled Reports</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Report Name</th>
+                                                <th>Frequency</th>
+                                                <th>Recipients</th>
+                                                <th>Next Run</th>
+                                                <th>Last Run</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% if (scheduledReports && scheduledReports.length > 0) { %>
+                                                <% scheduledReports.forEach(schedule => { %>
+                                                    <tr>
+                                                        <td><%= schedule.name %></td>
+                                                        <td>
+                                                            <span class="badge bg-info"><%= schedule.frequency %></span>
+                                                        </td>
+                                                        <td>
+                                                            <small class="text-muted"><%= schedule.recipients %> recipients</small>
+                                                        </td>
+                                                        <td><%= new Date(schedule.next_run).toLocaleString() %></td>
+                                                        <td><%= schedule.last_run ? new Date(schedule.last_run).toLocaleString() : 'Never' %></td>
+                                                        <td>
+                                                            <span class="badge bg-<%= schedule.status === 'active' ? 'success' : 'warning' %>">
+                                                                <%= schedule.status %>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <div class="actions">
+                                                                <a href="javascript:void(0);" class="btn btn-sm bg-primary-light me-2"
+                                                                   onclick="editSchedule('<%= schedule.id %>')">
+                                                                    <i class="ti ti-pencil"></i>
+                                                                </a>
+                                                                <a href="javascript:void(0);" class="btn btn-sm bg-danger-light"
+                                                                   onclick="deleteSchedule('<%= schedule.id %>')">
+                                                                    <i class="ti ti-trash"></i>
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                <% }); %>
+                                            <% } else { %>
+                                                <tr>
+                                                    <td colspan="7" class="text-center">
+                                                        <div class="empty-state">
+                                                            <i class="ti ti-clock fs-48 text-muted mb-3"></i>
+                                                            <h5>No scheduled reports</h5>
+                                                            <p class="text-muted">Schedule reports for automatic delivery</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Report Preview Modal -->
+        <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Report Preview</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="previewContent">
+                        <!-- Preview content will be loaded here -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="downloadPreviewReport()">
+                            <i class="ti ti-download me-2"></i>Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        // Initialize charts
+        let revenueChart, incomePieChart, expensePieChart, bookingTrendChart, serviceDistributionChart;
+        let customerGrowthChart, customerSegmentationChart, vendorPerformanceChart, vendorRatingChart;
+        let referralGrowthChart, referralSourceChart, operationalEfficiencyChart, supportTicketChart;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(revenueCtx, {
+                type: 'line',
+                data: {
+                    labels: <%= JSON.stringify(revenueChartLabels || []) %>,
+                    datasets: [
+                        {
+                            label: 'Revenue',
+                            data: <%= JSON.stringify(revenueChartData || []) %>,
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Income Pie Chart
+            const incomeCtx = document.getElementById('incomePieChart').getContext('2d');
+            incomePieChart = new Chart(incomeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: <%= JSON.stringify(incomeCategories || []) %>,
+                    datasets: [{
+                        data: <%= JSON.stringify(incomeData || []) %>,
+                        backgroundColor: [
+                            '#28a745', '#20c997', '#007bff', '#6610f2', '#6f42c1'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Expense Pie Chart
+            const expenseCtx = document.getElementById('expensePieChart').getContext('2d');
+            expensePieChart = new Chart(expenseCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: <%= JSON.stringify(expenseCategories || []) %>,
+                    datasets: [{
+                        data: <%= JSON.stringify(expenseData || []) %>,
+                        backgroundColor: [
+                            '#dc3545', '#fd7e14', '#ffc107', '#17a2b8', '#6c757d'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Initialize other charts similarly...
+        });
+
+        // Helper functions
+        function getMethodIcon(method) {
+            const icons = {
+                'upi': 'ti-device-mobile',
+                'credit_card': 'ti-credit-card',
+                'debit_card': 'ti-credit-card',
+                'netbanking': 'ti-building-bank',
+                'wallet': 'ti-wallet',
+                'cash': 'ti-cash',
+                'bank_transfer': 'ti-building-bank'
+            };
+            return icons[method] || 'ti-currency-rupee';
+        }
+
+        function getMethodName(method) {
+            const names = {
+                'upi': 'UPI',
+                'credit_card': 'Credit Card',
+                'debit_card': 'Debit Card',
+                'netbanking': 'Net Banking',
+                'wallet': 'Wallet',
+                'cash': 'Cash',
+                'bank_transfer': 'Bank Transfer'
+            };
+            return names[method] || method;
+        }
+
+        function getBookingStatusColor(status) {
+            switch(status) {
+                case 'completed': return 'success';
+                case 'confirmed': return 'primary';
+                case 'pending': return 'warning';
+                case 'cancelled': return 'danger';
+                case 'refunded': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        function getReportColor(type) {
+            const colors = {
+                'financial': '#28a745',
+                'booking': '#007bff',
+                'customer': '#6610f2',
+                'vendor': '#fd7e14',
+                'referral': '#20c997',
+                'operational': '#6f42c1'
+            };
+            return colors[type] || '#6c757d';
+        }
+
+        function getReportIcon(type) {
+            const icons = {
+                'financial': 'ti-currency-rupee',
+                'booking': 'ti-calendar',
+                'customer': 'ti-users',
+                'vendor': 'ti-building-store',
+                'referral': 'ti-share',
+                'operational': 'ti-chart-bar'
+            };
+            return icons[type] || 'ti-file-text';
+        }
+
+        // Date range functionality
+        function changeReportPeriod() {
+            const period = document.getElementById('reportPeriod').value;
+            const customRange = document.getElementById('customDateRange');
+            
+            if (period === 'custom') {
+                customRange.style.display = 'block';
+            } else {
+                customRange.style.display = 'none';
+            }
+        }
+
+        function toggleComparison() {
+            const compare = document.getElementById('comparePeriod').value;
+            // Implement comparison logic
+        }
+
+        function applyDateFilter() {
+            const period = document.getElementById('reportPeriod').value;
+            let fromDate, toDate;
+            
+            const today = new Date();
+            
+            switch(period) {
+                case 'today':
+                    fromDate = toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    fromDate = toDate = yesterday.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const weekStart = new Date(today);
+                    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                    fromDate = weekStart.toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1)
+                        .toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'custom':
+                    fromDate = document.getElementById('fromDate').value;
+                    toDate = document.getElementById('toDate').value;
+                    if (!fromDate || !toDate) {
+                        Swal.fire('Error', 'Please select custom date range', 'error');
+                        return;
+                    }
+                    break;
+            }
+            
+            // Reload page with new date range
+            window.location.href = `/admin/reports?from=${fromDate}&to=${toDate}`;
+        }
+
+        function resetFilters() {
+            document.getElementById('reportPeriod').value = 'month';
+            document.getElementById('comparePeriod').value = '';
+            document.getElementById('customDateRange').style.display = 'none';
+            
+            // Reload page with default filters
+            window.location.href = '/admin/reports';
+        }
+
+        // Update charts based on selection
+        function updateRevenueChart(granularity) {
+            fetch(`/admin/reports/revenue-chart?granularity=${granularity}`)
+                .then(response => response.json())
+                .then(data => {
+                    revenueChart.data.labels = data.labels;
+                    revenueChart.data.datasets[0].data = data.data;
+                    revenueChart.update();
+                });
+        }
+
+        function updateBookingTrendChart(granularity) {
+            // Similar implementation for booking trend chart
+        }
+
+        // Generate custom report
+        function generateCustomReport() {
+            // Show custom report builder tab
+            document.querySelector('a[href="#custom-reports"]').click();
+        }
+
+        // Schedule report
+        function scheduleReport() {
+            Swal.fire({
+                title: 'Schedule Report',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-3">
+                            <label class="form-label">Report Type</label>
+                            <select class="form-select" id="scheduleReportType">
+                                <option value="financial_summary">Financial Summary</option>
+                                <option value="booking_analysis">Booking Analysis</option>
+                                <option value="customer_insights">Customer Insights</option>
+                                <option value="vendor_performance">Vendor Performance</option>
+                                <option value="custom">Custom Report</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Frequency</label>
+                            <select class="form-select" id="scheduleFrequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Recipients (comma separated emails)</label>
+                            <input type="text" class="form-control" id="scheduleRecipients" 
+                                   placeholder="admin@example.com,manager@example.com">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Format</label>
+                            <select class="form-select" id="scheduleFormat">
+                                <option value="pdf">PDF</option>
+                                <option value="excel">Excel</option>
+                                <option value="csv">CSV</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Schedule Name</label>
+                            <input type="text" class="form-control" id="scheduleName" 
+                                   placeholder="Monthly Financial Report">
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Schedule',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const reportType = document.getElementById('scheduleReportType').value;
+                    const frequency = document.getElementById('scheduleFrequency').value;
+                    const recipients = document.getElementById('scheduleRecipients').value;
+                    const format = document.getElementById('scheduleFormat').value;
+                    const name = document.getElementById('scheduleName').value;
+                    
+                    if (!name || !recipients) {
+                        Swal.showValidationMessage('Please fill all required fields');
+                        return false;
+                    }
+                    
+                    return fetch('/admin/reports/schedule', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            reportType, 
+                            frequency, 
+                            recipients, 
+                            format, 
+                            name 
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            throw new Error(data.message);
+                        }
+                        return data;
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Scheduled!',
+                        text: 'Report has been scheduled successfully',
+                        timer: 2000
+                    }).then(() => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+
+        // Preview custom report
+        function previewCustomReport() {
+            const reportType = document.getElementById('customReportType').value;
+            const dateRange = document.getElementById('customDateRangeSelect').value;
+            const format = document.getElementById('customOutputFormat').value;
+            const reportName = document.getElementById('customReportName').value;
+            
+            if (!reportType || !reportName) {
+                Swal.fire('Error', 'Please select report type and enter report name', 'error');
+                return;
+            }
+            
+            // Collect selected metrics
+            const metrics = [];
+            if (document.getElementById('metricRevenue').checked) metrics.push('revenue');
+            if (document.getElementById('metricBookings').checked) metrics.push('bookings');
+            if (document.getElementById('metricCustomers').checked) metrics.push('customers');
+            if (document.getElementById('metricVendors').checked) metrics.push('vendors');
+            if (document.getElementById('metricCommissions').checked) metrics.push('commissions');
+            if (document.getElementById('metricReferrals').checked) metrics.push('referrals');
+            if (document.getElementById('metricOperations').checked) metrics.push('operations');
+            if (document.getElementById('metricQuality').checked) metrics.push('quality');
+            
+            if (metrics.length === 0) {
+                Swal.fire('Error', 'Please select at least one metric', 'error');
+                return;
+            }
+            
+            // Show loading
+            Swal.fire({
+                title: 'Generating Preview',
+                text: 'Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            fetch('/admin/reports/preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    reportType, 
+                    dateRange, 
+                    metrics,
+                    includeCharts: document.getElementById('includeCharts').checked,
+                    includeTrends: document.getElementById('includeTrends').checked,
+                    includeComparison: document.getElementById('includeComparison').checked,
+                    reportName 
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.success) {
+                    document.getElementById('previewContent').innerHTML = data.html;
+                    $('#previewModal').modal('show');
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+        }
+
+        // Generate custom report now
+        function generateCustomReportNow() {
+            const reportType = document.getElementById('customReportType').value;
+            const dateRange = document.getElementById('customDateRangeSelect').value;
+            const format = document.getElementById('customOutputFormat').value;
+            const reportName = document.getElementById('customReportName').value;
+            
+            if (!reportType || !reportName) {
+                Swal.fire('Error', 'Please select report type and enter report name', 'error');
+                return;
+            }
+            
+            // Build download URL
+            let url = `/admin/reports/generate-custom?type=${reportType}&format=${format}&name=${encodeURIComponent(reportName)}`;
+            
+            // Add metrics
+            const metrics = [];
+            if (document.getElementById('metricRevenue').checked) metrics.push('revenue');
+            if (document.getElementById('metricBookings').checked) metrics.push('bookings');
+            // Add other metrics...
+            
+            if (metrics.length > 0) {
+                url += `&metrics=${metrics.join(',')}`;
+            }
+            
+            window.open(url, '_blank');
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Report Generated!',
+                text: 'Your report is being downloaded',
+                timer: 2000
+            });
+        }
+
+        // Download preview report
+        function downloadPreviewReport() {
+            // Implement download functionality
+            $('#previewModal').modal('hide');
+        }
+
+        // View saved report
+        function viewSavedReport(reportId) {
+            window.open(`/admin/reports/view/${reportId}`, '_blank');
+        }
+
+        // Edit schedule
+        function editSchedule(scheduleId) {
+            // Load schedule details and show edit modal
+            fetch(`/admin/reports/schedule/${scheduleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Show edit modal with pre-filled data
+                    Swal.fire({
+                        title: 'Edit Schedule',
+                        html: `
+                            <div class="text-start">
+                                <div class="mb-3">
+                                    <label class="form-label">Schedule Name</label>
+                                    <input type="text" class="form-control" id="editScheduleName" 
+                                           value="${data.name}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Frequency</label>
+                                    <select class="form-select" id="editScheduleFrequency">
+                                        <option value="daily" ${data.frequency === 'daily' ? 'selected' : ''}>Daily</option>
+                                        <option value="weekly" ${data.frequency === 'weekly' ? 'selected' : ''}>Weekly</option>
+                                        <option value="monthly" ${data.frequency === 'monthly' ? 'selected' : ''}>Monthly</option>
+                                        <option value="quarterly" ${data.frequency === 'quarterly' ? 'selected' : ''}>Quarterly</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" id="editScheduleStatus">
+                                        <option value="active" ${data.status === 'active' ? 'selected' : ''}>Active</option>
+                                        <option value="paused" ${data.status === 'paused' ? 'selected' : ''}>Paused</option>
+                                    </select>
+                                </div>
+                            </div>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'Save Changes',
+                        showLoaderOnConfirm: true,
+                        preConfirm: () => {
+                            const name = document.getElementById('editScheduleName').value;
+                            const frequency = document.getElementById('editScheduleFrequency').value;
+                            const status = document.getElementById('editScheduleStatus').value;
+                            
+                            return fetch(`/admin/reports/schedule/${scheduleId}`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ name, frequency, status })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (!data.success) {
+                                    throw new Error(data.message);
+                                }
+                                return data;
+                            });
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            Swal.fire('Updated!', 'Schedule updated successfully', 'success');
+                            location.reload();
+                        }
+                    });
+                });
+        }
+
+        // Delete schedule
+        function deleteSchedule(scheduleId) {
+            Swal.fire({
+                title: 'Delete Schedule?',
+                text: 'This action cannot be undone',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/reports/schedule/${scheduleId}`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('Deleted!', 'Schedule has been deleted', 'success');
+                            location.reload();
+                        }
+                    });
+                }
+            });
+        }
+
+        // Auto-refresh data every 5 minutes
+        setInterval(() => {
+            fetch('/admin/reports/kpis')
+                .then(response => response.json())
+                .then(data => {
+                    // Update KPI cards
+                    document.querySelectorAll('.kpi-card h3').forEach((el, index) => {
+                        const values = [
+                            `₹${data.revenue?.toLocaleString('en-IN') || 0}`,
+                            `${data.bookings?.toLocaleString('en-IN') || 0}`,
+                            `${data.newCustomers?.toLocaleString('en-IN') || 0}`,
+                            `₹${data.avgBookingValue?.toLocaleString('en-IN') || 0}`
+                        ];
+                        if (values[index]) {
+                            el.textContent = values[index];
+                        }
+                    });
+                });
+        }, 300000);
+    </script>
+    <%- include('../shared/partials/footer') %>

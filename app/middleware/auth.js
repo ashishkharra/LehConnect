@@ -1,0 +1,139 @@
+const { decryptRefreshToken, encryptRefreshToken, getDeviceHash, responseData } = require('../shared/utils/helper.js');
+// db
+const db = require('../models/index.js')
+const Vendor = db.vendor
+const Customer = db.customer
+const Session = db.session
+
+const authMiddleware = (req, res, next) => {
+  if (req.session && req.session.user) {
+    next();
+  } else {
+    res.redirect('/login');
+  }
+};
+
+const vendorMiddleware = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const refreshToken = req.headers["x-refresh-token"];
+
+    if (!authHeader || !refreshToken) {
+      return res.status(401).json(responseData("Unauthorized", {}, req, false));
+    }
+
+    const token = authHeader.split(" ")[1];
+    const deviceHash = getDeviceHash(req);
+
+    const session = await Session.findOne({
+      where: {
+        user_token: token,
+        revoked_at: null,
+        device_hash: deviceHash,
+      },
+    });
+
+    if (!session) {
+      return res.status(401).json(responseData("Session expired", {}, req, false));
+    }
+
+    if (new Date() > new Date(session.expires_at)) {
+      await Session.update(
+        { revoked_at: new Date() },
+        { where: { id: session.id } }
+      );
+      return res.status(401).json(responseData("Session expired", {}, req, false));
+    }
+
+    const decryptedRefresh = decryptRefreshToken(JSON.parse(session.session_token));
+
+    if (decryptedRefresh !== refreshToken) {
+      return res.status(401).json(responseData("Invalid session", {}, req, false));
+    }
+
+    const user = await Vendor.findOne({
+      where: { token, flag: 0 },
+    });
+
+    if (!user) {
+      return res.status(401).json(responseData("Unauthorized", {}, req, false));
+    }
+
+    await Session.update(
+      { last_used_at: new Date() },
+      { where: { id: session.id } }
+    );
+
+    req.user = user;
+    req.dbSession = session;
+
+    next();
+  } catch (err) {
+    console.error("Vendor middleware error:", err);
+    return res.status(401).json(responseData("Unauthorized", {}, req, false));
+  }
+};
+
+const customerMiddleware = async (req, res, next) => {
+  try {
+    const auth = req.headers.authorization;
+    const refreshToken = req.headers["x-refresh-token"];
+
+    if (!auth || !refreshToken) {
+      return res
+        .status(401)
+        .json(responseData("Unauthorized", {}, req, false));
+    }
+
+    const token = auth.split(" ")[1];
+
+    const user = await Customer.findOne({
+      where: {
+        token,
+        refresh_token_revoked: false
+      }
+    });
+
+    if (!user) {
+      return res
+        .status(401)
+        .json(responseData("Session expired", {}, req, false));
+    }
+
+    if (new Date() > user.refresh_token_expires_at) {
+      return res
+        .status(401)
+        .json(responseData("Session expired", {}, req, false));
+    }
+
+    const encrypted = JSON.parse(user.refresh_token);
+    const dbRefreshToken = decryptRefreshToken(encrypted);
+
+    if (dbRefreshToken !== refreshToken) {
+      return res
+        .status(401)
+        .json(responseData("Invalid session", {}, req, false));
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Customer middleware error:", error);
+    return res
+      .status(401)
+      .json(responseData("Unauthorized", {}, req, false));
+  }
+};
+
+const verifiedOnly = (req, res, next) => {
+  if (req.user.verification_status !== 'VERIFIED') {
+    return res
+      .status(403)
+      .json(responseData('Complete verification first', {}, req, false));
+  }
+  next();
+};
+
+
+
+module.exports = { authMiddleware, vendorMiddleware, customerMiddleware, verifiedOnly };

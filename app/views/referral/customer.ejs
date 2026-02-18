@@ -1,0 +1,787 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, currentPage: currentPage: currentPage }) %>
+    <!-- Page Content -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row">
+                    <h3 class="page-title">Customer Referral Management</h3>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="row">
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-primary">
+                                    <i class="ti ti-user-plus"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>
+                                        <!-- <%#= stats.totalReferrals || 0 %> -->
+                                         0
+                                    </h3>
+                                    <h6 class="text-muted">Total Referrals</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-success">
+                                    <i class="ti ti-check"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>
+                                        <!-- <%#= stats.successfulReferrals || 0 %> -->
+                                    </h3>
+                                    <h6 class="text-muted">Successful</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-warning">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <!-- <h3>₹<%#= stats.totalEarnings ? stats.totalEarnings.toLocaleString('en-IN') : 0 %> -->
+                                    </h3>
+                                    <h6 class="text-muted">Total Earnings</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-info">
+                                    <i class="ti ti-wallet"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%#= stats.pendingPayouts ? stats.pendingPayouts.toLocaleString('en-IN') : 0 %>
+                                    </h3>
+                                    <h6 class="text-muted">Pending Payout</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Left Column: Referral Code & Sharing -->
+                <div class="col-lg-5">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Your Referral Code</h5>
+                        </div>
+                        <div class="card-body">
+                            <%# if (referralCode) { %>
+                                <div class="referral-code-box mb-4">
+                                    <h3 class="mb-3">
+                                        <%#= referralCode.code %>
+                                    </h3>
+                                    <p class="mb-2">Share this code with your friends</p>
+                                    <p class="small mb-0">Active: <%#= referralCode.is_active ? 'Yes' : 'No' %> |
+                                            Total Uses: <%#= referralCode.total_referrals %>
+                                    </p>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h6>Share Via:</h6>
+                                    <div class="share-buttons">
+                                        <button class="btn btn-outline-primary share-btn" onclick="shareViaWhatsApp()">
+                                            <i class="ti ti-brand-whatsapp me-2"></i>WhatsApp
+                                        </button>
+                                        <button class="btn btn-outline-info share-btn" onclick="shareViaEmail()">
+                                            <i class="ti ti-mail me-2"></i>Email
+                                        </button>
+                                        <button class="btn btn-outline-secondary share-btn"
+                                            onclick="copyReferralLink()">
+                                            <i class="ti ti-copy me-2"></i>Copy Link
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h6>Referral Link:</h6>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="referralLink"
+                                            value="<%#= referralLink %>" readonly>
+                                        <button class="btn btn-primary" onclick="copyReferralLink()">
+                                            <i class="ti ti-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <h6>How It Works:</h6>
+                                    <ul class="referral-steps">
+                                        <li>Share your referral code with friends</li>
+                                        <li>Friend signs up using your code</li>
+                                        <li>Friend gets ₹200 signup bonus</li>
+                                        <li>You earn ₹100 when friend completes first booking</li>
+                                        <li>You earn 5% commission on friend's bookings for 6 months</li>
+                                    </ul>
+                                </div>
+
+                                <div class="alert alert-info">
+                                    <h6><i class="ti ti-info-circle me-2"></i>Referral Rewards</h6>
+                                    <ul class="mb-0">
+                                        <li>Signup Bonus for Referee: ₹200 wallet credit</li>
+                                        <li>Referral Bonus for You: ₹100 per successful referral</li>
+                                        <li>Commission: 5% on referee's bookings for 6 months</li>
+                                        <li>Minimum payout amount: ₹500</li>
+                                        <li>Payouts processed every 15th of the month</li>
+                                    </ul>
+                                </div>
+                                <% } else { %>
+                                    <div class="text-center py-4">
+                                        <i class="ti ti-gift fs-48 text-muted mb-3"></i>
+                                        <h5>No Referral Code Generated</h5>
+                                        <p class="text-muted">Generate your referral code to start earning</p>
+                                        <button class="btn btn-primary" onclick="generateReferralCode()">
+                                            <i class="ti ti-gift me-2"></i>Generate Referral Code
+                                        </button>
+                                    </div>
+                                    <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Quick Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded">
+                                        <h4 class="mb-1">
+                                            <%= stats.thisMonth || 0 %>
+                                        </h4>
+                                        <p class="text-muted mb-0">This Month</p>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="text-center p-3 border rounded">
+                                        <h4 class="mb-1">
+                                            <%= stats.thisWeek || 0 %>
+                                        </h4>
+                                        <p class="text-muted mb-0">This Week</p>
+                                    </div>
+                                </div>
+                                <div class="col-6 mt-3">
+                                    <div class="text-center p-3 border rounded">
+                                        <h4 class="mb-1">
+                                            <%= stats.conversionRate ? stats.conversionRate + '%' : '0%' %>
+                                        </h4>
+                                        <p class="text-muted mb-0">Conversion Rate</p>
+                                    </div>
+                                </div>
+                                <div class="col-6 mt-3">
+                                    <div class="text-center p-3 border rounded">
+                                        <h4 class="mb-1">
+                                            <%= stats.avgReward ? '₹' + stats.avgReward : '₹0' %>
+                                        </h4>
+                                        <p class="text-muted mb-0">Avg. Reward</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Referrals List & Transactions -->
+                <div class="col-lg-7">
+                    <!-- Tabs for Different Views -->
+                    <div class="card">
+                        <div class="card-header border-bottom-0">
+                            <ul class="nav nav-tabs nav-tabs-bottom" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link active" data-bs-toggle="tab" href="#referrals-tab">Referrals</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#transactions-tab">Transactions</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#payouts-tab">Payouts</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#rewards-tab">Reward Rules</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content pt-0">
+                                <!-- Referrals Tab -->
+                                <div class="tab-pane show active" id="referrals-tab">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-center mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Referee</th>
+                                                    <th>Signup Date</th>
+                                                    <th>Status</th>
+                                                    <th>Rewards Earned</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% if (referrals && referrals.length> 0) { %>
+                                                    <% referrals.forEach(ref=> { %>
+                                                        <tr>
+                                                            <td>
+                                                                <h2 class="table-avatar">
+                                                                    <a href="javascript:void(0);"
+                                                                        class="avatar avatar-sm me-2">
+                                                                        <img class="avatar-img rounded-circle"
+                                                                            src="<%= ref.referee_avatar || 'assets/img/profiles/avatar-02.jpg' %>"
+                                                                            alt="User Image">
+                                                                    </a>
+                                                                    <a href="javascript:void(0);">
+                                                                        <%= ref.referee_name %>
+                                                                    </a>
+                                                                </h2>
+                                                            </td>
+                                                            <td>
+                                                                <%= new Date(ref.signup_date).toLocaleDateString() %>
+                                                            </td>
+                                                            <td>
+                                                                <% if (ref.status==='active' ) { %>
+                                                                    <span class="badge bg-success">Active</span>
+                                                                    <% } else if (ref.status==='pending' ) { %>
+                                                                        <span class="badge bg-warning">Pending</span>
+                                                                        <% } else if (ref.status==='completed' ) { %>
+                                                                            <span class="badge bg-info">Completed</span>
+                                                                            <% } else if (ref.status==='expired' ) { %>
+                                                                                <span
+                                                                                    class="badge bg-secondary">Expired</span>
+                                                                                <% } %>
+                                                            </td>
+                                                            <td>
+                                                                ₹<%= ref.total_rewards ?
+                                                                    ref.total_rewards.toLocaleString('en-IN') : 0 %>
+                                                                    <% if (ref.pending_rewards> 0) { %>
+                                                                        <span class="badge bg-warning rewards-badge">+₹
+                                                                            <%= ref.pending_rewards %></span>
+                                                                        <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <div class="actions">
+                                                                    <a href="javascript:void(0);"
+                                                                        class="btn btn-sm bg-success-light me-2"
+                                                                        onclick="viewReferralDetails(<%= ref.id %>)">
+                                                                        <i class="ti ti-eye"></i>
+                                                                    </a>
+                                                                    <a href="javascript:void(0);"
+                                                                        class="btn btn-sm bg-primary-light"
+                                                                        onclick="sendReminder(<%= ref.id %>)">
+                                                                        <i class="ti ti-send"></i>
+                                                                    </a>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <% }); %>
+                                                            <% } else { %>
+                                                                <tr>
+                                                                    <td colspan="5" class="text-center">
+                                                                        <div class="empty-state">
+                                                                            <i
+                                                                                class="ti ti-users fs-48 text-muted mb-3"></i>
+                                                                            <h5>No referrals yet</h5>
+                                                                            <p>Share your referral code to get started
+                                                                            </p>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- Transactions Tab -->
+                                <div class="tab-pane" id="transactions-tab">
+                                    <div class="referral-timeline">
+                                        <% if (transactions && transactions.length> 0) { %>
+                                            <% transactions.forEach(txn=> { %>
+                                                <div class="timeline-item">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <h6 class="mb-1">
+                                                                <%= txn.description %>
+                                                            </h6>
+                                                            <p class="text-muted mb-1 small">
+                                                                <%= new Date(txn.created_at).toLocaleString() %>
+                                                            </p>
+                                                            <% if (txn.metadata) { %>
+                                                                <p class="small mb-0">
+                                                                    Referee: <%= txn.metadata.referee_name %>
+                                                                </p>
+                                                                <% } %>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <span
+                                                                class="badge bg-<%= getTransactionStatusColor(txn.status) %> mb-2">
+                                                                <%= txn.status.charAt(0).toUpperCase() +
+                                                                    txn.status.slice(1) %>
+                                                            </span>
+                                                            <h5 class="text-success mb-0">+₹<%= txn.reward_amount %>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <% }); %>
+                                                    <% } else { %>
+                                                        <div class="text-center py-4">
+                                                            <i class="ti ti-receipt fs-48 text-muted mb-3"></i>
+                                                            <h5>No transactions yet</h5>
+                                                            <p>Earn rewards by referring friends</p>
+                                                        </div>
+                                                        <% } %>
+                                    </div>
+                                </div>
+
+                                <!-- Payouts Tab -->
+                                <div class="tab-pane" id="payouts-tab">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-center mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Amount</th>
+                                                    <th>Method</th>
+                                                    <th>Status</th>
+                                                    <th>Transaction ID</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% if (payouts && payouts.length> 0) { %>
+                                                    <% payouts.forEach(payout=> { %>
+                                                        <tr>
+                                                            <td>
+                                                                <%= new Date(payout.created_at).toLocaleDateString() %>
+                                                            </td>
+                                                            <td class="fw-bold">₹<%= payout.payout_amount %>
+                                                            </td>
+                                                            <td>
+                                                                <% if (payout.payout_method==='bank_transfer' ) { %>
+                                                                    <i class="ti ti-building-bank me-1"></i>Bank
+                                                                    Transfer
+                                                                    <% } else if (payout.payout_method==='upi' ) { %>
+                                                                        <i class="ti ti-device-mobile me-1"></i>UPI
+                                                                        <% } else if (payout.payout_method==='wallet' )
+                                                                            { %>
+                                                                            <i class="ti ti-wallet me-1"></i>Wallet
+                                                                            <% } else { %>
+                                                                                <i
+                                                                                    class="ti ti-credit-card me-1"></i>Credit
+                                                                                Note
+                                                                                <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <% if (payout.payout_status==='completed' ) { %>
+                                                                    <span class="badge bg-success">Completed</span>
+                                                                    <% } else if (payout.payout_status==='processing' )
+                                                                        { %>
+                                                                        <span class="badge bg-info">Processing</span>
+                                                                        <% } else if (payout.payout_status==='pending' )
+                                                                            { %>
+                                                                            <span
+                                                                                class="badge bg-warning">Pending</span>
+                                                                            <% } else { %>
+                                                                                <span
+                                                                                    class="badge bg-danger">Failed</span>
+                                                                                <% } %>
+                                                            </td>
+                                                            <td><code><%= payout.transaction_id || 'N/A' %></code></td>
+                                                        </tr>
+                                                        <% }); %>
+                                                            <% } else { %>
+                                                                <tr>
+                                                                    <td colspan="5" class="text-center">
+                                                                        <div class="empty-state">
+                                                                            <i
+                                                                                class="ti ti-wallet fs-48 text-muted mb-3"></i>
+                                                                            <h5>No payouts yet</h5>
+                                                                            <p>Earn at least ₹500 to request payout</p>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                                <% } %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <% if (stats.pendingPayouts>= 500) { %>
+                                        <div class="mt-3 text-end">
+                                            <button class="btn btn-success" onclick="requestPayout()">
+                                                <i class="ti ti-wallet me-2"></i>Request Payout (₹<%=
+                                                    stats.pendingPayouts %>)
+                                            </button>
+                                        </div>
+                                        <% } %>
+                                </div>
+
+                                <!-- Rewards Tab -->
+                                <div class="tab-pane" id="rewards-tab">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="card border">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">For Referrer (You)</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            ₹100 bonus on friend's first booking
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            5% commission for 6 months
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            Extra ₹500 for 10 successful referrals
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            Monthly top referrer rewards
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">For Referee (Friend)</h6>
+                                                    <ul class="list-unstyled">
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            ₹200 signup bonus
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            10% off on first booking
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            Priority support
+                                                        </li>
+                                                        <li class="mb-2">
+                                                            <i class="ti ti-circle-check text-success me-2"></i>
+                                                            Special member deals
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="alert alert-warning mt-3">
+                                        <h6><i class="ti ti-alert-circle me-2"></i>Terms & Conditions</h6>
+                                        <ul class="mb-0 small">
+                                            <li>Referral code cannot be used for self-referral</li>
+                                            <li>Rewards are subject to referee completing required actions</li>
+                                            <li>Minimum payout amount: ₹500</li>
+                                            <li>Payouts processed within 7-10 business days</li>
+                                            <li>Referral rewards expire if not claimed within 1 year</li>
+                                            <li>Company reserves the right to modify terms</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payout Request Modal -->
+    <div class="modal fade" id="payoutModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Request Payout</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="payoutForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Available Balance</label>
+                            <input type="text" class="form-control" value="₹<%= stats.pendingPayouts %>" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Payout Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="amount" min="500"
+                                max="<%= stats.pendingPayouts %>" value="<%= stats.pendingPayouts %>" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Payout Method <span class="text-danger">*</span></label>
+                            <select class="form-select" name="method" required>
+                                <option value="">Select Method</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="upi">UPI</option>
+                                <option value="wallet">Wallet</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 bank-details" style="display: none;">
+                            <label class="form-label">Bank Account Details</label>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" name="account_number"
+                                        placeholder="Account Number">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="form-control mb-2" name="ifsc_code"
+                                        placeholder="IFSC Code">
+                                </div>
+                                <div class="col-12">
+                                    <input type="text" class="form-control" name="account_name"
+                                        placeholder="Account Holder Name">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3 upi-details" style="display: none;">
+                            <label class="form-label">UPI ID</label>
+                            <input type="text" class="form-control" name="upi_id" placeholder="example@upi">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Request Payout</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // Get status color for transactions
+        function getTransactionStatusColor(status) {
+            switch (status) {
+                case 'approved': return 'success';
+                case 'pending': return 'warning';
+                case 'rejected': return 'danger';
+                case 'paid': return 'info';
+                default: return 'secondary';
+            }
+        }
+
+        // Share via WhatsApp
+        function shareViaWhatsApp() {
+            const message = `Join Leh Connect using my referral code: ${referralCode.code}\nGet ₹200 signup bonus!\nLink: ${referralLink}`;
+            const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+
+        // Share via Email
+        function shareViaEmail() {
+            const subject = 'Join Leh Connect - Get ₹200 Bonus!';
+            const body = `Hi,\n\nJoin Leh Connect using my referral code: ${referralCode.code}\n\nYou'll get:\n✓ ₹200 signup bonus\n✓ 10% off on first booking\n✓ Priority support\n\nSign up here: ${referralLink}\n\nBest regards`;
+            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+
+        // Copy referral link
+        function copyReferralLink() {
+            const linkInput = document.getElementById('referralLink');
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(linkInput.value);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Copied!',
+                text: 'Referral link copied to clipboard',
+                timer: 1500
+            });
+        }
+
+        // Generate referral code
+        function generateReferralCode() {
+            Swal.fire({
+                title: 'Generate Referral Code',
+                input: 'text',
+                inputLabel: 'Enter custom code (optional)',
+                inputPlaceholder: 'Leave empty for auto-generate',
+                showCancelButton: true,
+                confirmButtonText: 'Generate',
+                showLoaderOnConfirm: true,
+                preConfirm: (customCode) => {
+                    return fetch('/api/referrals/generate-code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            user_type: 'customer',
+                            custom_code: customCode || null
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.message);
+                            }
+                            return data;
+                        });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: 'Referral code generated successfully',
+                        timer: 2000
+                    }).then(() => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+
+        // View referral details
+        function viewReferralDetails(referralId) {
+            fetch(`/api/referrals/customer/${referralId}`)
+                .then(response => response.json())
+                .then(data => {
+                    Swal.fire({
+                        title: 'Referral Details',
+                        html: `
+                            <div class="text-start">
+                                <p><strong>Referee:</strong> ${data.referee_name}</p>
+                                <p><strong>Signup Date:</strong> ${new Date(data.signup_date).toLocaleDateString()}</p>
+                                <p><strong>Status:</strong> <span class="badge bg-${data.status === 'active' ? 'success' : 'warning'}">${data.status}</span></p>
+                                <p><strong>Total Rewards:</strong> ₹${data.total_rewards}</p>
+                                <p><strong>Pending Rewards:</strong> ₹${data.pending_rewards}</p>
+                                <p><strong>Last Booking:</strong> ${data.last_booking ? new Date(data.last_booking).toLocaleDateString() : 'N/A'}</p>
+                                <p><strong>Total Bookings:</strong> ${data.total_bookings}</p>
+                                <p><strong>Commission Rate:</strong> ${data.commission_rate}%</p>
+                            </div>
+                        `,
+                        showCloseButton: true,
+                        showConfirmButton: false
+                    });
+                });
+        }
+
+        // Send reminder to referee
+        function sendReminder(referralId) {
+            Swal.fire({
+                title: 'Send Reminder',
+                input: 'text',
+                inputLabel: 'Message (optional)',
+                inputPlaceholder: 'Add a personal message...',
+                inputValue: 'Complete your first booking to unlock your ₹200 bonus!',
+                showCancelButton: true,
+                confirmButtonText: 'Send',
+                showLoaderOnConfirm: true,
+                preConfirm: (message) => {
+                    return fetch('/api/referrals/send-reminder', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            referral_id: referralId,
+                            message: message
+                        })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.success) {
+                                throw new Error(data.message);
+                            }
+                            return data;
+                        });
+                },
+                allowOutsideClick: () => !Swal.isLoading()
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sent!',
+                        text: 'Reminder sent successfully',
+                        timer: 1500
+                    });
+                }
+            });
+        }
+
+        // Request payout
+        function requestPayout() {
+            $('#payoutModal').modal('show');
+        }
+
+        // Show/hide payout method details
+        document.querySelector('select[name="method"]').addEventListener('change', function () {
+            const method = this.value;
+            document.querySelector('.bank-details').style.display = method === 'bank_transfer' ? 'block' : 'none';
+            document.querySelector('.upi-details').style.display = method === 'upi' ? 'block' : 'none';
+        });
+
+        // Payout form submission
+        document.getElementById('payoutForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            fetch('/api/referrals/request-payout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Payout request submitted successfully',
+                            timer: 2000
+                        });
+                        $('#payoutModal').modal('hide');
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Failed to submit payout request'
+                    });
+                });
+        });
+
+        // Auto-refresh stats every 30 seconds
+        setInterval(() => {
+            fetch('/api/referrals/stats')
+                .then(response => response.json())
+                .then(data => {
+                    // Update stats display
+                    document.querySelectorAll('.stats-value').forEach(el => {
+                        const statType = el.dataset.stat;
+                        if (data[statType]) {
+                            el.textContent = data[statType];
+                        }
+                    });
+                });
+        }, 30000);
+    </script>
+    <%- include('../shared/partials/footer') %>

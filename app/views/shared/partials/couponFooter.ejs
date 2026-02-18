@@ -1,0 +1,66 @@
+<!--**********************************
+            Footer start
+        ***********************************-->
+<div class="footer">
+    <div class="copyright">
+        <p>Copyright © Designed &amp; Developed by <a href="https://kistechnosoftware.in"
+                target="_blank">KistechnoSoftware Pvt. Ltd.</a> <span class="current-year">2024</span></p>
+    </div>
+</div>
+<!--**********************************
+            Footer end
+        ***********************************-->
+
+
+
+
+</div>
+<!--**********************************
+        Main wrapper end
+    ***********************************-->
+
+<!--**********************************
+        Scripts
+    ***********************************-->
+<!-- Required vendors -->
+
+<script>
+    <% if (error_msg) { %>
+        toastr.error("<%= error_msg %>");
+    <% } %>
+    <% if (success_msg) { %>
+        toastr.success("<%= success_msg %>");
+    <% } %>
+</script>
+
+<script>
+    function generateCoupon() {
+        const letters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        let string = "";
+        for (let i = 0; i < 8; i++) {
+            let index = Math.floor(Math.random() * 36);
+            if (i == 0 && index == 0) {
+                --i;
+                continue;
+            }
+            string += letters[index];
+        }
+        document.getElementById('coupon_code').value = string;
+    }
+    
+</script>
+
+<script>
+  const input = document.getElementById('coupon_code');
+
+  input.addEventListener('input', () => {
+
+    input.value = input.value
+      .toUpperCase()
+      .slice(0, 8);
+  });
+</script>
+
+</body>
+
+</html>

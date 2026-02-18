@@ -1,0 +1,474 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data: data }) %>
+    <% const counters=data %>
+        <!-- Page Wrapper -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">Counters Management</h3>
+                            <p class="page-subtitle">Manage the statistics and counters displayed on your website</p>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" form="countersForm" class="btn btn-primary">
+                                <i class="ti ti-device-floppy me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Page Header -->
+                <!-- Counters Form Section -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title">Website Statistics</h5>
+                                <p class="card-subtitle">Update the counter values that appear on your
+                                    homepage and dashboard</p>
+                            </div>
+                            <div class="card-body">
+                                <!-- FORM STARTS HERE -->
+                                <form id="countersForm" action="/set/counter" method="POST">
+                                    <!-- Hidden field to indicate bulk update -->
+                                    <input type="hidden" name="bulk_update" value="true">
+
+                                    <div class="row">
+                                        <!-- Happy Customers -->
+                                        <div class="col-md-6 col-lg-3">
+                                            <div class="counter-card">
+                                                <div class="counter-icon bg-primary">
+                                                    <i class="ti ti-users"></i>
+                                                </div>
+                                                <div class="counter-details">
+                                                    <label for="happyCustomers" class="form-label">Happy
+                                                        Customers</label>
+                                                    <div class="input-group mb-3">
+                                                        <span class="input-group-text">+</span>
+                                                        <input type="number" class="form-control" id="happyCustomers"
+                                                            name="happy_customers"
+                                                            value="<%= counters.happy_customers || 0 %>" min="0"
+                                                            step="1" required>
+                                                        <span class="input-group-text">K</span>
+                                                    </div>
+                                                    <small class="text-muted">Number of satisfied
+                                                        customers (in thousands)</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Verified Vendors -->
+                                        <div class="col-md-6 col-lg-3">
+                                            <div class="counter-card">
+                                                <div class="counter-icon bg-success">
+                                                    <i class="ti ti-building-store"></i>
+                                                </div>
+                                                <div class="counter-details">
+                                                    <label for="verifiedVendors" class="form-label">Verified
+                                                        Vendors</label>
+                                                    <div class="input-group mb-3">
+                                                        <input type="number" class="form-control" id="verifiedVendors"
+                                                            name="verified_vendors"
+                                                            value="<%= counters.verified_vendors || 0 %>" min="0"
+                                                            step="1" required>
+                                                        <span class="input-group-text">+</span>
+                                                    </div>
+                                                    <small class="text-muted">Number of verified
+                                                        business partners</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- App Rating -->
+                                        <div class="col-md-6 col-lg-3">
+                                            <div class="counter-card">
+                                                <div class="counter-icon bg-warning">
+                                                    <i class="ti ti-star"></i>
+                                                </div>
+                                                <div class="counter-details">
+                                                    <label for="appRating" class="form-label">App
+                                                        Rating</label>
+                                                    <div class="input-group mb-3">
+                                                        <input type="number" class="form-control" id="appRating"
+                                                            name="app_rating" value="<%= counters.app_rating || 0 %>"
+                                                            min="0" max="5" step="0.1" required>
+                                                        <span class="input-group-text">/5</span>
+                                                    </div>
+                                                    <small class="text-muted">App Store & Play Store
+                                                        rating (0 to 5)</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Total Cities -->
+                                        <div class="col-md-6 col-lg-3">
+                                            <div class="counter-card">
+                                                <div class="counter-icon bg-info">
+                                                    <i class="ti ti-map-pin"></i>
+                                                </div>
+                                                <div class="counter-details">
+                                                    <label for="totalCities" class="form-label">Total
+                                                        Cities</label>
+                                                    <div class="input-group mb-3">
+                                                        <input type="number" class="form-control" id="totalCities"
+                                                            name="total_cities"
+                                                            value="<%= counters.total_cities || 0 %>" min="0" step="1"
+                                                            required>
+                                                        <span class="input-group-text">+</span>
+                                                    </div>
+                                                    <small class="text-muted">Number of cities where app
+                                                        is active</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Additional Statistics -->
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <h6 class="mb-3">Additional Statistics</h6>
+                                        </div>
+
+                                        <!-- Total Bookings -->
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="totalBookings" class="form-label">Total
+                                                    Bookings</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control" id="totalBookings"
+                                                        name="total_bookings"
+                                                        value="<%= counters.total_bookings || 0 %>" min="0" step="1">
+                                                    <span class="input-group-text">Bookings</span>
+                                                </div>
+                                                <small class="text-muted">Total number of bookings
+                                                    made</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Active Users -->
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="activeUsers" class="form-label">Active
+                                                    Users</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control" id="activeUsers"
+                                                        name="active_users" value="<%= counters.active_users || 0 %>"
+                                                        min="0" step="1">
+                                                    <span class="input-group-text">Users</span>
+                                                </div>
+                                                <small class="text-muted">Number of active users (last
+                                                    30 days)</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Support Rating -->
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="supportRating" class="form-label">Support
+                                                    Rating</label>
+                                                <div class="input-group">
+                                                    <input type="number" class="form-control" id="supportRating"
+                                                        name="support_rating"
+                                                        value="<%= counters.support_rating || 0 %>" min="0" max="100"
+                                                        step="1">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="text-muted">Customer support satisfaction
+                                                    rate</small>
+                                            </div>
+                                        </div>
+
+                                        <!-- App Downloads -->
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="appDownloads" class="form-label">App
+                                                    Downloads</label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">+</span>
+                                                    <input type="number" class="form-control" id="appDownloads"
+                                                        name="app_downloads" value="<%= counters.app_downloads || 0 %>"
+                                                        min="0" step="1">
+                                                    <span class="input-group-text">K</span>
+                                                </div>
+                                                <small class="text-muted">Total app downloads (in
+                                                    thousands)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Display Settings -->
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <h6 class="mb-3">Display Settings</h6>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            id="showCounters" name="show_counters"
+                                                            <%=counters.show_counters ? 'checked' : '' %>>
+                                                        <label class="form-check-label" for="showCounters">
+                                                            Show counters on homepage
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="autoUpdate"
+                                                            name="auto_update" <%=counters.auto_update ? 'checked' : ''
+                                                            %>>
+                                                        <label class="form-check-label" for="autoUpdate">
+                                                            Auto-update counters weekly
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Hidden fields for each counter key -->
+                                    <input type="hidden" name="counter_keys[]" value="happy_customers">
+                                    <input type="hidden" name="counter_keys[]" value="verified_vendors">
+                                    <input type="hidden" name="counter_keys[]" value="app_rating">
+                                    <input type="hidden" name="counter_keys[]" value="total_cities">
+                                    <input type="hidden" name="counter_keys[]" value="total_bookings">
+                                    <input type="hidden" name="counter_keys[]" value="active_users">
+                                    <input type="hidden" name="counter_keys[]" value="support_rating">
+                                    <input type="hidden" name="counter_keys[]" value="app_downloads">
+                                    <input type="hidden" name="counter_keys[]" value="show_counters">
+                                    <input type="hidden" name="counter_keys[]" value="auto_update">
+
+                                    <!-- Form Actions -->
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <div class="d-flex justify-content-end gap-2">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="ti ti-device-floppy me-2"></i>Save Changes
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" id="resetForm">
+                                                    <i class="ti ti-refresh me-2"></i>Reset to Default
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                                <!-- FORM ENDS HERE -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Counters Form Section -->
+
+                <!-- Preview Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title"><i class="ti ti-eye me-2"></i>Live Preview</h5>
+                                <p class="card-subtitle">How the counters will appear on your website
+                                </p>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-4">
+                                    <div class="col-md-3">
+                                        <div class="preview-counter bg-primary">
+                                            <div class="preview-icon">
+                                                <i class="ti ti-users"></i>
+                                            </div>
+                                            <h3 id="previewHappyCustomers">
+                                                <%= counters.happy_customers || 0 %>K+
+                                            </h3>
+                                            <p>Happy Customers</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="preview-counter bg-success">
+                                            <div class="preview-icon">
+                                                <i class="ti ti-building-store"></i>
+                                            </div>
+                                            <h3 id="previewVerifiedVendors">
+                                                <%= counters.verified_vendors || 0 %>+
+                                            </h3>
+                                            <p>Verified Vendors</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="preview-counter bg-warning">
+                                            <div class="preview-icon">
+                                                <i class="ti ti-star"></i>
+                                            </div>
+                                            <h3 id="previewAppRating">
+                                                <%= counters.app_rating || 0 %>/5
+                                            </h3>
+                                            <p>App Rating</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="preview-counter bg-info">
+                                            <div class="preview-icon">
+                                                <i class="ti ti-map-pin"></i>
+                                            </div>
+                                            <h3 id="previewTotalCities">
+                                                <%= counters.total_cities || 0 %>
+                                            </h3>
+                                            <p>Total Cities</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Preview Section -->
+
+                <!-- Usage Instructions -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title"><i class="ti ti-help me-2"></i>Usage Guidelines
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="instruction-item">
+                                            <div class="instruction-icon bg-primary">
+                                                <i class="ti ti-refresh"></i>
+                                            </div>
+                                            <h6>Regular Updates</h6>
+                                            <p class="text-muted small">Update counters monthly to keep
+                                                your statistics
+                                                fresh and engaging for visitors.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="instruction-item">
+                                            <div class="instruction-icon bg-success">
+                                                <i class="ti ti-chart-bar"></i>
+                                            </div>
+                                            <h6>Accurate Data</h6>
+                                            <p class="text-muted small">Use real data from your
+                                                analytics dashboard for
+                                                authenticity and credibility.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="instruction-item">
+                                            <div class="instruction-icon bg-info">
+                                                <i class="ti ti-device-mobile"></i>
+                                            </div>
+                                            <h6>Mobile Optimization</h6>
+                                            <p class="text-muted small">Counters are automatically
+                                                optimized for mobile
+                                                devices and tablets.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Usage Instructions -->
+            </div>
+        </div>
+        <!-- /Page Wrapper -->
+
+        <%- include('../shared/partials/footer') %>
+
+            <script>
+                $(document).ready(function () {
+                    // Update live preview as user types
+                    $('#happyCustomers').on('input', function () {
+                        $('#previewHappyCustomers').text($(this).val() + 'K+');
+                    });
+
+                    $('#verifiedVendors').on('input', function () {
+                        $('#previewVerifiedVendors').text($(this).val() + '+');
+                    });
+
+                    $('#appRating').on('input', function () {
+                        $('#previewAppRating').text($(this).val() + '/5');
+                    });
+
+                    $('#totalCities').on('input', function () {
+                        $('#previewTotalCities').text($(this).val());
+                    });
+
+                    // Reset form to default values
+                    $('#resetForm').on('click', function () {
+                        if (confirm('Reset all counters to default values?')) {
+                            // Reset main counters
+                            $('#happyCustomers').val('0');
+                            $('#verifiedVendors').val('0');
+                            $('#appRating').val('0');
+                            $('#totalCities').val('0');
+
+                            // Reset additional counters
+                            $('#totalBookings').val('0');
+                            $('#activeUsers').val('0');
+                            $('#supportRating').val('0');
+                            $('#appDownloads').val('0');
+
+                            // Reset checkboxes
+                            $('#showCounters').prop('checked', true);
+                            $('#autoUpdate').prop('checked', false);
+
+                            // Update preview
+                            $('#happyCustomers').trigger('input');
+                            $('#verifiedVendors').trigger('input');
+                            $('#appRating').trigger('input');
+                            $('#totalCities').trigger('input');
+
+                            alert('Form reset to default values!');
+                        }
+                    });
+
+                    // Form validation
+                    $('#countersForm').on('submit', function (e) {
+                        // Validate app rating (0-5)
+                        const appRating = parseFloat($('#appRating').val());
+                        if (appRating < 0 || appRating > 5) {
+                            alert('App rating must be between 0 and 5');
+                            e.preventDefault();
+                            return false;
+                        }
+
+                        // Validate support rating (0-100)
+                        const supportRating = parseFloat($('#supportRating').val());
+                        if (supportRating < 0 || supportRating > 100) {
+                            alert('Support rating must be between 0 and 100');
+                            e.preventDefault();
+                            return false;
+                        }
+
+                        // Validate all numbers are positive
+                        $('input[type="number"]').each(function () {
+                            const value = parseFloat($(this).val());
+                            if (value < 0) {
+                                alert($(this).attr('name').replace('_', ' ') + ' cannot be negative');
+                                e.preventDefault();
+                                return false;
+                            }
+                        });
+
+                        // Show loading indicator
+                        $('button[type="submit"]').html('<i class="ti ti-loader me-2"></i>Saving...').prop('disabled', true);
+
+                        // Form will submit normally if validation passes
+                        return true;
+                    });
+
+                    // Prevent negative values
+                    $('input[type="number"]').on('change', function () {
+                        if ($(this).val() < 0) {
+                            $(this).val(0);
+                        }
+                    });
+
+                    // Set initial preview values from form
+                    $('#happyCustomers').trigger('input');
+                    $('#verifiedVendors').trigger('input');
+                    $('#appRating').trigger('input');
+                    $('#totalCities').trigger('input');
+                });
+            </script>

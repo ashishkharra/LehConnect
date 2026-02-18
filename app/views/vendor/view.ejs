@@ -1,0 +1,924 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data: data }) %>
+
+    <!-- Page Wrapper -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Vendor Profile Verification</h3>
+                        <p class="page-subtitle">Review and manage vendor verification requests</p>
+                    </div>
+                    <div class="col-auto">
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="window.print()">
+                                <i class="ti ti-printer me-2"></i>Print
+                            </button>
+                            <button class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" onclick="downloadAllDocuments()"><i
+                                            class="ti ti-download me-2"></i>Download All Documents</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="sendReminder()"><i
+                                            class="ti ti-bell me-2"></i>Send Reminder</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Page Header -->
+
+            <!-- Main Content -->
+            <div class="row">
+                <!-- Left Column: Basic Info & Actions -->
+                <div class="col-lg-4">
+                    <!-- Profile Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Vendor Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-4">
+                                <div class="avatar avatar-xxl mb-3">
+                                    <% if (data.profile_image) { %>
+                                        <img src="<%= data.profile_image || '' %>"
+                                            alt="<%= data.first_name %> <%= data.last_name %>" class="rounded-circle"
+                                            onclick="openImageViewer('<%= data.profile_image %>', 'Profile Image')">
+                                        <% } else { %>
+                                            <div class="avatar-initials bg-primary">
+                                                <%= (data.first_name?.charAt(0) || '' ) + (data.last_name?.charAt(0)
+                                                    || '' ) %>
+                                            </div>
+                                            <% } %>
+                                </div>
+                                <h4>
+                                    <%= data.first_name %>
+                                        <%= data.last_name %>
+                                </h4>
+                                <p class="text-muted mb-2">ID: <%= data.id %>
+                                </p>
+                                <div class="verification-badge mb-3">
+                                    <span
+                                        class="badge bg-<%= data.verification_status === 'APPROVED' ? 'success' : 
+                                                     data.verification_status === 'REJECTED' ? 'danger' : 
+                                                     data.verification_status === 'SUBMITTED' ? 'warning' : 'secondary' %>">
+                                        <%= data.verification_status || 'PENDING' %>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td width="40%"><strong>Contact:</strong></td>
+                                    <td>
+                                        <%= data.contact || 'N/A' %>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Location:</strong></td>
+                                    <td>
+                                        <%= data.city || '' %>,
+                                            <%= data.state || '' %>,
+                                                <%= data.country || '' %>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Status:</strong></td>
+                                    <td>
+                                        <span
+                                            class="badge bg-<%= data.status === 'ACTIVE' ? 'success' : 'secondary' %>">
+                                            <%= data.status || 'INACTIVE' %>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Submitted On:</strong></td>
+                                    <td>
+                                        <%= new Date(data.submitted_on || data.create_date).toLocaleDateString('en-IN')
+                                            %>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <% if (data.about_me) { %>
+                                <div class="mt-3">
+                                    <h6>About Vendor</h6>
+                                    <p class="text-muted">
+                                        <%= data.about_me %>
+                                    </p>
+                                </div>
+                                <% } %>
+
+                                    <!-- Action Buttons -->
+                                    <div class="d-grid gap-2 mt-4">
+                                        <% if (data.verification_status==='SUBMITTED' ||
+                                            data.verification_status==='UNDER_REVIEW' ) { %>
+                                            <form action="/vendor-profile/accept" method="post" class="w-auto">
+                                                <input type="text" name="token" id="token" value="<%= data?.token %>"
+                                                    hidden>
+                                                <button class="btn btn-success btn-lg w-100">
+                                                    <i class="ti ti-check me-2"></i>Accept Profile
+                                                </button>
+                                            </form>
+                                            <button class="btn btn-danger btn-lg" onclick="openRejectModal()">
+                                                <i class="ti ti-x me-2"></i>Reject Profile
+                                            </button>
+                                            <% } else if (data.verification_status==='APPROVED' ) { %>
+                                                <button class="btn btn-warning btn-lg" onclick="revokeVerification()">
+                                                    <i class="ti ti-rotate me-2"></i>Revoke Approval
+                                                </button>
+                                                <% } else if (data.verification_status==='REJECTED' || data.verification_status==='VERIFIED') { %>
+                                                    <form action="/review/vendor" method="post">
+                                                        <input type="text" name="token" id="token"
+                                                            value="<%= data?.token %>" hidden>
+                                                        <button type="submit" class="btn btn-info btn-lg w-100">
+                                                            <i class="ti ti-refresh me-2"></i>Mark for Re-review
+                                                        </button>
+                                                    </form>
+                                                    <% } %>
+                                    </div>
+
+                                    <!-- Quick Actions -->
+                                    <div class="mt-3">
+                                        <div class="d-grid gap-2">
+                                            <a href="tel:<%= data.contact %>" class="btn btn-outline-primary">
+                                                <i class="ti ti-phone me-2"></i>Call Vendor
+                                            </a>
+                                            <button class="btn btn-outline-info" onclick="sendReminder()">
+                                                <i class="ti ti-bell me-2"></i>Send Reminder
+                                            </button>
+                                        </div>
+                                    </div>
+                        </div>
+                    </div>
+
+                    <!-- Verification Timeline -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Verification Timeline</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                <div class="timeline-item <%= data.create_date ? 'completed' : '' %>">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h6>Profile Created</h6>
+                                        <p class="text-muted small">
+                                            <%= data.create_date ? new Date(data.create_date).toLocaleDateString()
+                                                : 'Pending' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="timeline-item <%= data.submitted_on ? 'completed' : '' %>">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h6>Documents Submitted</h6>
+                                        <p class="text-muted small">
+                                            <%= data.submitted_on ? new Date(data.submitted_on).toLocaleDateString()
+                                                : 'Pending' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="timeline-item <%= data.verification_status === 'VERIFIED' ? 'completed' : 
+                                                         data.verification_status === 'REJECTED' ? 'completed' : '' %>">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h6>Verification Status</h6>
+                                        <p class="text-muted small">
+                                            <%= data.verification_status || 'Pending Review' %>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Documents -->
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Aadhaar Card Verification</h5>
+                            <div class="document-actions">
+                                <% if (data.aadhaar_front_image || data.aadhaar_back_image) { %>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="downloadAadhaarImages()">
+                                        <i class="ti ti-download me-1"></i> Download Both
+                                    </button>
+                                    <% } %>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="document-viewer">
+                                        <div class="document-header">
+                                            <h6>Aadhaar Front Side</h6>
+                                            <% if (data.aadhaar_front_image) { %>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="downloadImage('<%= data.aadhaar_front_image %>', 'aadhaar-front')">
+                                                    <i class="ti ti-download"></i>
+                                                </button>
+                                                <% } %>
+                                        </div>
+                                        <div class="document-preview">
+                                            <% if (data.aadhaar_front_image) { %>
+                                                <img src="<%= data.aadhaar_front_image %>" alt="Aadhaar Front"
+                                                    class="img-fluid document-image"
+                                                    onclick="openImageViewer('<%= data.aadhaar_front_image %>', 'Aadhaar Front')">
+                                                <div class="document-overlay">
+                                                    <button class="btn btn-light"
+                                                        onclick="openImageViewer('<%= data.aadhaar_front_image %>', 'Aadhaar Front')">
+                                                        <i class="ti ti-zoom-in"></i> View Full
+                                                    </button>
+                                                </div>
+                                                <% } else { %>
+                                                    <div class="document-placeholder">
+                                                        <i class="ti ti-id" style="font-size: 3rem;"></i>
+                                                        <p class="mt-2 text-muted">No front image uploaded</p>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="document-viewer">
+                                        <div class="document-header">
+                                            <h6>Aadhaar Back Side</h6>
+                                            <% if (data.aadhaar_back_image) { %>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="downloadImage('<%= data.aadhaar_back_image %>', 'aadhaar-back')">
+                                                    <i class="ti ti-download"></i>
+                                                </button>
+                                                <% } %>
+                                        </div>
+                                        <div class="document-preview">
+                                            <% if (data.aadhaar_back_image) { %>
+                                                <img src="<%= data.aadhaar_back_image %>" alt="Aadhaar Back"
+                                                    class="img-fluid document-image"
+                                                    onclick="openImageViewer('<%= data.aadhaar_back_image %>', 'Aadhaar Back')">
+                                                <div class="document-overlay">
+                                                    <button class="btn btn-light"
+                                                        onclick="openImageViewer('<%= data.aadhaar_back_image %>', 'Aadhaar Back')">
+                                                        <i class="ti ti-zoom-in"></i> View Full
+                                                    </button>
+                                                </div>
+                                                <% } else { %>
+                                                    <div class="document-placeholder">
+                                                        <i class="ti ti-id" style="font-size: 3rem;"></i>
+                                                        <p class="mt-2 text-muted">No back image uploaded</p>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <i class="ti ti-info-circle me-2"></i>
+                                <strong>Verification Guidelines:</strong>
+                                <ul class="mb-0 mt-2 small">
+                                    <li>Check that Aadhaar images are clear and readable</li>
+                                    <li>Verify that the Aadhaar number matches on both sides</li>
+                                    <li>Ensure the document is not expired</li>
+                                    <li>Check for any signs of tampering or editing</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Driving License Verification</h5>
+                            <div class="document-actions">
+                                <% if (data.dl_front_image || data.dl_back_image) { %>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="downloadLicenseImages()">
+                                        <i class="ti ti-download me-1"></i> Download Both
+                                    </button>
+                                    <% } %>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="document-viewer">
+                                        <div class="document-header">
+                                            <h6>Driving License Front</h6>
+                                            <% if (data.dl_front_image) { %>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="downloadImage('<%= data.dl_front_image %>', 'dl-front')">
+                                                    <i class="ti ti-download"></i>
+                                                </button>
+                                                <% } %>
+                                        </div>
+                                        <div class="document-preview">
+                                            <% if (data.dl_front_image) { %>
+                                                <img src="<%= data.dl_front_image %>" alt="DL Front"
+                                                    class="img-fluid document-image"
+                                                    onclick="openImageViewer('<%= data.dl_front_image %>', 'Driving License Front')">
+                                                <div class="document-overlay">
+                                                    <button class="btn btn-light"
+                                                        onclick="openImageViewer('<%= data.dl_front_image %>', 'Driving License Front')">
+                                                        <i class="ti ti-zoom-in"></i> View Full
+                                                    </button>
+                                                </div>
+                                                <% } else { %>
+                                                    <div class="document-placeholder">
+                                                        <i class="ti ti-license" style="font-size: 3rem;"></i>
+                                                        <p class="mt-2 text-muted">No front image uploaded</p>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="document-viewer">
+                                        <div class="document-header">
+                                            <h6>Driving License Back</h6>
+                                            <% if (data.dl_back_image) { %>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="downloadImage('<%= data.dl_back_image %>', 'dl-back')">
+                                                    <i class="ti ti-download"></i>
+                                                </button>
+                                                <% } %>
+                                        </div>
+                                        <div class="document-preview">
+                                            <% if (data.dl_back_image) { %>
+                                                <img src="<%= data.dl_back_image %>" alt="DL Back"
+                                                    class="img-fluid document-image"
+                                                    onclick="openImageViewer('<%= data.dl_back_image %>', 'Driving License Back')">
+                                                <div class="document-overlay">
+                                                    <button class="btn btn-light"
+                                                        onclick="openImageViewer('<%= data.dl_back_image %>', 'Driving License Back')">
+                                                        <i class="ti ti-zoom-in"></i> View Full
+                                                    </button>
+                                                </div>
+                                                <% } else { %>
+                                                    <div class="document-placeholder">
+                                                        <i class="ti ti-license" style="font-size: 3rem;"></i>
+                                                        <p class="mt-2 text-muted">No back image uploaded</p>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Vehicle Information</h5>
+                            <div class="document-actions">
+                                <% if (data.vehicle_image) { %>
+                                    <button class="btn btn-sm btn-outline-primary"
+                                        onclick="downloadImage('<%= data.vehicle_image %>', 'vehicle')">
+                                        <i class="ti ti-download me-1"></i> Download
+                                    </button>
+                                    <% } %>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="document-viewer">
+                                        <div class="document-header">
+                                            <h6>Vehicle Image</h6>
+                                        </div>
+                                        <div class="document-preview">
+                                            <% if (data.vehicle_image) { %>
+                                                <img src="<%= data.vehicle_image %>" alt="Vehicle"
+                                                    class="img-fluid document-image"
+                                                    onclick="openImageViewer('<%= data.vehicle_image %>', 'Vehicle Image')">
+                                                <div class="document-overlay">
+                                                    <button class="btn btn-light"
+                                                        onclick="openImageViewer('<%= data.vehicle_image %>', 'Vehicle Image')">
+                                                        <i class="ti ti-zoom-in"></i> View Full
+                                                    </button>
+                                                </div>
+                                                <% } else { %>
+                                                    <div class="document-placeholder">
+                                                        <i class="ti ti-car" style="font-size: 3rem;"></i>
+                                                        <p class="mt-2 text-muted">No vehicle image uploaded</p>
+                                                    </div>
+                                                    <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                                        <i class="ti ti-arrow-left me-2"></i>Back to List
+                                    </button>
+                                </div>
+                                <div class="btn-group">
+                                    <% if (data.verification_status==='SUBMITTED' ||
+                                        data.verification_status==='UNDER_REVIEW' ) { %>
+                                        <button class="btn btn-danger me-2" onclick="rejectVendor()">
+                                            <i class="ti ti-x me-2"></i>Reject Profile
+                                        </button>
+                                        <form action="/vendor-profile/accept" method="post">
+                                            <input type="text" name="token" id="token" value="<%= data?.token %>"
+                                                hidden>
+                                            <button class="btn btn-success btn-lg">
+                                                <i class="ti ti-check me-2"></i>Accept Profile
+                                            </button>
+                                        </form>
+                                        <% } else if (data.verification_status==='APPROVED' ) { %>
+                                            <button class="btn btn-warning" onclick="revokeVerification()">
+                                                <i class="ti ti-rotate me-2"></i>Revoke Approval
+                                            </button>
+                                            <% } else if (data.verification_status==='REJECTED' || data.verification_status==='VERIFIED') { %>
+                                                <form action="/review/vendor">
+                                                    <input type="text" name="token" value="<%= data?.token %>" hidden>
+                                                    <button type="submit" class="btn btn-info">
+                                                        <i class="ti ti-refresh me-2"></i>Mark for Re-review
+                                                    </button>
+                                                </form>
+                                                <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img src="" alt="" class="img-fluid" id="fullSizeImage">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(-90)">
+                        <i class="ti ti-rotate-2"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="rotateImage(90)">
+                        <i class="ti ti-rotate-clockwise-2"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="zoomIn()">
+                        <i class="ti ti-zoom-in"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="zoomOut()">
+                        <i class="ti ti-zoom-out"></i>
+                    </button>
+                    <button type="button" class="btn btn-primary" id="downloadModalImageBtn">
+                        <i class="ti ti-download me-2"></i>Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject Vendor Verification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" action="/vendor-profile/action">
+                    <div class="modal-body">
+
+                        <input type="hidden" name="token" value="<%= data.token %>">
+                        <input type="hidden" name="action" value="reject">
+
+                        <div class="mb-3">
+                            <label for="rejectionReason" class="form-label">
+                                Reason for Rejection <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="rejectionReason" name="reject_reason_code" required>
+                                <option value="">Select a reason</option>
+                                <option value="INVALID_DOCUMENTS">Invalid Documents</option>
+                                <option value="BLURRED_IMAGES">Blurred/Unclear Images</option>
+                                <option value="INCOMPLETE_DOCUMENTS">Incomplete Documents</option>
+                                <option value="DOCUMENT_MISMATCH">Document Information Mismatch</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rejectionNotes" class="form-label">
+                                Additional Notes
+                            </label>
+                            <textarea class="form-control" id="rejectionNotes" name="reject_notes" rows="3"
+                                placeholder="Provide specific details..."></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            Reject Vendor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="rejectVendorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                        Reject Vendor Profile
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <form method="POST" action="/vendor-profile/reject">
+                    <div class="modal-body">
+
+                        <input type="hidden" name="token" value="<%= data.token %>">
+                        <input type="hidden" name="action" value="reject">
+
+                        <div class="mb-3">
+                            <label for="rejectionReason" class="form-label">
+                                Reason for Rejection <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="rejectionReason" name="reject_reason_code" required>
+                                <option value="">Select a reason</option>
+                                <option value="INVALID_DOCUMENTS">Invalid Documents</option>
+                                <option value="BLURRED_IMAGES">Blurred/Unclear Images</option>
+                                <option value="INCOMPLETE_DOCUMENTS">Incomplete Documents</option>
+                                <option value="DOCUMENT_MISMATCH">Document Information Mismatch</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rejectionNotes" class="form-label">
+                                Additional Notes
+                            </label>
+                            <textarea class="form-control" id="rejectionNotes" name="reject_notes" rows="3"
+                                placeholder="Provide specific details..."></textarea>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-danger">
+                            Reject Vendor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let rejectModal;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            rejectModal = new bootstrap.Modal(
+                document.getElementById('rejectVendorModal')
+            );
+        });
+
+        function openRejectModal() {
+            rejectModal.show();
+        }
+    </script>
+
+
+    <%- include('../shared/partials/footer') %>
+
+
+        <script>
+            // Current image state for modal
+            let currentRotation = 0;
+            let currentScale = 1;
+            let currentImageUrl = '';
+
+            document.addEventListener('DOMContentLoaded', function () {
+                // Initialize tooltips
+                const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl);
+                });
+
+                // Setup modal download button
+                document.getElementById('downloadModalImageBtn').addEventListener('click', downloadCurrentImage);
+
+                // Setup confirm rejection button
+                document.getElementById('confirmRejectBtn').addEventListener('click', confirmRejection);
+            });
+
+            // Image viewer functions
+            function openImageViewer(imageUrl, title) {
+                currentImageUrl = imageUrl;
+                currentRotation = 0;
+                currentScale = 1;
+
+                document.getElementById('fullSizeImage').src = imageUrl;
+                document.getElementById('imageModalLabel').textContent = title;
+                document.getElementById('fullSizeImage').style.transform = 'rotate(0deg) scale(1)';
+
+                const modal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+                modal.show();
+            }
+
+            function rotateImage(degrees) {
+                currentRotation += degrees;
+                const image = document.getElementById('fullSizeImage');
+                image.style.transform = `rotate(${currentRotation}deg) scale(${currentScale})`;
+            }
+
+            function zoomIn() {
+                currentScale += 0.1;
+                const image = document.getElementById('fullSizeImage');
+                image.style.transform = `rotate(${currentRotation}deg) scale(${currentScale})`;
+            }
+
+            function zoomOut() {
+                if (currentScale > 0.2) {
+                    currentScale -= 0.1;
+                    const image = document.getElementById('fullSizeImage');
+                    image.style.transform = `rotate(${currentRotation}deg) scale(${currentScale})`;
+                }
+            }
+
+            function resetImage() {
+                currentRotation = 0;
+                currentScale = 1;
+                const image = document.getElementById('fullSizeImage');
+                image.style.transform = 'rotate(0deg) scale(1)';
+            }
+
+            // Download functions
+            function downloadImage(imageUrl, fileName) {
+                if (!imageUrl) {
+                    showToast('warning', 'No image available to download');
+                    return;
+                }
+
+                fetch(imageUrl)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${fileName}-${Date.now()}.${imageUrl.split('.').pop().split('?')[0]}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        showToast('success', 'Image downloaded successfully');
+                    })
+                    .catch(error => {
+                        console.error('Download error:', error);
+                        showToast('error', 'Failed to download image');
+                    });
+            }
+
+            function downloadCurrentImage() {
+                if (currentImageUrl) {
+                    const fileName = currentImageUrl.split('/').pop().split('?')[0];
+                    downloadImage(currentImageUrl, fileName);
+                }
+            }
+
+            function downloadAadhaarImages() {
+                const images = [
+                    { url: '<%= data.aadhaar_front_image %>', name: 'aadhaar-front' },
+                    { url: '<%= data.aadhaar_back_image %>', name: 'aadhaar-back' }
+                ].filter(img => img.url);
+
+                if (images.length === 0) {
+                    showToast('warning', 'No Aadhaar images available');
+                    return;
+                }
+
+                images.forEach((img, index) => {
+                    setTimeout(() => downloadImage(img.url, img.name), index * 1000);
+                });
+            }
+
+            function downloadLicenseImages() {
+                const images = [
+                    { url: '<%= data.dl_front_image %>', name: 'dl-front' },
+                    { url: '<%= data.dl_back_image %>', name: 'dl-back' }
+                ].filter(img => img.url);
+
+                if (images.length === 0) {
+                    showToast('warning', 'No license images available');
+                    return;
+                }
+
+                images.forEach((img, index) => {
+                    setTimeout(() => downloadImage(img.url, img.name), index * 1000);
+                });
+            }
+
+            function downloadAllDocuments() {
+                const images = [
+                    { url: '<%= data.profile_image %>', name: 'profile' },
+                    { url: '<%= data.aadhaar_front_image %>', name: 'aadhaar-front' },
+                    { url: '<%= data.aadhaar_back_image %>', name: 'aadhaar-back' },
+                    { url: '<%= data.dl_front_image %>', name: 'dl-front' },
+                    { url: '<%= data.dl_back_image %>', name: 'dl-back' },
+                    { url: '<%= data.vehicle_image %>', name: 'vehicle' }
+                ].filter(img => img.url);
+
+                if (images.length === 0) {
+                    showToast('warning', 'No documents available to download');
+                    return;
+                }
+
+                showToast('info', `Downloading ${images.length} files...`);
+
+                images.forEach((img, index) => {
+                    setTimeout(() => downloadImage(img.url, img.name), index * 1000);
+                });
+            }
+
+            function rejectVendor() {
+                // Show rejection modal for reason
+                const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+                modal.show();
+            }
+
+            function confirmRejection() {
+                const reason = document.getElementById('rejectionReason').value;
+                const notes = document.getElementById('rejectionNotes').value;
+                const verificationNotes = document.getElementById('verificationNotes')?.value || '';
+
+                if (!reason) {
+                    showToast('warning', 'Please select a reason for rejection');
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to reject this vendor?')) return;
+
+                fetch(`/admin/vendors/<%= data.id %>/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'REJECT',
+                        verification_status: 'REJECTED',
+                        rejection_reason: reason,
+                        rejection_notes: notes,
+                        notes: verificationNotes
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Vendor rejected successfully!');
+
+                            // Send socket notification if available
+                            if (typeof socket !== 'undefined') {
+                                socket.emit('vendor-verified', {
+                                    vendorId: '<%= data.id %>',
+                                    vendorName: '<%= data.first_name %> <%= data.last_name %>',
+                                    status: 'REJECTED',
+                                    reason: reason,
+                                    message: 'Your verification request has been rejected. Please check the reason.'
+                                });
+                            }
+
+                            // Hide modal and reload page
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('rejectModal'));
+                            modal.hide();
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showToast('error', data.message || 'Failed to reject vendor');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('error', 'An error occurred while rejecting vendor');
+                    });
+            }
+
+            function revokeVerification() {
+                if (!confirm('Are you sure you want to revoke this vendor\'s verification?')) return;
+
+                fetch(`/admin/vendors/<%= data.id %>/verify`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'REVOKE',
+                        verification_status: 'SUBMITTED'
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Verification revoked successfully!');
+                            setTimeout(() => location.reload(), 2000);
+                        } else {
+                            showToast('error', data.message || 'Failed to revoke verification');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('error', 'An error occurred');
+                    });
+            }
+
+            function sendReminder() {
+                if (!confirm('Send reminder to vendor about verification?')) return;
+
+                fetch(`/admin/vendors/<%= data.id %>/remind`, {
+                    method: 'POST'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Reminder sent successfully!');
+
+                            // Send socket notification if available
+                            if (typeof socket !== 'undefined') {
+                                socket.emit('verification-reminder', {
+                                    vendorId: '<%= data.id %>',
+                                    vendorName: '<%= data.first_name %> <%= data.last_name %>',
+                                    message: 'Please complete your verification process.'
+                                });
+                            }
+                        } else {
+                            showToast('error', data.message || 'Failed to send reminder');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('error', 'An error occurred');
+                    });
+            }
+
+            // Toast notification function
+            function showToast(type, message) {
+                // Create toast element
+                const toast = document.createElement('div');
+                toast.className = `toast align-items-center text-white bg-${type} border-0`;
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.setAttribute('aria-atomic', 'true');
+
+                toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+
+                // Add to container
+                const container = document.querySelector('.toast-container');
+                if (!container) {
+                    const newContainer = document.createElement('div');
+                    newContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                    document.body.appendChild(newContainer);
+                    newContainer.appendChild(toast);
+                } else {
+                    container.appendChild(toast);
+                }
+
+                // Initialize and show
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+
+                // Remove after hide
+                toast.addEventListener('hidden.bs.toast', function () {
+                    toast.remove();
+                });
+            }
+        </script> -->

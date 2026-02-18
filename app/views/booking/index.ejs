@@ -1,0 +1,1332 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+        <!-- Page Wrapper -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">Booking Management</h3>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-success btn-md ms-2" id="exportBookings">
+                                <i class="ti ti-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Page Header -->
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">1,847</h3>
+                                    <p class="mb-0">Total Bookings</p>
+                                </div>
+                                <div class="stats-icon bg-white text-primary">
+                                    <i class="ti ti-calendar-event"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-warning text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">128</h3>
+                                    <p class="mb-0">Pending</p>
+                                </div>
+                                <div class="stats-icon bg-white text-warning">
+                                    <i class="ti ti-clock"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">1,245</h3>
+                                    <p class="mb-0">Confirmed</p>
+                                </div>
+                                <div class="stats-icon bg-white text-success">
+                                    <i class="ti ti-check"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-danger text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">₹42.8L</h3>
+                                    <p class="mb-0">Revenue</p>
+                                </div>
+                                <div class="stats-icon bg-white text-danger">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Statistics Cards -->
+
+                <!-- Detailed Statistics -->
+                <div class="row mb-4">
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Completed</h6>
+                                    <h4 class="mb-0 text-success">984</h4>
+                                </div>
+                                <div class="icon-bg bg-success">
+                                    <i class="ti ti-checkbox"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Cancelled</h6>
+                                    <h4 class="mb-0 text-danger">45</h4>
+                                </div>
+                                <div class="icon-bg bg-danger">
+                                    <i class="ti ti-x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">In Progress</h6>
+                                    <h4 class="mb-0 text-info">312</h4>
+                                </div>
+                                <div class="icon-bg bg-info">
+                                    <i class="ti ti-refresh"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Upcoming</h6>
+                                    <h4 class="mb-0 text-primary">398</h4>
+                                </div>
+                                <div class="icon-bg bg-primary">
+                                    <i class="ti ti-calendar-time"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">No Show</h6>
+                                    <h4 class="mb-0 text-warning">18</h4>
+                                </div>
+                                <div class="icon-bg bg-warning">
+                                    <i class="ti ti-user-x"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 col-sm-4">
+                        <div class="stats-small-card">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">Refunded</h6>
+                                    <h4 class="mb-0 text-purple">32</h4>
+                                </div>
+                                <div class="icon-bg bg-purple">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Detailed Statistics -->
+
+                <!-- Filter & Search Section -->
+                <div class="filter-section">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="search-box">
+                                <i class="ti ti-search"></i>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search bookings...">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="statusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="refunded">Refunded</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="serviceFilter">
+                                <option value="">All Services</option>
+                                <option value="hotel">Hotel Booking</option>
+                                <option value="taxi">Taxi Service</option>
+                                <option value="tour">Tour Package</option>
+                                <option value="flight">Flight Booking</option>
+                                <option value="insurance">Insurance</option>
+                                <option value="restaurant">Restaurant</option>
+                                <option value="activity">Activity</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-control select2" id="paymentFilter">
+                                <option value="">Payment Status</option>
+                                <option value="paid">Paid</option>
+                                <option value="unpaid">Unpaid</option>
+                                <option value="partial">Partially Paid</option>
+                                <option value="refunded">Refunded</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <input type="text" class="form-control datepicker" id="dateRange" placeholder="Select Date Range">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <button class="btn btn-primary w-100" id="applyFilter">
+                                <i class="ti ti-filter me-2"></i>Apply Filters
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary w-100" id="clearFilters">
+                                <i class="ti ti-x me-2"></i>Clear All
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap gap-2 justify-content-end">
+                                <button class="btn btn-outline-primary btn-sm active">All Bookings</button>
+                                <button class="btn btn-outline-primary btn-sm">Today</button>
+                                <button class="btn btn-outline-primary btn-sm">This Week</button>
+                                <button class="btn btn-outline-primary btn-sm">This Month</button>
+                                <button class="btn btn-outline-primary btn-sm">High Value</button>
+                                <button class="btn btn-outline-primary btn-sm">Urgent</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Filter & Search Section -->
+
+                <!-- Bookings Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-center mb-0" id="bookingsTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Booking ID</th>
+                                                <th>Customer & Service</th>
+                                                <th>Vendor</th>
+                                                <th>Booking Dates</th>
+                                                <th>Amount</th>
+                                                <th>Payment</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Booking 1 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230501</strong>
+                                                    <div class="text-muted small">Created: 05/01/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-01.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Rajesh Kumar</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-bed me-1"></i>
+                                                                Deluxe Room (3 nights)
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Mountain View Hotel
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-01.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Mountain View</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 10 - 13, 2024</span>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Check-in: 2:00 PM
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹13,500</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV001
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Paid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-credit-card me-1"></i>
+                                                        Card
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Completed</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-star me-1"></i>
+                                                        Rated: 5.0
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-receipt me-2"></i>Receipt
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                            <a class="dropdown-item text-danger" href="#">
+                                                                <i class="ti ti-trash me-2"></i>Cancel
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 2 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230502</strong>
+                                                    <div class="text-muted small">Created: 05/02/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-02.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Priya Sharma</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-home me-1"></i>
+                                                                Family Suite (5 nights)
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Stok Palace Hotel
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-06.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Stok Palace</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 15 - 20, 2024</span>
+                                                        </div>
+                                                        <div class="text-success small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Upcoming
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹40,000</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV002
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Paid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-wallet me-1"></i>
+                                                        UPI
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">Confirmed</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-bell me-1"></i>
+                                                        Reminder sent
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-bell me-2"></i>Send Reminder
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                            <a class="dropdown-item text-warning" href="#">
+                                                                <i class="ti ti-clock me-2"></i>Reschedule
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 3 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230503</strong>
+                                                    <div class="text-muted small">Created: 05/03/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-03.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Amit Patel</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-car me-1"></i>
+                                                                Airport Transfer
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Ladakh Taxi Service
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-02.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Ladakh Taxi</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 12, 2024</span>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Pickup: 10:30 AM
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹1,500</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV003
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Paid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-credit-card me-1"></i>
+                                                        Card
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Completed</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-star me-1"></i>
+                                                        Rated: 4.5
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-receipt me-2"></i>Receipt
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 4 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230504</strong>
+                                                    <div class="text-muted small">Created: 05/04/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-04.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Sneha Reddy</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-hiking me-1"></i>
+                                                                Pangong Lake Tour
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Himalayan Trek Guides
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-04.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Himalayan Trek</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 18, 2024</span>
+                                                        </div>
+                                                        <div class="text-info small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            In Progress
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹6,000</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV004
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning">Partial</span>
+                                                    <div class="text-muted small mt-1">
+                                                        ₹3,000 paid
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-info">In Progress</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-map-pin me-1"></i>
+                                                        On Tour
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-credit-card me-2"></i>Collect Payment
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                            <a class="dropdown-item text-danger" href="#">
+                                                                <i class="ti ti-x me-2"></i>Cancel
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 5 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230505</strong>
+                                                    <div class="text-muted small">Created: 05/05/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-05.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Rohit Verma</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-cottage me-1"></i>
+                                                                Luxury Villa (2 nights)
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Nubra Valley Camp
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-03.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Nubra Valley</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 22 - 24, 2024</span>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Upcoming
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹30,000</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV005
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-danger">Unpaid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-clock me-1"></i>
+                                                        Due: May 20
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-warning">Pending</span>
+                                                    <div class="text-danger small mt-1">
+                                                        <i class="ti ti-alert-circle me-1"></i>
+                                                        Payment pending
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-credit-card me-2"></i>Collect Payment
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                            <a class="dropdown-item text-danger" href="#">
+                                                                <i class="ti ti-x me-2"></i>Cancel
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 6 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230506</strong>
+                                                    <div class="text-muted small">Created: 05/06/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-06.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Michael Smith</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-plane me-1"></i>
+                                                                Delhi-Leh Flight
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Flight Booking
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-08.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Air India</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 25, 2024</span>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Departure: 8:00 AM
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹12,500</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV006
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Paid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-credit-card me-1"></i>
+                                                        Card
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary">Confirmed</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-ticket me-1"></i>
+                                                        E-ticket sent
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-ticket me-2"></i>E-Ticket
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                            <a class="dropdown-item text-warning" href="#">
+                                                                <i class="ti ti-clock me-2"></i>Reschedule
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 7 -->
+                                            <tr>
+                                                <td>
+                                                    <strong>#BK230507</strong>
+                                                    <div class="text-muted small">Created: 05/07/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-07.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Anjali Desai</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-shield-check me-1"></i>
+                                                                Travel Insurance
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Insurance Provider
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-09.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Travel Shield</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 10 - 20, 2024</span>
+                                                        </div>
+                                                        <div class="text-muted small">
+                                                            <i class="ti ti-clock me-1"></i>
+                                                            Policy active
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-success">₹2,500</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV007
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Paid</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-wallet me-1"></i>
+                                                        UPI
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">Active</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-file-certificate me-1"></i>
+                                                        Policy issued
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-certificate me-2"></i>Policy
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-edit me-2"></i>Edit
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+
+                                            <!-- Booking 8 -->
+                                            <tr class="cancelled-booking">
+                                                <td>
+                                                    <strong>#BK230508</strong>
+                                                    <div class="text-muted small">Created: 05/08/24</div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-sm me-3">
+                                                            <img src="/assets/img/profiles/avatar-08.jpg" alt="Customer" class="img-fluid rounded-circle">
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-1">Vikram Singh</h6>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-coffee me-1"></i>
+                                                                Buffet Breakfast
+                                                            </p>
+                                                            <p class="text-muted small mb-0">
+                                                                <i class="ti ti-building-store me-1"></i>
+                                                                Tibetan Kitchen
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="avatar avatar-xs me-2">
+                                                            <img src="/assets/img/store/store-07.png" alt="Vendor">
+                                                        </div>
+                                                        <span>Tibetan Kitchen</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="booking-dates">
+                                                        <div class="d-flex align-items-center mb-1">
+                                                            <i class="ti ti-calendar-event me-2 text-primary"></i>
+                                                            <span>May 12, 2024</span>
+                                                        </div>
+                                                        <div class="text-danger small">
+                                                            <i class="ti ti-x me-1"></i>
+                                                            Cancelled
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <h6 class="mb-1 text-muted">₹0</h6>
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="ti ti-receipt me-1"></i>
+                                                        Invoice: INV008
+                                                    </p>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-purple">Refunded</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-currency-rupee me-1"></i>
+                                                        ₹500 refunded
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-danger">Cancelled</span>
+                                                    <div class="text-muted small mt-1">
+                                                        <i class="ti ti-clock me-1"></i>
+                                                        May 10, 2024
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                            <i class="ti ti-settings"></i>
+                                                        </button>
+                                                        <div class="dropdown-menu dropdown-menu-end">
+                                                            <a class="dropdown-item" href="booking-details.html">
+                                                                <i class="ti ti-eye me-2"></i>View Details
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-file-invoice me-2"></i>Invoice
+                                                            </a>
+                                                            <a class="dropdown-item" href="#">
+                                                                <i class="ti ti-currency-rupee me-2"></i>Refund Details
+                                                            </a>
+                                                            <div class="dropdown-divider"></div>
+                                                            <a class="dropdown-item text-success" href="#">
+                                                                <i class="ti ti-refresh me-2"></i>Re-book
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Bookings Table -->
+
+                <!-- Pagination -->
+                <div class="row">
+                    <div class="col-12">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item disabled">
+                                    <a class="page-link" href="#">
+                                        <i class="ti ti-chevron-left"></i>
+                                    </a>
+                                </li>
+                                
+                                <li class="page-item active">
+                                    <a class="page-link" href="?page=1">1</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=2">2</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=3">3</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=4">4</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=5">5</a>
+                                </li>
+                                
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=2">
+                                        <i class="ti ti-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+                <!-- /Pagination -->
+
+                <!-- Summary & Actions -->
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Booking Insights</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Average Booking Value</h6>
+                                            <h4 class="text-success">₹23,185</h4>
+                                            <p class="text-muted small">+12% from last month</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Conversion Rate</h6>
+                                            <h4 class="text-primary">68%</h4>
+                                            <p class="text-muted small">Inquiry to booking</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Cancellation Rate</h6>
+                                            <h4 class="text-danger">2.4%</h4>
+                                            <p class="text-muted small">-0.5% from last month</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Peak Booking Time</h6>
+                                            <h4 class="text-warning">7:00 PM</h4>
+                                            <p class="text-muted small">Most bookings created</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Top Service</h6>
+                                            <h4 class="text-info">Hotel Booking</h4>
+                                            <p class="text-muted small">65% of all bookings</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="insight-item">
+                                            <h6 class="mb-1">Customer Satisfaction</h6>
+                                            <h4 class="text-success">4.7/5.0</h4>
+                                            <p class="text-muted small">Based on 892 reviews</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Quick Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-outline-primary" id="sendReminders">
+                                        <i class="ti ti-bell me-2"></i>Send Reminders
+                                    </button>
+                                    <button class="btn btn-outline-success" id="generateReport">
+                                        <i class="ti ti-chart-bar me-2"></i>Generate Report
+                                    </button>
+                                    <button class="btn btn-outline-warning" id="checkOverdue">
+                                        <i class="ti ti-alert-circle me-2"></i>Check Overdue Payments
+                                    </button>
+                                    <button class="btn btn-outline-info" id="viewCalendar">
+                                        <i class="ti ti-calendar me-2"></i>View Calendar
+                                    </button>
+                                    <button class="btn btn-outline-danger" id="cancelBookings">
+                                        <i class="ti ti-x me-2"></i>Batch Cancellation
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Summary & Actions -->
+            </div>
+        </div>
+        <!-- /Page Wrapper -->
+
+        <!-- Quick View Modal -->
+        <div class="modal fade" id="quickViewModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Booking Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <h6>Booking Information</h6>
+                                    <p><strong>ID:</strong> #BK230501</p>
+                                    <p><strong>Service:</strong> Deluxe Room (3 nights)</p>
+                                    <p><strong>Dates:</strong> May 10 - 13, 2024</p>
+                                    <p><strong>Guests:</strong> 2 Adults, 1 Child</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <h6>Payment Information</h6>
+                                    <p><strong>Amount:</strong> ₹13,500</p>
+                                    <p><strong>Status:</strong> <span class="badge bg-success">Paid</span></p>
+                                    <p><strong>Method:</strong> Credit Card</p>
+                                    <p><strong>Transaction ID:</strong> TXN123456</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <h6>Customer Information</h6>
+                                    <p><strong>Name:</strong> Rajesh Kumar</p>
+                                    <p><strong>Email:</strong> rajesh@email.com</p>
+                                    <p><strong>Phone:</strong> +91 9876543210</p>
+                                    <p><strong>Special Request:</strong> Early check-in requested</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <h6>Vendor Information</h6>
+                                    <p><strong>Vendor:</strong> Mountain View Hotel</p>
+                                    <p><strong>Contact:</strong> +91 9876543211</p>
+                                    <p><strong>Commission:</strong> 15% (₹2,025)</p>
+                                    <p><strong>Status:</strong> Service completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <a href="booking-details.html" class="btn btn-primary">View Full Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /Quick View Modal -->
+    </div>
+    <!-- /Main Wrapper -->
+
+    <!-- Booking Management Custom JS -->
+    <script>
+        $(document).ready(function() {
+            // Initialize Select2
+            $('.select2').select2({
+                width: '100%'
+            });
+
+            // Initialize Date Range Picker
+            $('#dateRange').daterangepicker({
+                opens: 'left',
+                locale: {
+                    format: 'YYYY-MM-DD'
+                }
+            });
+
+            // Search functionality
+            $('#searchInput').on('keyup', function() {
+                var value = $(this).val().toLowerCase();
+                $('#bookingsTable tbody tr').filter(function() {
+                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+                });
+            });
+
+            // Filter functionality
+            $('#applyFilter').on('click', function() {
+                applyFilters();
+            });
+
+            // Clear filters
+            $('#clearFilters').on('click', function() {
+                $('#searchInput').val('');
+                $('#statusFilter').val('').trigger('change');
+                $('#serviceFilter').val('').trigger('change');
+                $('#paymentFilter').val('').trigger('change');
+                $('#dateRange').val('');
+                $('#bookingsTable tbody tr').show();
+            });
+
+            // Export functionality
+            $('#exportBookings').on('click', function() {
+                alert('Exporting booking data to Excel (demo)');
+            });
+
+            // Quick action buttons
+            $('#sendReminders').on('click', function() {
+                alert('Sending reminders to upcoming bookings (demo)');
+            });
+
+            $('#generateReport').on('click', function() {
+                alert('Generating booking analytics report (demo)');
+            });
+
+            $('#checkOverdue').on('click', function() {
+                alert('Checking for overdue payments (demo)');
+            });
+
+            $('#viewCalendar').on('click', function() {
+                alert('Opening booking calendar view (demo)');
+            });
+
+            $('#cancelBookings').on('click', function() {
+                alert('Opening batch cancellation interface (demo)');
+            });
+
+            // Quick view on row click
+            $('#bookingsTable tbody tr').on('click', function(e) {
+                if (!$(e.target).closest('.dropdown, .dropdown-toggle, .dropdown-menu').length) {
+                    $('#quickViewModal').modal('show');
+                }
+            });
+
+            // Apply filters function
+            function applyFilters() {
+                var status = $('#statusFilter').val();
+                var service = $('#serviceFilter').val();
+                var payment = $('#paymentFilter').val();
+                var searchTerm = $('#searchInput').val().toLowerCase();
+                
+                $('#bookingsTable tbody tr').each(function() {
+                    var row = $(this);
+                    var rowStatus = row.find('td:nth-child(7) .badge').first().text().toLowerCase();
+                    var rowService = row.find('td:nth-child(2)').text().toLowerCase();
+                    var rowPayment = row.find('td:nth-child(6) .badge').text().toLowerCase();
+                    var rowText = row.text().toLowerCase();
+                    
+                    var show = true;
+                    
+                    if (status && !rowStatus.includes(status)) {
+                        show = false;
+                    }
+                    
+                    if (service && !rowService.includes(service)) {
+                        show = false;
+                    }
+                    
+                    if (payment && !rowPayment.includes(payment)) {
+                        show = false;
+                    }
+                    
+                    if (searchTerm && rowText.indexOf(searchTerm) === -1) {
+                        show = false;
+                    }
+                    
+                    if (show) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            }
+
+            // Quick filter buttons
+            $('.btn-outline-primary.btn-sm').on('click', function() {
+                $('.btn-outline-primary.btn-sm').removeClass('active');
+                $(this).addClass('active');
+                
+                var filterType = $(this).text().trim();
+                $('#bookingsTable tbody tr').each(function() {
+                    var row = $(this);
+                    var show = true;
+                    
+                    switch(filterType) {
+                        case 'Today':
+                            var dates = row.find('td:nth-child(4)').text();
+                            show = dates.includes('May 15');
+                            break;
+                        case 'This Week':
+                            var dates = row.find('td:nth-child(4)').text();
+                            show = dates.includes('May 15') || dates.includes('May 18');
+                            break;
+                        case 'This Month':
+                            var dates = row.find('td:nth-child(4)').text();
+                            show = dates.includes('May');
+                            break;
+                        case 'High Value':
+                            var amount = parseFloat(row.find('td:nth-child(5) h6').text().replace('₹', '').replace(',', ''));
+                            show = amount > 20000;
+                            break;
+                        case 'Urgent':
+                            var status = row.find('td:nth-child(6)').text();
+                            show = status.includes('Unpaid') || status.includes('Partial');
+                            break;
+                        case 'All Bookings':
+                            show = true;
+                            break;
+                    }
+                    
+                    if (show) {
+                        row.show();
+                    } else {
+                        row.hide();
+                    }
+                });
+            });
+
+            // Initialize tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
+        });
+    </script>
+<%- include('../shared/partials/footer') %>

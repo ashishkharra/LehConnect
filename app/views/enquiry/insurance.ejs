@@ -1,0 +1,490 @@
+<%- include('../shared/partials/header', { admin : admin, title: title}) %>
+
+    <!-- Page Content -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row">
+                    <h3 class="page-title">Insurance Enquiry</h3>
+                </div>
+            </div>
+
+            <!-- Insurance Enquiries Table -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Insurance Enquiries</h5>
+                            <p class="card-text">Customer enquiries for insurance services</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-center mb-0" id="insuranceEnquiryTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Enquiry ID</th>
+                                            <th>Customer</th>
+                                            <th>Insurance Type</th>
+                                            <th>Coverage Amount</th>
+                                            <th>Policy Term</th>
+                                            <th>Start Date</th>
+                                            <th>Persons Covered</th>
+                                            <th>Status</th>
+                                            <th>Created Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (insuranceEnquiries && insuranceEnquiries.length> 0) { %>
+                                            <% insuranceEnquiries.forEach(enquiry=> { %>
+                                                <tr>
+                                                    <td>#<%= enquiry.enquiryId %>
+                                                    </td>
+                                                    <td>
+                                                        <h2 class="table-avatar">
+                                                            <a href="javascript:void(0);" class="avatar avatar-sm me-2">
+                                                                <img class="avatar-img rounded-circle"
+                                                                    src="<%= enquiry.customerAvatar || 'assets/img/profiles/avatar-02.jpg' %>"
+                                                                    alt="User Image">
+                                                            </a>
+                                                            <a href="javascript:void(0);">
+                                                                <%= enquiry.customerName %>
+                                                            </a>
+                                                        </h2>
+                                                    </td>
+                                                    <td><span class="badge bg-primary">
+                                                            <%= enquiry.insuranceType %>
+                                                        </span></td>
+                                                    <td>₹<%= enquiry.coverageAmount.toLocaleString() %>
+                                                    </td>
+                                                    <td>
+                                                        <%= enquiry.policyTerm %> years
+                                                    </td>
+                                                    <td>
+                                                        <%= enquiry.startDate.toLocaleDateString() %>
+                                                    </td>
+                                                    <td>
+                                                        <%= enquiry.personsCovered %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (enquiry.status==='Pending' ) { %>
+                                                            <span class="badge bg-warning">Pending</span>
+                                                            <% } else if (enquiry.status==='Quoted' ) { %>
+                                                                <span class="badge bg-info">Quoted</span>
+                                                                <% } else if (enquiry.status==='Policy Issued' ) { %>
+                                                                    <span class="badge bg-success">Policy Issued</span>
+                                                                    <% } else if (enquiry.status==='Rejected' ) { %>
+                                                                        <span class="badge bg-danger">Rejected</span>
+                                                                        <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <%= enquiry.createdDate.toLocaleDateString() %>
+                                                    </td>
+                                                    <td>
+                                                        <div class="actions">
+                                                            <a href="javascript:void(0);"
+                                                                class="btn btn-sm bg-success-light me-2"
+                                                                onclick="viewInsuranceEnquiry('<%= enquiry.enquiryId %>')">
+                                                                <i class="ti ti-eye"></i>
+                                                            </a>
+                                                            <a href="javascript:void(0);"
+                                                                class="btn btn-sm bg-primary-light me-2"
+                                                                onclick="editInsuranceEnquiry('<%= enquiry.enquiryId %>')">
+                                                                <i class="ti ti-pencil"></i>
+                                                            </a>
+                                                            <a href="javascript:void(0);"
+                                                                class="btn btn-sm bg-danger-light"
+                                                                onclick="deleteInsuranceEnquiry('<%= enquiry.enquiryId %>')">
+                                                                <i class="ti ti-trash"></i>
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="10" class="text-center">
+                                                                <div class="empty-state">
+                                                                    <i
+                                                                        class="ti ti-shield-check fs-48 text-muted mb-3"></i>
+                                                                    <h5>No insurance enquiries found</h5>
+                                                                    <p>Create your first insurance enquiry</p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Insurance Enquiry Modal -->
+    <div class="modal fade" id="addInsuranceEnquiry" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create Insurance Enquiry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="insuranceEnquiryForm">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Insurance Type <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="insuranceType" id="insuranceType" required
+                                        onchange="toggleFields()">
+                                        <option value="">Select Insurance Type</option>
+                                        <option value="Travel Insurance">Travel Insurance</option>
+                                        <option value="Health Insurance">Health Insurance</option>
+                                        <option value="Vehicle Insurance">Vehicle Insurance</option>
+                                        <option value="Life Insurance">Life Insurance</option>
+                                        <option value="Home Insurance">Home Insurance</option>
+                                        <option value="Business Insurance">Business Insurance</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Coverage Amount (₹) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="coverageAmount" required min="1000"
+                                        placeholder="Desired coverage amount">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Policy Start Date <span
+                                            class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" name="startDate" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Policy Term</label>
+                                    <select class="form-select" name="policyTerm">
+                                        <option value="1">1 Year</option>
+                                        <option value="2">2 Years</option>
+                                        <option value="3">3 Years</option>
+                                        <option value="5">5 Years</option>
+                                        <option value="10">10 Years</option>
+                                        <option value="15">15 Years</option>
+                                        <option value="20">20 Years</option>
+                                        <option value="Lifetime">Lifetime</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Travel Insurance Fields -->
+                            <div class="col-12 travel-fields" style="display: none;">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Travel Insurance Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Destination Country</label>
+                                                    <input type="text" class="form-control" name="destinationCountry"
+                                                        placeholder="Country of travel">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Travel Dates</label>
+                                                    <input type="text" class="form-control" name="travelDates"
+                                                        placeholder="e.g., 15 Dec 2024 - 25 Dec 2024">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Trip Purpose</label>
+                                                    <select class="form-select" name="tripPurpose">
+                                                        <option value="Tourism">Tourism</option>
+                                                        <option value="Business">Business</option>
+                                                        <option value="Education">Education</option>
+                                                        <option value="Medical">Medical</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Include Adventure Sports?</label>
+                                                    <select class="form-select" name="adventureSports">
+                                                        <option value="No">No</option>
+                                                        <option value="Yes">Yes</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Health Insurance Fields -->
+                            <div class="col-12 health-fields" style="display: none;">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Health Insurance Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Sum Insured per Person</label>
+                                                    <input type="number" class="form-control" name="sumInsuredPerPerson"
+                                                        placeholder="Coverage per person">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Include Parents?</label>
+                                                    <select class="form-select" name="includeParents">
+                                                        <option value="No">No</option>
+                                                        <option value="Yes">Yes</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Room Rent Limit</label>
+                                                    <select class="form-select" name="roomRentLimit">
+                                                        <option value="Single AC">Single AC Room</option>
+                                                        <option value="Double AC">Double AC Room</option>
+                                                        <option value="No Limit">No Limit</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Pre-existing Diseases?</label>
+                                                    <select class="form-select" name="preExistingDiseases">
+                                                        <option value="No">No</option>
+                                                        <option value="Yes">Yes</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vehicle Insurance Fields -->
+                            <div class="col-12 vehicle-fields" style="display: none;">
+                                <div class="card mb-3">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Vehicle Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Vehicle Type</label>
+                                                    <select class="form-select" name="vehicleType">
+                                                        <option value="Car">Car</option>
+                                                        <option value="Bike">Bike</option>
+                                                        <option value="Commercial Vehicle">Commercial Vehicle</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Vehicle Make & Model</label>
+                                                    <input type="text" class="form-control" name="vehicleModel"
+                                                        placeholder="e.g., Hyundai Creta">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Registration Year</label>
+                                                    <input type="number" class="form-control" name="registrationYear"
+                                                        min="1990" max="2024">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Insurance Type</label>
+                                                    <select class="form-select" name="vehicleInsuranceType">
+                                                        <option value="Comprehensive">Comprehensive</option>
+                                                        <option value="Third Party">Third Party</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Common Fields -->
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Number of Persons <span
+                                            class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="personsCovered" min="1" required
+                                        value="1">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Maximum Premium (₹ per year)</label>
+                                    <input type="number" class="form-control" name="maxPremium"
+                                        placeholder="Maximum premium you can pay">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Current Insurance</label>
+                                    <select class="form-select" name="currentInsurance">
+                                        <option value="No">No existing insurance</option>
+                                        <option value="Yes">Yes, have existing insurance</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Current Insurer</label>
+                                    <input type="text" class="form-control" name="currentInsurer"
+                                        placeholder="If any existing insurance">
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Specific Requirements</label>
+                                    <textarea class="form-control" name="specificRequirements" rows="3"
+                                        placeholder="Any specific coverage requirements..."></textarea>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Contact Information <span
+                                            class="text-danger">*</span></label>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <input type="text" class="form-control mb-2" name="contactName"
+                                                placeholder="Your Name" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="tel" class="form-control mb-2" name="contactPhone"
+                                                placeholder="Phone Number" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <input type="email" class="form-control mb-2" name="contactEmail"
+                                                placeholder="Email Address" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label">Additional Notes</label>
+                                    <textarea class="form-control" name="additionalNotes" rows="2"
+                                        placeholder="Any additional information..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Submit Enquiry</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        function toggleFields() {
+            const insuranceType = document.getElementById('insuranceType').value;
+
+            // Hide all specific fields
+            document.querySelectorAll('.travel-fields, .health-fields, .vehicle-fields').forEach(field => {
+                field.style.display = 'none';
+            });
+
+            // Show relevant fields based on insurance type
+            if (insuranceType === 'Travel Insurance') {
+                document.querySelector('.travel-fields').style.display = 'block';
+            } else if (insuranceType === 'Health Insurance') {
+                document.querySelector('.health-fields').style.display = 'block';
+            } else if (insuranceType === 'Vehicle Insurance') {
+                document.querySelector('.vehicle-fields').style.display = 'block';
+            }
+        }
+
+        // Insurance enquiry form submission
+        document.getElementById('insuranceEnquiryForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+
+            fetch('/api/enquiries/insurance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Insurance enquiry submitted successfully',
+                            timer: 2000
+                        });
+                        $('#addInsuranceEnquiry').modal('hide');
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Failed to submit enquiry'
+                    });
+                });
+        });
+
+        function viewInsuranceEnquiry(enquiryId) {
+            // Implement view functionality
+        }
+
+        function editInsuranceEnquiry(enquiryId) {
+            // Implement edit functionality
+        }
+
+        function deleteInsuranceEnquiry(enquiryId) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/api/enquiries/insurance/${enquiryId}`, {
+                        method: 'DELETE'
+                    })
+                        .then(response => response.json())
+                        .then(result => {
+                            if (result.success) {
+                                Swal.fire('Deleted!', 'Enquiry has been deleted.', 'success');
+                                location.reload();
+                            }
+                        });
+                }
+            });
+        }
+    </script>
+    <%- include('../shared/partials/footer') %>

@@ -1,0 +1,574 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, query: query, data: data }) %>
+
+    <!-- Page Wrapper -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Vendor Profile Verification</h3>
+                        <p class="page-subtitle">Review and manage vendor verification requests</p>
+                    </div>
+                    <div class="col-auto">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                <i class="ti ti-filter me-2"></i>Filter
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item filter-item" data-status="all">All Requests</a></li>
+                                <li><a class="dropdown-item filter-item" data-status="NOT_STARTED">Not started</a></li>
+                                <li><a class="dropdown-item filter-item" data-status="PARTIAL">Partial</a></li>
+                                <li><a class="dropdown-item filter-item" data-status="SUBMITTED">Submitted</a></li>
+                                <li><a class="dropdown-item filter-item" data-status="REJECTED">Rejected</a></li>
+                                <li><a class="dropdown-item filter-item" data-status="UNDER_REVIEW">Under review</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- /Page Header -->
+
+            <!-- Stats Cards -->
+            <div class="row">
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-secondary mb-1" id="notStartedCount">
+                                        <%= data?.results?.statusCounts?.notStartedCount || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Not Started</p>
+                                </div>
+                                <div class="avatar bg-secondary-light">
+                                    <i class="ti ti-player-pause" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-danger mb-1" id="partialCount">
+                                        <%= data?.results?.statusCounts?.partialCount || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Partial</p>
+                                </div>
+                                <div class="avatar bg-secondary-light">
+                                    <i class="ti ti-player-pause" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-warning mb-1" id="pendingCount">
+                                        <%= data?.results?.statusCounts?.submittedCount || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Submitted</p>
+                                </div>
+                                <div class="avatar bg-warning-light">
+                                    <i class="ti ti-clock" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-success mb-1" id="approvedCount">
+                                        <%= data?.results?.statusCounts?.verifiedCount || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Approved</p>
+                                </div>
+                                <div class="avatar bg-success-light">
+                                    <i class="ti ti-check" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-danger mb-1" id="rejectedCount">
+                                        <%= data?.results?.statusCounts?.rejectCount || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Rejected</p>
+                                </div>
+                                <div class="avatar bg-danger-light">
+                                    <i class="ti ti-x" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-2 col-lg-4 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h4 class="text-info mb-1" id="totalCount">
+                                        <%= data?.results?.statusCounts?.total || 0 %>
+                                    </h4>
+                                    <p class="text-muted mb-0">Total</p>
+                                </div>
+                                <div class="avatar bg-info-light">
+                                    <i class="ti ti-users" style="font-size: 1.8rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Requests Table -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Verification Requests</h5>
+                            <div class="d-flex align-items-center">
+                                <div class="input-group input-group-sm me-2" style="width: 250px;">
+                                    <span class="input-group-text"><i class="ti ti-search"></i></span>
+                                    <input type="text" class="form-control" placeholder="Search vendors..."
+                                        id="searchVendors">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="verificationTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Vendor ID</th>
+                                            <th>Name</th>
+                                            <th>Contact</th>
+                                            <th>Verification</th>
+                                            <th>Submitted On</th>
+                                            <th>Create date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="verificationTableBody">
+                                        <% if (data?.results?.docs?.length) { %>
+                                            <% data.results.docs.forEach((item, index)=> { %>
+                                                <tr>
+                                                    <td>
+                                                        <%= index + 1 %>
+                                                    </td>
+
+                                                    <td>
+                                                        <%= (item.first_name || item.last_name) ? (item.first_name || ''
+                                                            ) + ' ' + (item.last_name || '' ) : '-' %>
+                                                    </td>
+
+                                                    <td>
+                                                        <%= item.contact || '-' %>
+                                                    </td>
+
+                                                    <td>
+                                                        <%= item.verification_status || '-' %>
+                                                    </td>
+
+
+                                                    <td>
+                                                        <%= new Date(item.submitted_on).toLocaleDateString() || '-' %>
+                                                    </td>
+
+                                                    <td>
+                                                        <%= new Date(item.create_date).toLocaleDateString() || '-' %>
+                                                    </td>
+
+                                                    <td>
+                                                        <%= item.status || '-' %>
+                                                    </td>
+
+                                                    <td>
+                                                        <a href="/view-vendor/<%= item.token %>"
+                                                            class="btn btn-sm btn-primary">
+                                                            View
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                                <% }) %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="12" class="text-center">No records found</td>
+                                                        </tr>
+                                                        <% } %>
+                                    </tbody>
+
+                                </table>
+                            </div>
+
+                            <!-- Pagination -->
+                            <nav aria-label="Page navigation" class="mt-3">
+                                <ul class="pagination justify-content-center" id="paginationContainer">
+                                    <!-- Pagination will be added dynamically -->
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Details Modal -->
+            <div class="modal fade" id="verificationModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Vendor Verification Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <!-- Basic Details -->
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Basic Details</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <table class="table table-borderless">
+                                                <tr>
+                                                    <td width="40%"><strong>Vendor ID:</strong></td>
+                                                    <td id="detailVendorId">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Full Name:</strong></td>
+                                                    <td id="detailFullName">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Email:</strong></td>
+                                                    <td id="detailEmail">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Phone:</strong></td>
+                                                    <td id="detailPhone">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Business Name:</strong></td>
+                                                    <td id="detailBusinessName">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Business Type:</strong></td>
+                                                    <td id="detailBusinessType">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Address:</strong></td>
+                                                    <td id="detailAddress">-</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Aadhaar Details -->
+                                <div class="col-md-6">
+                                    <div class="card mb-3">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Aadhaar Details</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Aadhaar Number</label>
+                                                <div class="input-group">
+                                                    <input type="text" class="form-control" id="detailAadhaarNumber"
+                                                        readonly>
+                                                    <button class="btn btn-outline-secondary" type="button"
+                                                        id="verifyAadhaarBtn">
+                                                        <i class="ti ti-shield-check"></i> Verify
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <label class="form-label">Front Side</label>
+                                                    <div class="document-preview" id="aadhaarFrontPreview">
+                                                        <img src="" alt="Aadhaar Front"
+                                                            class="img-fluid rounded document-img"
+                                                            data-type="aadhaar-front">
+                                                        <div class="document-overlay">
+                                                            <button class="btn btn-sm btn-light view-document">
+                                                                <i class="ti ti-zoom-in"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label">Back Side</label>
+                                                    <div class="document-preview" id="aadhaarBackPreview">
+                                                        <img src="" alt="Aadhaar Back"
+                                                            class="img-fluid rounded document-img"
+                                                            data-type="aadhaar-back">
+                                                        <div class="document-overlay">
+                                                            <button class="btn btn-sm btn-light view-document">
+                                                                <i class="ti ti-zoom-in"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Driving License -->
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">Driving License</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">License Number</label>
+                                                        <input type="text" class="form-control" id="detailLicenseNumber"
+                                                            readonly>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Expiry Date</label>
+                                                        <input type="text" class="form-control" id="detailLicenseExpiry"
+                                                            readonly>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Issuing Authority</label>
+                                                        <input type="text" class="form-control"
+                                                            id="detailLicenseAuthority" readonly>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Front Side</label>
+                                                    <div class="document-preview" id="licenseFrontPreview">
+                                                        <img src="" alt="License Front"
+                                                            class="img-fluid rounded document-img"
+                                                            data-type="license-front">
+                                                        <div class="document-overlay">
+                                                            <button class="btn btn-sm btn-light view-document">
+                                                                <i class="ti ti-zoom-in"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Back Side</label>
+                                                    <div class="document-preview" id="licenseBackPreview">
+                                                        <img src="" alt="License Back"
+                                                            class="img-fluid rounded document-img"
+                                                            data-type="license-back">
+                                                        <div class="document-overlay">
+                                                            <button class="btn btn-sm btn-light view-document">
+                                                                <i class="ti ti-zoom-in"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-danger" id="rejectBtn">
+                                <i class="ti ti-x me-1"></i> Reject
+                            </button>
+                            <button type="button" class="btn btn-success" id="approveBtn">
+                                <i class="ti ti-check me-1"></i> Approve
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Document Modal -->
+            <div class="modal fade" id="documentModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="documentModalLabel">Document Preview</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <img src="" alt="Document" class="img-fluid" id="modalDocumentImage">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rejection Reason Modal -->
+            <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Reject Verification Request</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="rejectionReason" class="form-label">Reason for Rejection <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select" id="rejectionReason">
+                                    <option value="">Select a reason</option>
+                                    <option value="invalid_documents">Invalid/Unclear Documents</option>
+                                    <option value="mismatch_info">Information Mismatch</option>
+                                    <option value="expired_documents">Expired Documents</option>
+                                    <option value="suspicious_activity">Suspicious Activity</option>
+                                    <option value="incomplete_info">Incomplete Information</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="rejectionNotes" class="form-label">Additional Notes</label>
+                                <textarea class="form-control" id="rejectionNotes" rows="3"
+                                    placeholder="Provide additional details..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="confirmRejectBtn">Confirm
+                                Rejection</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Verification Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="stats-box">
+                                        <h4 class="mb-1 text-primary">
+                                            <%= data?.results?.statusCounts?.averageResponseTimeMinutes || '-' %>
+                                        </h4>
+                                        <small class="text-muted">Avg Response Time</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stats-box">
+                                        <h4 class="mb-1 text-success">
+                                            <%= data?.results?.statusCounts?.approvalRatePercentage || '-' %>
+                                        </h4>
+                                        <small class="text-muted">Approval Rate</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="stats-box">
+                                        <h4 class="mb-1 text-info">
+                                            <%= data?.results?.statusCounts?.todayRequests || '-' %>
+                                        </h4>
+                                        <small class="text-muted">Today's Requests</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Quick Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <!-- <button class="btn btn-outline-primary" id="exportDataBtn">
+                                    <i class="ti ti-download me-2"></i>Export to Excel
+                                </button> -->
+                                <a href="/remind-partial/vendors" class="btn btn-outline-info" id="sendReminderBtn">
+                                    <i class="ti ti-bell me-2"></i>Send Reminder to Pending
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include('../shared/partials/footer') %>
+
+        <script>
+            const params = new URLSearchParams(window.location.search);
+
+            document.querySelectorAll('.filter-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const status = item.dataset.status;
+
+                    if (status === 'all') {
+                        params.delete('status');
+                    } else {
+                        params.set('status', status);
+                    }
+
+                    params.delete('page');
+                    window.location.search = params.toString();
+                });
+            });
+        </script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const searchInput = document.getElementById('searchVendors');
+                if (!searchInput) return;
+
+                const params = new URLSearchParams(window.location.search);
+                let debounceTimer;
+
+                searchInput.value = params.get('search') || '';
+
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(debounceTimer);
+
+                    debounceTimer = setTimeout(() => {
+                        const value = e.target.value.trim();
+
+                        if (value) {
+                            params.set('search', value);
+                        } else {
+                            params.delete('search');
+                        }
+
+                        params.delete('page'); // reset pagination
+                        window.location.search = params.toString();
+                    }, 500);
+                });
+            });
+        </script>

@@ -1,0 +1,580 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, query: query, data : data, currentPage : currentPage }) %>
+
+    <% const currentDutyType=data?.results && data.results.length ? data.results[0].duty_type : null; %>
+
+        <!-- Page Wrapper -->
+        <div class="page-wrapper">
+            <div class="content container-fluid">
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h3 class="page-title">Vendor Duties</h3>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-success btn-md ms-2" id="exportDuties">
+                                <i class="ti ti-download me-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Page Header -->
+
+                <!-- Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-primary text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.stats?.totalBookingsToday %>
+                                    </h3>
+                                    <p class="mb-0">Total Bookings Today</p>
+                                </div>
+                                <div class="stats-icon bg-white text-primary">
+                                    <i class="ti ti-calendar-event"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-warning text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.stats?.totalFreeVehiclesToday %>
+                                    </h3>
+                                    <p class="mb-0 text-black">Total Free Vehicles Today</p>
+                                </div>
+                                <div class="stats-icon bg-white text-warning">
+                                    <i class="ti ti-car"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-success text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.stats?.pendingBookingsToday %>
+                                    </h3>
+                                    <p class="mb-0">Pending Bookings Today</p>
+                                </div>
+                                <div class="stats-icon bg-white text-success">
+                                    <i class="ti ti-clock-hour-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stats-card bg-danger text-white">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h3 class="mb-1">
+                                        <%= data?.stats?.availableFreeVehiclesToday %>
+                                    </h3>
+                                    <p class="mb-0">Available Free Vehicles Today</p>
+                                </div>
+                                <div class="stats-icon bg-white text-danger">
+                                    <i class="ti ti-clock-hour-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Statistics Cards -->
+
+                <!-- Filter & Search Section -->
+                <form method="GET" class="card p-3 mb-4 shadow-sm">
+                    <input type="hidden" name="page" value="1">
+
+                    <div class="row g-3 align-items-end">
+
+                        <!-- Search -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Search Vendor</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="ti ti-search"></i>
+                                </span>
+                                <input type="text" name="search" class="form-control"
+                                    placeholder="Search by vendor name" value="<%= query.search || '' %>" />
+                            </div>
+                        </div>
+
+                        <!-- Duty Type -->
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Duty Type</label>
+                            <select name="duty_type" class="form-select">
+                                <option value="BOOKING" <%=query.duty_type==='BOOKING' ? 'selected' : '' %>>
+                                    Booking
+                                </option>
+                                <option value="FREE_VEHICLE" <%=query.duty_type==='FREE_VEHICLE' ? 'selected' : '' %>>
+                                    Free Vehicle
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Accept Type -->
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Accept Type</label>
+                            <select name="accept_type" class="form-select">
+                                <option value="">All</option>
+                                <option value="INSTANT" <%=query.accept_type==='INSTANT' ? 'selected' : '' %>>
+                                    Instant
+                                </option>
+                                <option value="APPROVAL" <%=query.accept_type==='APPROVAL' ? 'selected' : '' %>>
+                                    Approval
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-md-2 d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-filter"></i> Apply
+                            </button>
+
+                            <a href="?" class="btn btn-light">
+                                <i class="ti ti-refresh"></i> Reset
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+                <!-- /Filter & Search Section -->
+
+                <!-- Duties List -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-center mb-0" id="dutiesTable">
+                                        <thead>
+                                            <tr>
+                                                <th>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                                    </div>
+                                                </th>
+                                                <th>Duty Details</th>
+                                                <th>Posted By</th>
+                                                <th>Uploaded At</th>
+
+                                                <% if (currentDutyType==='BOOKING' ) { %>
+                                                    <th>Pickup Date</th>
+                                                    <th>Return Date</th>
+                                                    <% } else if (currentDutyType==='FREE_VEHICLE' ) { %>
+                                                        <th>Free Start Time</th>
+                                                        <th>Free End Time</th>
+                                                        <% } %>
+
+                                                            <th>Status</th>
+                                                            <th class="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <% if (data && data.results && data.results.length) { %>
+                                                <% data.results.forEach(duty=> { %>
+                                                    <tr>
+                                                        <!-- Checkbox -->
+                                                        <td>
+                                                            <input type="checkbox"
+                                                                class="form-check-input duty-checkbox">
+                                                        </td>
+
+                                                        <!-- Duty Details -->
+                                                        <td>
+                                                            <h6 class="mb-1">
+                                                                <%= duty.duty_type==='BOOKING' ? 'Booking Request'
+                                                                    : 'Free Vehicle Available' %>
+                                                            </h6>
+
+                                                            <p class="text-muted small mb-0">
+                                                                <% if (duty.duty_type==='BOOKING' ) { %>
+                                                                    <%= duty.trip_type %> |
+                                                                        <%= duty.pickup_location || '-' %>
+                                                                            <% } else { %>
+                                                                                <%= duty.vehicle_type || '-' %> |
+                                                                                    <%= duty.location || '-' %>
+                                                                                        <% } %>
+                                                            </p>
+
+                                                            <span class="badge bg-light text-dark small">
+                                                                <%= duty.accept_type %>
+                                                            </span>
+                                                        </td>
+
+                                                        <!-- Vendor -->
+                                                        <td>
+                                                            <%= duty.vendor_name || '-' %>
+                                                        </td>
+
+                                                        <!-- Uploaded At -->
+                                                        <td>
+                                                            <%= new Date(duty.posted_at).toLocaleString() %>
+                                                        </td>
+
+                                                        <!-- Time Columns -->
+                                                        <% if (duty.duty_type==='BOOKING' ) { %>
+                                                            <!-- Pickup Date -->
+                                                            <td>
+                                                                <%= new Date(duty.pickup_datetime).toLocaleString() %>
+                                                            </td>
+
+                                                            <!-- Return Date -->
+                                                            <td>
+                                                                <% if (duty.trip_type==='ROUND_TRIP' &&
+                                                                    duty.return_date) { %>
+                                                                    <%= new Date(duty.return_date).toLocaleString()
+                                                                        %>
+                                                                        <% } else { %>
+                                                                            -
+                                                                            <% } %>
+                                                            </td>
+                                                            <% } else { %>
+                                                                <!-- Free Start Time -->
+                                                                <td>
+                                                                    <%= new Date(duty.free_start_time).toLocaleString()
+                                                                        %>
+                                                                </td>
+
+                                                                <!-- Free End Time -->
+                                                                <td>
+                                                                    <%= new Date(duty.free_end_time).toLocaleString() %>
+                                                                </td>
+                                                                <% } %>
+
+                                                                    <!-- Status -->
+                                                                    <td>
+                                                                        <span class="badge bg-primary-light text-black">
+                                                                            <%= duty.status %>
+                                                                        </span>
+                                                                    </td>
+
+                                                                    <!-- Actions -->
+                                                                    <td class="text-end">
+                                                                        <a href="/view-duty/<%= duty.duty_type %>/<%= duty.token %>"
+                                                                            class="btn btn-sm btn-outline-primary">
+                                                                            <i class="ti ti-eye"></i>
+                                                                        </a>
+                                                                    </td>
+                                                    </tr>
+                                                    <% }) %>
+                                                        <% } else { %>
+                                                            <tr>
+                                                                <td colspan="8" class="text-center text-muted">
+                                                                    No duties found
+                                                                </td>
+                                                            </tr>
+                                                            <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Duties List -->
+
+                <!-- Pagination Section -->
+                <% if (data?.totalPages> 0) { %>
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted">
+                                    Showing
+                                    <strong>
+                                        <%= ((data.page - 1) * data.limit) + 1 %>
+                                    </strong>
+                                    to
+                                    <strong>
+                                        <%= Math.min(data.page * data.limit, data.total) %>
+                                    </strong>
+                                    of
+                                    <strong>
+                                        <%= data.total %>
+                                    </strong>
+                                    entries
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <nav aria-label="Page navigation" class="float-md-end">
+                                <ul class="pagination mb-0">
+                                    <!-- First Page -->
+                                    <li class="page-item <%= data.page === 1 ? 'disabled' : '' %>">
+                                        <a class="page-link"
+                                            href="?<%= new URLSearchParams({...query, page: 1}).toString() %>"
+                                            aria-label="First">
+                                            <span aria-hidden="true">««</span>
+                                        </a>
+                                    </li>
+
+                                    <!-- Previous Page -->
+                                    <li class="page-item <%= data.page === 1 ? 'disabled' : '' %>">
+                                        <a class="page-link"
+                                            href="?<%= new URLSearchParams({...query, page: data.page - 1}).toString() %>"
+                                            aria-label="Previous">
+                                            <span aria-hidden="true">‹</span>
+                                        </a>
+                                    </li>
+
+                                    <!-- Page Numbers -->
+                                    <% 
+                                        let startPage = Math.max(1, data.page - 2);
+                                        let endPage = Math.min(data.totalPages, data.page + 2);
+                                        
+                                        // Adjust if we're near the start
+                                        if (startPage === 1) {
+                                            endPage = Math.min(5, data.totalPages);
+                                        }
+                                        
+                                        // Adjust if we're near the end
+                                        if (endPage === data.totalPages) {
+                                            startPage = Math.max(1, data.totalPages - 4);
+                                        }
+                                        
+                                        // Show ellipsis at start if needed
+                                        if (startPage > 1) { %>
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                        <% }
+                                        
+                                        for (let i = startPage; i <= endPage; i++) { %>
+                                        <li class="page-item <%= i === data.page ? 'active' : '' %>">
+                                            <a class="page-link"
+                                                href="?<%= new URLSearchParams({...query, page: i}).toString() %>">
+                                                <%= i %>
+                                            </a>
+                                        </li>
+                                        <% }
+                                        
+                                        // Show ellipsis at end if needed
+                                        if (endPage < data.totalPages) { %>
+                                        <li class="page-item disabled">
+                                            <span class="page-link">...</span>
+                                        </li>
+                                        <% } %>
+
+                                    <!-- Next Page -->
+                                    <li class="page-item <%= data.page === data.totalPages ? 'disabled' : '' %>">
+                                        <a class="page-link"
+                                            href="?<%= new URLSearchParams({...query, page: data.page + 1}).toString() %>"
+                                            aria-label="Next">
+                                            <span aria-hidden="true">›</span>
+                                        </a>
+                                    </li>
+
+                                    <!-- Last Page -->
+                                    <li class="page-item <%= data.page === data.totalPages ? 'disabled' : '' %>">
+                                        <a class="page-link"
+                                            href="?<%= new URLSearchParams({...query, page: data.totalPages}).toString() %>"
+                                            aria-label="Last">
+                                            <span aria-hidden="true">»»</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                    <% } %>
+
+                <!-- Bulk Actions -->
+                <div class="row mt-3" id="bulkActions" style="display: none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span id="selectedCount">0</span> duties selected
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-primary btn-sm me-2" id="markCompleteBulk">
+                                            <i class="ti ti-check me-1"></i>Mark Complete
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" id="deleteBulk">
+                                            <i class="ti ti-trash me-1"></i>Delete Selected
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /Bulk Actions -->
+
+                <!-- Page Size Selector -->
+                <% if (data?.totalPages> 0) { %>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <label class="me-2 mb-0">Show:</label>
+                                <select class="form-select form-select-sm w-auto" id="pageSizeSelect">
+                                    <option value="10" <%= data.limit===10 ? 'selected' : '' %>>10</option>
+                                    <option value="25" <%= data.limit===25 ? 'selected' : '' %>>25</option>
+                                    <option value="50" <%= data.limit===50 ? 'selected' : '' %>>50</option>
+                                    <option value="100" <%= data.limit===100 ? 'selected' : '' %>>100</option>
+                                </select>
+                                <span class="ms-2">entries per page</span>
+                            </div>
+                        </div>
+                    </div>
+                    <% } %>
+
+            </div>
+        </div>
+        </div>
+        
+        <script>
+            // JavaScript for pagination functionality
+            document.addEventListener('DOMContentLoaded', function() {
+                // Page size selector
+                const pageSizeSelect = document.getElementById('pageSizeSelect');
+                if (pageSizeSelect) {
+                    pageSizeSelect.addEventListener('change', function() {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('limit', this.value);
+                        url.searchParams.set('page', '1'); // Reset to first page
+                        window.location.href = url.toString();
+                    });
+                }
+                
+                // Bulk actions checkbox
+                const selectAll = document.getElementById('selectAll');
+                if (selectAll) {
+                    selectAll.addEventListener('change', function() {
+                        const checkboxes = document.querySelectorAll('.duty-checkbox');
+                        checkboxes.forEach(checkbox => {
+                            checkbox.checked = this.checked;
+                        });
+                        updateSelectedCount();
+                    });
+                }
+                
+                // Individual checkbox change
+                const dutyCheckboxes = document.querySelectorAll('.duty-checkbox');
+                dutyCheckboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', updateSelectedCount);
+                });
+                
+                // Update selected count function
+                function updateSelectedCount() {
+                    const selectedCount = document.querySelectorAll('.duty-checkbox:checked').length;
+                    const countElement = document.getElementById('selectedCount');
+                    const bulkActions = document.getElementById('bulkActions');
+                    
+                    if (countElement) {
+                        countElement.textContent = selectedCount;
+                    }
+                    
+                    if (bulkActions) {
+                        bulkActions.style.display = selectedCount > 0 ? 'block' : 'none';
+                    }
+                    
+                    // Update select all checkbox
+                    if (selectAll) {
+                        const allCheckboxes = document.querySelectorAll('.duty-checkbox');
+                        const allChecked = allCheckboxes.length > 0 && 
+                                          selectedCount === allCheckboxes.length;
+                        selectAll.checked = allChecked;
+                        selectAll.indeterminate = selectedCount > 0 && selectedCount < allCheckboxes.length;
+                    }
+                }
+                
+                // Export button
+                const exportButton = document.getElementById('exportDuties');
+                if (exportButton) {
+                    exportButton.addEventListener('click', function() {
+                        const url = new URL(window.location.href);
+                        url.pathname = '/export-duties';
+                        window.location.href = url.toString();
+                    });
+                }
+                
+                // Bulk action buttons
+                const markCompleteBulk = document.getElementById('markCompleteBulk');
+                const deleteBulk = document.getElementById('deleteBulk');
+                
+                if (markCompleteBulk) {
+                    markCompleteBulk.addEventListener('click', function() {
+                        const selectedIds = getSelectedDutyIds();
+                        if (selectedIds.length > 0) {
+                            if (confirm(`Mark ${selectedIds.length} duties as complete?`)) {
+                                performBulkAction('complete', selectedIds);
+                            }
+                        } else {
+                            alert('Please select at least one duty.');
+                        }
+                    });
+                }
+                
+                if (deleteBulk) {
+                    deleteBulk.addEventListener('click', function() {
+                        const selectedIds = getSelectedDutyIds();
+                        if (selectedIds.length > 0) {
+                            if (confirm(`Delete ${selectedIds.length} duties? This action cannot be undone.`)) {
+                                performBulkAction('delete', selectedIds);
+                            }
+                        } else {
+                            alert('Please select at least one duty.');
+                        }
+                    });
+                }
+                
+                // Get selected duty IDs
+                function getSelectedDutyIds() {
+                    const selectedIds = [];
+                    document.querySelectorAll('.duty-checkbox:checked').forEach(checkbox => {
+                        const row = checkbox.closest('tr');
+                        const viewLink = row.querySelector('a[href^="/view-duty/"]');
+                        if (viewLink) {
+                            const href = viewLink.getAttribute('href');
+                            const dutyId = href.split('/').pop();
+                            selectedIds.push(dutyId);
+                        }
+                    });
+                    return selectedIds;
+                }
+                
+                // Perform bulk action
+                function performBulkAction(action, ids) {
+                    // You'll need to implement the actual API call here
+                    alert(`Bulk ${action} action would be performed on ${ids.length} duties.\n\nIn a real application, this would make an API call.`);
+                    
+                    // Example fetch call:
+                    /*
+                    fetch('/api/duties/bulk-action', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: action,
+                            ids: ids
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred.');
+                    });
+                    */
+                }
+            });
+        </script>
+
+<%- include('../shared/partials/footer') %>

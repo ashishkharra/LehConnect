@@ -1,0 +1,118 @@
+<div class="table-responsive">
+    <table class="table table-center table-hover custom-table">
+        <thead class="thead-light">
+            <tr>
+                <th>Vendor Name</th>
+                <th>Email</th>
+                <th>Reason</th>
+                <th>Requested Date</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (data?.docs?.length) { %>
+                <% data.docs.forEach(request=> { %>
+                    <tr>
+                        <td>
+                            <h2 class="table-avatar">
+                                <a href="javascript:void(0);">
+                                    <%= request.tbl_vendor ? (request.tbl_vendor.first_name + ' ' +
+                                        request.tbl_vendor.last_name) : 'N/A' %>
+                                        <span>Contact: <%= request.tbl_vendor.contact %></span>
+                                </a>
+                            </h2>
+                        </td>
+                        <td>
+                            <%= request.tbl_vendor ? request.tbl_vendor.email : 'N/A' %>
+                        </td>
+                        <td class="text-wrap" style="max-width: 250px;">
+                            <%= request.reason %>
+                        </td>
+                        <td>
+                            <%= new Date(request.create_date).toLocaleDateString() %>
+                        </td>
+                        <td>
+                            <span
+                                class="badge <%= request.status === 'PENDING' ? 'bg-warning' : (request.status === 'APPROVED' ? 'bg-success' : 'bg-danger') %>">
+                                <%= request.status %>
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <% if (request.status==='PENDING' ) { %>
+                                <button type="button" class="btn btn-sm btn-success action-btn" data-bs-toggle="modal"
+                                    data-bs-target="#actionModal" data-action="approve"
+                                    data-token="<%= request.vendor_token %>">
+                                    <i class="ti ti-check me-1"></i> Approve
+                                </button>
+
+                                <button type="button" class="btn btn-sm btn-danger action-btn" data-bs-toggle="modal"
+                                    data-bs-target="#actionModal" data-action="reject"
+                                    data-token="<%= request.vendor_token %>"> <i class="ti ti-x me-1"></i> Reject
+                                </button>
+                                <% } else { %>
+                                    <div class="status-info">
+                                        <small class="text-muted d-block">Processed on</small>
+                                        <small class="fw-bold">
+                                            <%= new Date(request.processed_at ||
+                                                request.update_date).toLocaleDateString() %>
+                                        </small>
+                                    </div>
+                                    <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                        <% } else { %>
+                            <tr>
+                                <td colspan="6" class="text-center">No requests found</td>
+                            </tr>
+                            <% } %>
+        </tbody>
+    </table>
+</div>
+
+<div class="row align-items-center mt-4">
+    <div class="col-md-4">
+        <p class="mb-0 text-muted text-start">
+            Showing <b>
+                <%= data?.docs?.length %>
+            </b> of <b>
+                <%= data?.totalDocs %>
+            </b> entries
+        </p>
+    </div>
+    <div class="col-md-4 d-flex justify-content-center">
+        <nav>
+            <ul class="pagination mb-0">
+                <li class="page-item <%= data?.page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link"
+                        href="?page=<%= data?.page - 1 %>&limit=<%= currentLimit %>&status=<%= currentStatus %>&search=<%= currentSearch %>">
+                        <i class="ti ti-chevron-left"></i>
+                    </a>
+                </li>
+                <% for (let i=1; i <=data?.totalPages; i++) { %>
+                    <li class="page-item <%= i === data?.page ? 'active' : '' %>">
+                        <a class="page-link"
+                            href="?page=<%= i %>&limit=<%= currentLimit %>&status=<%= currentStatus %>&search=<%= currentSearch %>">
+                            <%= i %>
+                        </a>
+                    </li>
+                    <% } %>
+                        <li class="page-item <%= data?.page >= data?.totalPages ? 'disabled' : '' %>">
+                            <a class="page-link"
+                                href="?page=<%= data?.page + 1 %>&limit=<%= currentLimit %>&status=<%= currentStatus %>&search=<%= currentSearch %>">
+                                <i class="ti ti-chevron-right"></i>
+                            </a>
+                        </li>
+            </ul>
+        </nav>
+    </div>
+    <div class="col-md-4 d-flex justify-content-end align-items-center">
+        <span class="text-muted me-2 small">Rows per page:</span>
+        <select class="form-select form-select-sm w-auto" id="rowLimitSelect">
+            <option value="10" <%=currentLimit==10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%=currentLimit==25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%=currentLimit==50 ? 'selected' : '' %>>50</option>
+        </select>
+    </div>
+</div>

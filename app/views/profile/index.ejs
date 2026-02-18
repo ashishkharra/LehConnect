@@ -1,0 +1,164 @@
+<%- include('../shared/partials/header', { admin : admin, title }) %>
+
+<div class="content-body">
+    <div class="container-fluid">
+
+        <div class="page-titles">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="javascript:void(0)">App</a></li>
+                <li class="breadcrumb-item active"><a href="javascript:void(0)">Edit Profile</a></li>
+            </ol>
+        </div>
+
+        <div class="row">
+
+            <div class="col-xl-3 col-lg-4">
+                <div class="clearfix">
+                    <div class="card profile-card author-profile mb-30">
+                        <div class="card-body">
+                            <div class="p-5">
+
+                                <form action="/edit-profile-pic" method="POST" enctype="multipart/form-data">
+                                    <div class="author-profile">
+
+                                        <div class="author-media">
+                                            <img src="<%= admin.profile_image %>" alt="">
+
+                                            <div class="upload-link" title="update" data-toggle="tooltip" data-placement="right">
+                                                <input type="file" name="profile_image" class="update-flie" id="fileInput">
+                                                <i class="fa fa-camera"></i>
+                                            </div>
+                                        </div>
+
+                                        <button class="btn btn-primary" type="submit" id="updateBtn"
+                                            style="display: none;">
+                                            UPDATE
+                                        </button>
+
+                                        <div class="author-info">
+                                            <h6 class="title"><%= capitalizeWords(admin.username) %></h6>
+                                            <span><%= admin.email %></span>
+                                        </div>
+
+                                    </div>
+                                </form>
+
+                            </div>
+
+                            <!-- Show update button when image selected -->
+                            <script>
+                                document.addEventListener("DOMContentLoaded", function () {
+                                    const fileInput = document.getElementById("fileInput");
+                                    const updateBtn = document.getElementById("updateBtn");
+
+                                    fileInput.addEventListener("change", function () {
+                                        updateBtn.style.display =
+                                            (fileInput.files && fileInput.files.length > 0)
+                                                ? "inline-block"
+                                                : "none";
+                                    });
+                                });
+                            </script>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN — EDIT PROFILE -->
+            <div class="col-xl-9 col-lg-8">
+                <div class="card profile-card m-b30">
+                    <div class="card-header">
+                        <h4 class="card-title">Edit Profile</h4>
+                    </div>
+
+                    <form action="/edit-profile" method="post" class="profile-form">
+                        <div class="card-body">
+
+                            <div class="row">
+                                <div class="col-sm-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="UserName">Username</label>
+                                        <input type="text" class="form-control" name="username"
+                                            value="<%= admin.username %>" id="UserName"
+                                            placeholder="Enter Username">
+                                    </div>
+                                </div>
+
+                                <div class="col-sm-6">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="Email">Email</label>
+                                        <input type="text" class="form-control" name="email"
+                                            value="<%= admin.email %>" id="Email"
+                                            placeholder="Enter Email">
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">UPDATE</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- FULL WIDTH — EDIT PASSWORD -->
+            <div class="col-xl-12 col-lg-12">
+                <div class="card profile-card m-b30">
+
+                    <div class="card-header">
+                        <h4 class="card-title">Edit Password</h4>
+                    </div>
+
+                    <form action="/edit-password" method="post" class="profile-form">
+                        <div class="card-body">
+
+                            <div class="row">
+
+                                <div class="col-sm-4">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="currentPassword">Current Password</label>
+                                        <input type="password" class="form-control" name="currentPassword"
+                                            id="currentPassword" placeholder="Enter Current Password">
+                                    </div>
+                                </div>
+
+                                <div class="col-sm-4">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="newPassword">New Password</label>
+                                        <input type="password" class="form-control" name="newPassword"
+                                            id="newPassword" placeholder="Enter New Password">
+                                    </div>
+                                </div>
+
+                                <div class="col-sm-4">
+                                    <div class="mb-3">
+                                        <label class="form-label" for="confirmPassword">Re-Enter Password</label>
+                                        <input type="password" class="form-control" name="confirmPassword"
+                                            id="confirmPassword" placeholder="Re Enter Password">
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary">UPDATE</button>
+                            <a href="page-forgot-password.html" class="text-hover float-end">Forgot your password?</a>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+        <!-- ROW END -->
+
+    </div>
+</div>
+
+<%- include('../shared/partials/footer') %>

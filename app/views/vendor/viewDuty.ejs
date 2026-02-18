@@ -1,0 +1,848 @@
+<%- include('../shared/partials/header', { admin : admin, title: title, data : data }) %>
+
+<% 
+    const results = data?.results;
+    const duty_type = results?.duty_type;
+    const vendorInfo = results?.booking?.vendor?.dataValues
+    
+    // Get the main duty object based on type
+    let duty = {};
+    let stats = {};
+    if (duty_type && results?.booking) {
+        duty = results.booking;
+        stats = results.stats || {};
+    } else if (duty_type && results?.freeVehicle) {
+        duty = results.freeVehicle;
+        stats = results.stats || {};
+    }
+    
+    const vendor = duty?.vendor || {};
+    const bookingRequests = duty?.booking_requests || [];
+    const bookingRejections = duty?.booking_rejections || [];
+    const freeVehicleRequests = duty?.requests || [];
+    
+    // Helper function to get status badge color
+    function getStatusBadge(status) {
+        const statusMap = {
+            // Booking statuses
+            'OPEN': 'bg-warning',
+            'ACCEPTED': 'bg-info',
+            'IN_PROGRESS': 'bg-primary',
+            'COMPLETED': 'bg-success',
+            'CANCELLED': 'bg-danger',
+            // Booking request statuses
+            'PENDING': 'bg-warning',
+            'REJECTED': 'bg-danger',
+            'ACCEPTED': 'bg-success',
+            'CANCELLED': 'bg-secondary',
+            // Free vehicle statuses
+            'AVAILABLE': 'bg-success',
+            'REQUESTED': 'bg-info',
+            'BOOKED': 'bg-primary',
+            'CANCELLED': 'bg-danger',
+            'EXPIRED': 'bg-secondary'
+        };
+        return statusMap[status] || 'bg-secondary';
+    }
+%>
+
+<!-- Page Wrapper -->
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">
+                        <i class="ti ti-<%= duty_type ? 'calendar-event' : 'car' %> me-2"></i>
+                        <%= duty_type ? 'Booking Details' : 'Free Vehicle Details' %>
+                    </h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/vendor-duties">Vendor Duties</a></li>
+                        <li class="active">
+                            <%= duty_type ? '/ Booking Details' : '/Free Vehicle Details' %>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col-auto">
+                    <a href="/vendor-duties" class="btn btn-light btn-md">
+                        <i class="ti ti-arrow-back me-2"></i>Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- /Page Header -->
+
+        <!-- Main Content -->
+        <div class="row" id="reportArea">
+            <!-- Left Column: Duty Details -->
+            <div class="col-lg-8">
+                <!-- Basic Information Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-info-circle me-2"></i>Basic Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Duty Token</label>
+                                    <p class="form-control-static"><code><%= duty?.token || 'N/A' %></code></p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Vendor Name</label>
+                                    <p class="form-control-static"><%= `${vendorInfo?.full_name}` || 'N/A' %></p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">
+                                        <%= duty_type ? 'Created At' : 'Posted At' %>
+                                    </label>
+                                    <p class="form-control-static">
+                                        <%= new Date(duty?.created_at || duty?.posted_at).toLocaleString() || 'N/A' %>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold">Vendor Verification</label>
+                                    <p class="form-control-static">
+                                        <span class="badge <%= vendorInfo?.verification_status === 'VERIFIED' ? 'bg-success' : 'bg-warning' %>">
+                                            <i class="ti ti-<%= vendorInfo?.verification_status === 'VERIFIED' ? 'shield-check' : 'shield' %> me-1"></i>
+                                            <%= vendorInfo?.verification_status || 'N/A' %>
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duty Specific Details -->
+                <% if (duty_type) { %>
+                    <!-- Booking Details Card -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-car me-2"></i>Booking Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Trip Type</label>
+                                        <p class="form-control-static">
+                                            <span class="badge bg-info"><%= duty?.trip_type || 'N/A' %></span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Vehicle Type</label>
+                                        <p class="form-control-static"><%= duty?.vehicle_type || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Vehicle Name</label>
+                                        <p class="form-control-static"><%= duty?.vehicle_name || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Pickup Date & Time</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-calendar me-1"></i>
+                                            <%= new Date(duty?.pickup_datetime).toLocaleString() || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <% if (duty?.trip_type === 'ROUND_TRIP' && duty?.return_datetime) { %>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold">Return Date & Time</label>
+                                            <p class="form-control-static">
+                                                <i class="ti ti-calendar me-1"></i>
+                                                <%= new Date(duty?.return_datetime).toLocaleString() || 'N/A' %>
+                                            </p>
+                                        </div>
+                                    </div>
+                                <% } %>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Pickup Location</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-map-pin me-1"></i>
+                                            <%= duty?.pickup_location || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Drop Location</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-map-pin me-1"></i>
+                                            <%= duty?.drop_location || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">City</label>
+                                        <p class="form-control-static"><%= duty?.city || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">State</label>
+                                        <p class="form-control-static"><%= duty?.state || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Visibility</label>
+                                        <p class="form-control-static">
+                                            <span class="badge <%= duty?.visibility === 'PUBLIC' ? 'bg-success' : 'bg-info' %>">
+                                                <%= duty?.visibility || 'N/A' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Secure Booking</label>
+                                        <p class="form-control-static">
+                                            <span class="badge <%= duty?.secure_booking ? 'bg-success' : 'bg-secondary' %>">
+                                                <i class="ti ti-<%= duty?.secure_booking ? 'lock' : 'lock-open' %> me-1"></i>
+                                                <%= duty?.secure_booking ? 'ENABLED' : 'DISABLED' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Booking Financial Information -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-currency-rupee me-2"></i>Financial Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Booking Amount</label>
+                                        <h4 class="text-primary">₹ <%= duty?.booking_amount || '0.00' %></h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Commission</label>
+                                        <h4 class="text-warning">₹ <%= duty?.commission || '0.00' %></h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Total Amount</label>
+                                        <h4 class="text-success">₹ <%= duty?.total_amount || '0.00' %></h4>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Negotiable</label>
+                                        <p class="form-control-static">
+                                            <span class="badge <%= duty?.is_negotiable ? 'bg-success' : 'bg-secondary' %>">
+                                                <i class="ti ti-<%= duty?.is_negotiable ? 'check' : 'x' %> me-1"></i>
+                                                <%= duty?.is_negotiable ? 'YES' : 'NO' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                <% } else { %>
+                    <!-- Free Vehicle Details Card -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-car me-2"></i>Vehicle Availability Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Vehicle Type</label>
+                                        <p class="form-control-static">
+                                            <span class="badge bg-info"><%= duty?.vehicle_type || 'N/A' %></span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Location</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-map-pin me-1"></i>
+                                            <%= duty?.location || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">City</label>
+                                        <p class="form-control-static"><%= duty?.city || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">State</label>
+                                        <p class="form-control-static"><%= duty?.state || 'N/A' %></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Free Start Time</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-calendar me-1"></i>
+                                            <%= new Date(duty?.free_start_time).toLocaleString() || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Free End Time</label>
+                                        <p class="form-control-static">
+                                            <i class="ti ti-calendar me-1"></i>
+                                            <%= new Date(duty?.free_end_time).toLocaleString() || 'N/A' %>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Available Anywhere</label>
+                                        <p class="form-control-static">
+                                            <span class="badge <%= duty?.available_anywhere ? 'bg-success' : 'bg-secondary' %>">
+                                                <i class="ti ti-<%= duty?.available_anywhere ? 'check' : 'x' %> me-1"></i>
+                                                <%= duty?.available_anywhere ? 'YES' : 'NO' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label fw-semibold">Active Status</label>
+                                        <p class="form-control-static">
+                                            <span class="badge <%= duty?.flag === 0 ? 'bg-success' : 'bg-danger' %>">
+                                                <i class="ti ti-<%= duty?.flag === 0 ? 'check' : 'x' %> me-1"></i>
+                                                <%= duty?.flag === 0 ? 'ACTIVE' : 'INACTIVE' %>
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Requests & Rejections Section -->
+                <% if (duty_type && (bookingRequests.length > 0 || bookingRejections.length > 0)) { %>
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-users me-2"></i>Booking Requests & Rejections
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Tabs for Requests and Rejections -->
+                            <ul class="nav nav-tabs" id="requestTabs" role="tablist">
+                                <% if (bookingRequests.length > 0) { %>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
+                                            Requests (<%= bookingRequests.length %>)
+                                        </button>
+                                    </li>
+                                <% } %>
+                                <% if (bookingRejections.length > 0) { %>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link <%= bookingRequests.length === 0 ? 'active' : '' %>" id="rejections-tab" data-bs-toggle="tab" data-bs-target="#rejections" type="button" role="tab">
+                                            Rejections (<%= bookingRejections.length %>)
+                                        </button>
+                                    </li>
+                                <% } %>
+                            </ul>
+
+                            <div class="tab-content mt-3" id="requestTabsContent">
+                                <!-- Requests Tab -->
+                                <% if (bookingRequests.length > 0) { %>
+                                    <div class="tab-pane fade show active" id="requests" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Request Token</th>
+                                                        <th>Vendor</th>
+                                                        <th>Status</th>
+                                                        <th>Requested At</th>
+                                                        <th>Remarks</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% bookingRequests.forEach(request => { 
+                                                        const reqVendor = request?.requested_by_vendor;
+                                                    %>
+                                                        <tr>
+                                                            <td><code><%= request?.token %></code></td>
+                                                            <td>
+                                                                <% if (reqVendor) { %>
+                                                                    <div><strong><%= reqVendor.vendor_name %></strong></div>
+                                                                    <small class="text-muted"><%= reqVendor.token %></small>
+                                                                <% } else { %>
+                                                                    N/A
+                                                                <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge <%= getStatusBadge(request?.status) %>">
+                                                                    <%= request?.status %>
+                                                                </span>
+                                                            </td>
+                                                            <td><%= new Date(request?.created_at).toLocaleString() %></td>
+                                                            <td><%= request?.remarks || '-' %></td>
+                                                        </tr>
+                                                    <% }) %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                <% } %>
+
+                                <!-- Rejections Tab -->
+                                <% if (bookingRejections.length > 0) { %>
+                                    <div class="tab-pane fade <%= bookingRequests.length === 0 ? 'show active' : '' %>" id="rejections" role="tabpanel">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Rejection Token</th>
+                                                        <th>Rejected By</th>
+                                                        <th>Role</th>
+                                                        <th>Reason</th>
+                                                        <th>Rejected At</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <% bookingRejections.forEach(rejection => { 
+                                                        const rejectVendor = rejection?.rejected_by_vendor;
+                                                    %>
+                                                        <tr>
+                                                            <td><code><%= rejection?.token %></code></td>
+                                                            <td>
+                                                                <% if (rejectVendor) { %>
+                                                                    <div><strong><%= rejectVendor.vendor_name %></strong></div>
+                                                                    <small class="text-muted"><%= rejectVendor.token %></small>
+                                                                <% } else { %>
+                                                                    N/A
+                                                                <% } %>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge bg-info"><%= rejection?.rejected_by_role %></span>
+                                                            </td>
+                                                            <td><%= rejection?.reason %></td>
+                                                            <td><%= new Date(rejection?.created_at).toLocaleString() %></td>
+                                                        </tr>
+                                                    <% }) %>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Free Vehicle Requests -->
+                <% if (duty_type && freeVehicleRequests.length > 0) { %>
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-users me-2"></i>Vehicle Requests (<%= freeVehicleRequests.length %>)
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Request Token</th>
+                                            <th>Requested By</th>
+                                            <th>Status</th>
+                                            <th>Requested At</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% freeVehicleRequests.forEach(request => { 
+                                            const reqVendor = request?.requested_by_vendor;
+                                        %>
+                                            <tr>
+                                                <td><code><%= request?.token %></code></td>
+                                                <td>
+                                                    <% if (reqVendor) { %>
+                                                        <div><strong><%= reqVendor.vendor_name %></strong></div>
+                                                        <small class="text-muted"><%= reqVendor.token %></small>
+                                                    <% } else { %>
+                                                        N/A
+                                                    <% } %>
+                                                </td>
+                                                <td>
+                                                    <span class="badge <%= getStatusBadge(request?.status) %>">
+                                                        <%= request?.status %>
+                                                    </span>
+                                                </td>
+                                                <td><%= new Date(request?.created_at).toLocaleString() %></td>
+                                                <td><%= request?.remarks || '-' %></td>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Additional Information -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-notes me-2"></i>Additional Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (duty_type && duty?.extra_requirements) { %>
+                            <div class="row">
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Extra Requirements</label>
+                                    <div class="border rounded p-3 bg-light">
+                                        <% try { 
+                                            const requirements = typeof duty.extra_requirements === 'string' ? 
+                                                JSON.parse(duty.extra_requirements) : duty.extra_requirements;
+                                            
+                                            if (Array.isArray(requirements) && requirements.length > 0) {
+                                                requirements.forEach(req => { %>
+                                                    <span class="badge bg-info me-2 mb-2">
+                                                        <i class="ti ti-check me-1"></i><%= req %>
+                                                    </span>
+                                                <% });
+                                            } else if (typeof requirements === 'object' && Object.keys(requirements).length > 0) {
+                                                Object.entries(requirements).forEach(([key, value]) => { %>
+                                                    <div class="mb-2">
+                                                        <strong><%= key %>:</strong> 
+                                                        <span class="text-muted"><%= value ? '✅' : '❌' %></span>
+                                                    </div>
+                                                <% });
+                                            } else { %>
+                                                <span class="text-muted">No extra requirements specified</span>
+                                            <% }
+                                        } catch (e) { %>
+                                            <span class="text-muted">Error parsing requirements</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } else if (duty_type && duty?.notes) { %>
+                            <div class="row">
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold">Notes</label>
+                                    <div class="border rounded p-3 bg-light">
+                                        <%= duty?.notes || 'No additional notes' %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center text-muted py-3">
+                                <i class="ti ti-notes-off fs-4 d-block mb-2"></i>
+                                No additional information available
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Sidebar -->
+            <div class="col-lg-4">
+                <!-- Status Timeline -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-timeline me-2"></i>Activity Timeline
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline">
+                            <div class="timeline-item">
+                                <div class="timeline-marker bg-primary"></div>
+                                <div class="timeline-content">
+                                    <h6 class="timeline-title">
+                                        <%= duty_type ? 'Booking Created' : 'Vehicle Posted' %>
+                                    </h6>
+                                    <p class="timeline-time">
+                                        <i class="ti ti-clock me-1"></i>
+                                        <%= new Date(duty?.created_at || duty?.posted_at).toLocaleString() %>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <% if (duty?.updated_at && duty?.updated_at !== duty?.created_at) { %>
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Last Updated</h6>
+                                        <p class="timeline-time">
+                                            <i class="ti ti-clock me-1"></i>
+                                            <%= new Date(duty?.updated_at).toLocaleString() %>
+                                        </p>
+                                    </div>
+                                </div>
+                            <% } %>
+                            
+                            <% if (duty?.vendor_token && vendor) { %>
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Vendor Assigned</h6>
+                                        <p class="timeline-time">
+                                            <i class="ti ti-user me-1"></i>
+                                            <%= vendor?.vendor_name || 'Vendor' %>
+                                        </p>
+                                    </div>
+                                </div>
+                            <% } %>
+                            
+                            <% if (duty_type && bookingRequests.length > 0) { %>
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-warning"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Requests Received</h6>
+                                        <p class="timeline-time">
+                                            <i class="ti ti-users me-1"></i>
+                                            <%= bookingRequests.length %> request(s)
+                                        </p>
+                                    </div>
+                                </div>
+                            <% } %>
+                            
+                            <% if (duty_type && freeVehicleRequests.length > 0) { %>
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-warning"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Requests Received</h6>
+                                        <p class="timeline-time">
+                                            <i class="ti ti-users me-1"></i>
+                                            <%= freeVehicleRequests.length %> request(s)
+                                        </p>
+                                    </div>
+                                </div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Vendor Information -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-user me-2"></i>Vendor Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar avatar-lg bg-primary-light text-primary me-3">
+                                <i class="ti ti-building-store"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0"><%= vendorInfo?.full_name || 'N/A' %></h5>
+                                <small class="text-muted">Vendor</small>
+                            </div>
+                        </div>
+                        
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Vendor Email:</span>
+                                    <span><code><%= vendorInfo?.email || 'N/A' %></code></span>
+                                </div>
+                            </div>
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Verification:</span>
+                                    <span class="badge <%= vendorInfo?.verification_status === 'VERIFIED' ? 'bg-success' : 'bg-warning' %>">
+                                        <%= vendorInfo?.verification_status || 'N/A' %>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Member Since:</span>
+                                    <span><%= vendorInfo?.create_date ? new Date(vendorInfo?.create_date).toLocaleDateString() : 'N/A' %></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Card -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-settings me-2"></i>Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <!-- Common Actions -->
+                            <a href="/vendor-duties" class="btn btn-light">
+                                <i class="ti ti-arrow-back me-2"></i>Back to List
+                            </a>
+                            
+                            <button class="btn btn-secondary" id="printReport">
+                                <i class="ti ti-printer me-2"></i>Print Report
+                            </button>
+                            
+                            <!-- Booking Specific Actions -->
+                            <% if (duty_type) { %>
+                                <% if (duty?.status === 'OPEN') { %>
+                                    <button class="btn btn-success" id="acceptBooking">
+                                        <i class="ti ti-check me-2"></i>Accept Booking
+                                    </button>
+                                    <button class="btn btn-danger" id="rejectBooking">
+                                        <i class="ti ti-x me-2"></i>Reject Booking
+                                    </button>
+                                <% } else if (duty?.status === 'ACCEPTED') { %>
+                                    <button class="btn btn-primary" id="startBooking">
+                                        <i class="ti ti-play me-2"></i>Start Booking
+                                    </button>
+                                <% } else if (duty?.status === 'IN_PROGRESS') { %>
+                                    <button class="btn btn-success" id="completeBooking">
+                                        <i class="ti ti-flag me-2"></i>Complete Booking
+                                    </button>
+                                <% } %>
+                                
+                                <% if (bookingRequests.length > 0) { %>
+                                    <button class="btn btn-info" id="viewRequests">
+                                        <i class="ti ti-users me-2"></i>View All Requests
+                                    </button>
+                                <% } %>
+                            <% } else { %>
+                                <!-- Free Vehicle Specific Actions -->
+                                <% if (duty?.status === 'AVAILABLE') { %>
+                                    <button class="btn btn-warning" id="markRequested">
+                                        <i class="ti ti-clock me-2"></i>Mark as Requested
+                                    </button>
+                                    <button class="btn btn-danger" id="markCancelled">
+                                        <i class="ti ti-x me-2"></i>Mark as Cancelled
+                                    </button>
+                                <% } else if (duty?.status === 'REQUESTED') { %>
+                                    <button class="btn btn-success" id="markBooked">
+                                        <i class="ti ti-check me-2"></i>Mark as Booked
+                                    </button>
+                                    <button class="btn btn-secondary" id="markAvailable">
+                                        <i class="ti ti-arrow-back me-2"></i>Mark as Available
+                                    </button>
+                                <% } else if (duty?.status === 'BOOKED') { %>
+                                    <button class="btn btn-success" id="markCompleted">
+                                        <i class="ti ti-flag me-2"></i>Mark as Completed
+                                    </button>
+                                <% } %>
+                                
+                                <% if (freeVehicleRequests.length > 0) { %>
+                                    <button class="btn btn-info" id="viewVehicleRequests">
+                                        <i class="ti ti-users me-2"></i>View Requests
+                                    </button>
+                                <% } %>
+                            <% } %>
+                            
+                            <!-- Danger Zone -->
+                            <div class="border-top mt-3 pt-3">
+                                <h6 class="text-danger mb-2"><i class="ti ti-alert-triangle me-2"></i>Danger Zone</h6>
+                                <button class="btn btn-outline-danger" id="deleteDuty">
+                                    <i class="ti ti-trash me-2"></i>Delete Duty
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-chart-bar me-2"></i>Quick Stats
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Total Requests:</span>
+                                    <span class="badge bg-primary rounded-pill">
+                                        <%= stats?.totalRequests || 0 %>
+                                    </span>
+                                </div>
+                            </div>
+                            <% if (duty_type) { %>
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Total Rejections:</span>
+                                        <span class="badge bg-danger rounded-pill">
+                                            <%= stats?.totalRejections || 0 %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Booking Amount:</span>
+                                        <span class="fw-bold text-success">₹ <%= duty?.booking_amount || '0.00' %></span>
+                                    </div>
+                                </div>
+                            <% } %>
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span>Active Status:</span>
+                                    <span class="badge <%= duty?.flag === 0 ? 'bg-success' : 'bg-danger' %>">
+                                        <%= duty?.flag === 0 ? 'ACTIVE' : 'INACTIVE' %>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('printReport').addEventListener('click', function () {
+        const content = document.getElementById('reportArea').innerHTML;
+        const original = document.body.innerHTML;
+
+        document.body.innerHTML = content;
+        window.print();
+        document.body.innerHTML = original;
+        location.reload();
+    });
+</script>
+
+
+<%- include('../shared/partials/footer') %>
