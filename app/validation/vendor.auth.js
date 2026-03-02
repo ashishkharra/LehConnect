@@ -3,6 +3,50 @@ const { validatorMiddleware } = require('../shared/utils/validation')
 
 module.exports.validate = (method) => {
     switch (method) {
+        case 'post-holiday-package': {
+            return [
+                body("from_city")
+                    .notEmpty()
+                    .withMessage("From city is required")
+                    .isLength({ min: 2, max: 150 })
+                    .withMessage("From city must be between 2 and 150 characters"),
+
+
+                body("to_city")
+                    .notEmpty()
+                    .withMessage("To city is required")
+                    .isLength({ min: 2, max: 150 })
+                    .withMessage("To city must be between 2 and 150 characters"),
+
+
+                body("departure_date")
+                    .notEmpty()
+                    .withMessage("Departure date is required")
+                    .isISO8601()
+                    .withMessage("Departure date must be valid date"),
+
+
+                body("adults")
+                    .optional()
+                    .isInt({ min: 1, max: 12 })
+                    .withMessage("Adults must be between 1 and 12"),
+
+
+                body("children")
+                    .optional()
+                    .isInt({ min: 0, max: 6 })
+                    .withMessage("Children must be between 0 and 6"),
+
+
+                body("rooms")
+                    .optional()
+                    .isInt({ min: 1, max: 6 })
+                    .withMessage("Rooms must be between 1 and 6"),
+
+                validatorMiddleware
+            ]
+        }
+
         case 'free-vehicle-request-action': {
             return [
                 body('action')
@@ -303,11 +347,6 @@ module.exports.validate = (method) => {
                     .notEmpty()
                     .withMessage('vehicle_type is required'),
 
-                body('vehicle_name')
-                    .trim()
-                    .notEmpty()
-                    .withMessage('vechile is required'),
-
                 body('pickup_datetime')
                     .isISO8601()
                     .withMessage('pickup_datetime must be a valid datetime'),
@@ -350,7 +389,16 @@ module.exports.validate = (method) => {
                     .optional(),
 
                 body('total_amount')
-                    .optional(),
+                    .notEmpty()
+                    .withMessage('Total amount is required')
+                    .isFloat({ min: 0 })
+                    .withMessage('Total amount must be a positive number')
+                    .custom((value) => {
+                        if (!/^\d+(\.\d{1,2})?$/.test(value)) {
+                            throw new Error('Total amount can have up to 2 decimal places');
+                        }
+                        return true;
+                    }),
 
                 body('is_negotiable')
                     .optional()
@@ -450,6 +498,124 @@ module.exports.validate = (method) => {
                     .withMessage('Comment must be a string'),
                 validatorMiddleware
             ]
+        }
+
+
+        case 'post-insurance-enquiry': {
+            return [
+                body('car_number')
+                    .notEmpty().withMessage('Car number is required')
+                    .isString().withMessage('Invalid car number')
+                    .trim(),
+                body('name')
+                    .notEmpty().withMessage('Name is required')
+                    .isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
+                body('contact')
+                    .notEmpty().withMessage('Contact is required')
+                    .isMobilePhone().withMessage('Invalid contact number'),
+                body('agree_policy')
+                    .isBoolean().withMessage('agree_policy must be true/false'),
+                body('whatsapp')
+                    .optional()
+                    .isBoolean().withMessage('whatsapp must be true/false'),
+                validatorMiddleware
+            ];
+        }
+
+        case 'post-hotel-enquiry': {
+            return [
+                body('area')
+                    .notEmpty().withMessage('Area is required')
+                    .isString().withMessage('Invalid area')
+                    .trim()
+                    .isLength({ min: 2, max: 255 }).withMessage('Area must be between 2 and 255 characters'),
+
+                body('check_in')
+                    .notEmpty().withMessage('Check-in date is required')
+                    .isISO8601().withMessage('Invalid check-in date format')
+                    .toDate(),
+
+                body('check_out')
+                    .notEmpty().withMessage('Check-out date is required')
+                    .isISO8601().withMessage('Invalid check-out date format')
+                    .toDate()
+                    .custom((value, { req }) => {
+                        if (new Date(value) <= new Date(req.body.check_in)) {
+                            throw new Error('Check-out date must be after check-in date');
+                        }
+                        return true;
+                    }),
+
+                body('adults')
+                    .optional()
+                    .isInt({ min: 1, max: 20 }).withMessage('Adults must be between 1 and 20'),
+
+                body('children')
+                    .optional()
+                    .isInt({ min: 0, max: 10 }).withMessage('Children must be between 0 and 10'),
+
+                body('rooms')
+                    .optional()
+                    .isInt({ min: 1, max: 10 }).withMessage('Rooms must be between 1 and 10'),
+
+                validatorMiddleware
+            ];
+        }
+
+
+        case 'post-flight-enquiry': {
+            return [
+                body('trip_type')
+                    .notEmpty().withMessage('Trip type is required')
+                    .isIn(['one_way', 'round_trip']).withMessage('Trip type must be one_way or round_trip'),
+
+                body('from_location')
+                    .notEmpty().withMessage('From location is required')
+                    .isString().withMessage('Invalid from location')
+                    .trim()
+                    .isLength({ min: 2, max: 100 }).withMessage('From location must be between 2 and 100 characters'),
+
+                body('to_location')
+                    .notEmpty().withMessage('To location is required')
+                    .isString().withMessage('Invalid to location')
+                    .trim()
+                    .isLength({ min: 2, max: 100 }).withMessage('To location must be between 2 and 100 characters'),
+
+                body('departure_date')
+                    .notEmpty().withMessage('Departure date is required')
+                    .isISO8601().withMessage('Invalid departure date format')
+                    .toDate(),
+
+                body('return_date')
+                    .optional()
+                    .isISO8601().withMessage('Invalid return date format')
+                    .toDate()
+                    .custom((value, { req }) => {
+                        // If trip is round_trip, return_date is mandatory
+                        if (req.body.trip_type === 'round_trip' && !value) {
+                            throw new Error('Return date is required for round trip');
+                        }
+                        // If provided, ensure it's after departure
+                        if (value && new Date(value) <= new Date(req.body.departure_date)) {
+                            throw new Error('Return date must be after departure date');
+                        }
+                        return true;
+                    }),
+
+                body('adults')
+                    .optional()
+                    .isInt({ min: 1, max: 9 }).withMessage('Adults must be between 1 and 9'),
+
+                body('children')
+                    .optional()
+                    .isInt({ min: 0, max: 8 }).withMessage('Children must be between 0 and 8'),
+
+                body('class_type')
+                    .notEmpty().withMessage('Class type is required')
+                    .isIn(['economy', 'business', 'first']).withMessage('Class type must be economy, business, or first'),
+
+                validatorMiddleware
+            ];
         }
 
     }

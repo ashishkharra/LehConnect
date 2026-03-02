@@ -320,8 +320,8 @@ module.exports = (sequelize, Sequelize) => {
         tableName: 'tbl_vendor',
         freezeTableName: true,
         timestamps: true,
-        createdAt: 'created_at',
-        updatedAt: 'updated_at',
+        createdAt: 'create_date',
+        updatedAt: 'update_date',
         indexes: [
             { fields: ["contact"] },
 

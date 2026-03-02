@@ -45,6 +45,12 @@ const VendorHelpAnswer = db.vendor_help_answer
 const BookingRequest = db.bookingRequest
 const BookingReject = db.bookingRejection
 const WalletTransaction = db.wallet_transaction
+const HolidayPackageEnquiry = db.holydaypackageEnquiry
+const InsuranceEnquiry = db.insuranceEnquiry
+const HotelEnquiry = db.hotelEnquiry
+const FlightEnquiry = db.flightEnquiry
+const SiteSetting = db.siteSettings
+
 
 router.get('/get/dashboard', [vendorMiddleware], async (req, res) => {
     // const cacheKey = 'dashboard_data';
@@ -66,7 +72,14 @@ router.get('/get/dashboard', [vendorMiddleware], async (req, res) => {
         //     return res.status(200).json(responseData('Dashboard fetched successfully (from cache)', cached.data, req, true));
         // }
 
-        const [sliderResult, countersResult, recentReviews, recentVideos] = await Promise.all([
+        const [serviceResult, sliderResult, countersResult, recentReviews, recentVideos] = await Promise.all([
+            Service.findAll({
+                where: {
+                    status: 'active'
+                },
+                attributes: ['id', 'name'],
+                order: [['id', 'ASC']],
+            }),
             SiteSlider.findAll({
                 attributes: [[Sequelize.literal(`CONCAT('${admin_url}', image)`), 'image'], 'position'],
                 where: { image: { [Sequelize.Op.ne]: null } },
@@ -136,6 +149,7 @@ router.get('/get/dashboard', [vendorMiddleware], async (req, res) => {
         }));
 
         const result = {
+            services: serviceResult,
             sliders: sliderResult,
             counters: formattedCounters,
             recent_reviews: reviewsWithProfile,
@@ -145,7 +159,7 @@ router.get('/get/dashboard', [vendorMiddleware], async (req, res) => {
             auto_update: formattedCounters.auto_update?.value === 1 || false
         };
 
-        await setCache(cacheKey, { data: result, lastModified }, 300);
+        // await setCache(cacheKey, { data: result, lastModified }, 300);
 
         return res.status(200).json(responseData('Dashboard fetched successfully', result, req, true));
 
@@ -342,41 +356,41 @@ router.post('/post/help', [vendorMiddleware], async (req, res) => {
     }
 })
 
-router.get('/get/services', [vendorMiddleware], async (req, res) => {
-    try {
-        const page = parseInt(req.query.page, 10) || 1;
-        const limit = 10;
-        const offset = (page - 1) * limit;
+// router.get('/get/services', [vendorMiddleware], async (req, res) => {
+//     try {
+//         const page = parseInt(req.query.page, 10) || 1;
+//         const limit = 10;
+//         const offset = (page - 1) * limit;
 
-        const services = await Service.findAll({
-            where: {
-                status: 'active'
-            },
-            attributes: ['id', 'name', 'code', 'description', 'token'],
-            order: [['name', 'ASC']],
-            limit,
-            offset
-        });
+//         const services = await Service.findAll({
+//             where: {
+//                 status: 'active'
+//             },
+//             attributes: ['id', 'name', 'code', 'description', 'token'],
+//             order: [['name', 'ASC']],
+//             limit,
+//             offset
+//         });
 
-        return res.status(200).json(
-            responseData(
-                'Services fetched successfully',
-                {
-                    services,
-                    page,
-                    hasMore: services.length === limit
-                },
-                req,
-                true
-            )
-        );
-    } catch (error) {
-        console.error('Get services error:', error);
-        return res.status(500).json(
-            responseData('Error occurred', {}, req, false)
-        );
-    }
-});
+//         return res.status(200).json(
+//             responseData(
+//                 'Services fetched successfully',
+//                 {
+//                     services,
+//                     page,
+//                     hasMore: services.length === limit
+//                 },
+//                 req,
+//                 true
+//             )
+//         );
+//     } catch (error) {
+//         console.error('Get services error:', error);
+//         return res.status(500).json(
+//             responseData('Error occurred', {}, req, false)
+//         );
+//     }
+// });
 
 router.post('/add-services', [vendorMiddleware, vendorValidation.validate('add-services')], async (req, res) => {
     try {
@@ -384,7 +398,7 @@ router.post('/add-services', [vendorMiddleware, vendorValidation.validate('add-s
         const { token: vendorToken } = req.user;
 
         const vendorServicesData = service.map(serviceToken => ({
-            token: randomstring.generate(64),
+            token: randomstring(64),
             vendor_token: vendorToken,
             service_token: serviceToken,
             create_date: new Date()
@@ -1826,6 +1840,7 @@ router.get('/get-profile', [vendorMiddleware], async (req, res) => {
                 'city',
                 'ref_code',
                 'verification_status',
+                'rejectReason',
                 [Sequelize.literal(`CONCAT('${admin_url}', profile_image)`), 'profile_image'],
                 [Sequelize.literal(`CONCAT('${admin_url}', aadhaar_front_image)`), 'aadhaar_front_image'],
                 [Sequelize.literal(`CONCAT('${admin_url}', aadhaar_back_image)`), 'aadhaar_back_image'],
@@ -1849,7 +1864,7 @@ router.get('/get-profile', [vendorMiddleware], async (req, res) => {
     }
 });
 
-router.post('/update-basic-details', [vendorMiddleware, /*uploadImages*/, vendorValidation.validate('basic-details')], async (req, res) => {
+router.post('/update-basic-details', [vendorMiddleware, uploadImages, vendorValidation.validate('basic-details')], async (req, res) => {
     try {
         const {
             first_name,
@@ -1865,7 +1880,7 @@ router.post('/update-basic-details', [vendorMiddleware, /*uploadImages*/, vendor
         } = req.body;
 
         const { token } = req?.user;
-        const io = getIO();
+        // const io = getIO();
 
         // const verification_status = req?.user?.verification_status
         // const VP = req?.user?.verification_percentage
@@ -1876,15 +1891,15 @@ router.post('/update-basic-details', [vendorMiddleware, /*uploadImages*/, vendor
         //     )
         // }
 
-        // if (!req.files?.profile_image) {
-        //     return res.status(400).json(
-        //         responseData('Profile image is required', {}, req, false)
-        //     )
-        // }
+        if (!req.files?.profile_image) {
+            return res.status(400).json(
+                responseData('Profile image is required', {}, req, false)
+            )
+        }
 
         // const frontImage = `/uploads/${req.files.identity_front_image[0].filename}`
         // const backImage = `/uploads/${req.files.identity_back_image[0].filename}`
-        // const profileImage = `/uploads/${req.files.profile_image[0].filename}`
+        const profileImage = `/uploads/${req.files.profile_image[0].filename}`
 
         // const { vp, vp_status } = calculateVerificationPercentage({ name, city, state }, VP, verification_status)
 
@@ -1904,11 +1919,11 @@ router.post('/update-basic-details', [vendorMiddleware, /*uploadImages*/, vendor
             pincode,
             address,
             about_me,
-            ref_code: ref
+            ref_code: ref,
             /*identity_type,*/
             /*identity_front_image: frontImage,*/
             /*identity_back_image: backImage,*/
-            /*profile_image: profileImage,*/
+            profile_image: profileImage
             /*verification_percentage: vp,*/
             // verification_status: 'PARTIAL',
             /*identity_submitted_at: new Date()*/
@@ -2478,45 +2493,47 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
 
         const { page = 1, limit = 12, accept_type, status } = req.query;
         const vendorToken = req.user.token;
+
+        const siteSettings = await SiteSetting.findOne({
+            attributes: [
+                'send_to_all_cities',
+                'city_filter_enabled',
+                'selected_cities'
+            ],
+            raw: true
+        });
+
+        const {
+            send_to_all_cities,
+        } = siteSettings || {};
+
         const rawSavedCities = req.user.preferred_cities;
 
-        let cityArray = [];
+        let normalizedCities = null;
 
-        if (Array.isArray(rawSavedCities)) {
-            cityArray = rawSavedCities;
-        } else if (typeof rawSavedCities === 'string') {
-            try {
-                cityArray = JSON.parse(rawSavedCities);
-            } catch {
-                cityArray = rawSavedCities.split(',').map(c => c.trim());
+        if (!send_to_all_cities) {
+
+            let cityArray = [];
+
+            if (Array.isArray(rawSavedCities)) {
+                cityArray = rawSavedCities;
+            } else if (typeof rawSavedCities === 'string') {
+                try {
+                    cityArray = JSON.parse(rawSavedCities);
+                } catch {
+                    cityArray = rawSavedCities.split(',').map(c => c.trim());
+                }
             }
-        }
 
-        if (!Array.isArray(cityArray) || cityArray.length === 0) {
-            return res.status(200).json(
-                responseData(
-                    'No preferred cities set. Please update your profile.',
-                    {
-                        docs: [],
-                        totalDocs: 0,
-                        limit: Number(limit),
-                        page: Number(page),
-                        totalPages: 0
-                    },
-                    req,
-                    true
-                )
-            );
+            normalizedCities = cityArray.map(c => c.trim());
         }
-
-        const normalizedCities = cityArray.map(c => c.trim());
 
         const whereCondition = {
-            city: {
-                [Op.in]: normalizedCities
-            },
             vendor_token: {
                 [Op.ne]: vendorToken
+            },
+            status: {
+                [Op.ne]: 'EXPIRED'
             },
             [Op.not]: [
                 {
@@ -2525,6 +2542,13 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
                 }
             ]
         };
+
+        // Apply city filter ONLY if global toggle is OFF
+        if (normalizedCities && normalizedCities.length) {
+            whereCondition.city = {
+                [Op.in]: normalizedCities
+            };
+        }
 
         if (accept_type) {
             whereCondition.accept_type = accept_type.toUpperCase();
@@ -2670,6 +2694,7 @@ router.get('/get-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidat
                     required: false,
                     attributes: [
                         'id',
+                        'token',
                         'first_name',
                         'last_name',
                         'contact',
@@ -2881,7 +2906,6 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
     }
 });
 
-
 router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) => {
     try {
         const vendorToken = req.user.token;
@@ -3072,25 +3096,37 @@ router.get('/my/accepted/booking', [vendorMiddleware, verifiedOnly], async (req,
 
 router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOnly], async (req, res) => {
     try {
-
         const vendorToken = req.user.token;
         const bookingToken = req.params.token;
 
         const booking = await Booking.findOne({
-            where: { token: bookingToken, vendor_token: vendorToken },
+            where: {
+                token: bookingToken,
+                vendor_token: vendorToken,
+            },
             attributes: [
                 'token',
                 'status',
                 'accept_type',
                 'pickup_datetime',
                 'return_datetime',
-                'created_at'
+                'created_at',
             ],
             include: [
+                // ===============================
+                // BOOKING REQUESTS (includes BID)
+                // ===============================
                 {
                     model: db.bookingRequest,
                     as: 'booking_requests',
                     required: false,
+                    on: {
+                        '$booking.token$': {
+                            [Sequelize.Op.eq]: Sequelize.col(
+                                'booking_requests.booking_token'
+                            ),
+                        },
+                    },
                     attributes: [
                         'token',
                         'status',
@@ -3100,83 +3136,148 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                         'bid_currency',
                         'bid_valid_till',
                         'remarks',
-                        'created_at'
+                        'created_at',
                     ],
                     include: [
                         {
                             model: db.vendor,
                             as: 'requester',
-                            attributes: ['token', 'first_name', 'last_name', 'contact']
-                        }
-                    ]
+                            required: false,
+                            on: {
+                                '$booking_requests.requested_by_vendor_token$': {
+                                    [Sequelize.Op.eq]: Sequelize.col(
+                                        'booking_requests->requester.token'
+                                    ),
+                                },
+                            },
+                            attributes: [
+                                'token',
+                                'first_name',
+                                'last_name',
+                                'contact',
+                            ],
+                        },
+                    ],
                 },
-                {
-                    model: db.bookingRating,
-                    as: 'ratings',
-                    required: false,
-                    attributes: ['stars', 'comment', 'rater_token']
-                },
+
+                // ===============================
+                // BOOKING REJECTIONS
+                // ===============================
                 {
                     model: db.bookingRejection,
                     as: 'booking_rejections',
                     required: false,
-                    attributes: ['token', 'reason', 'rejected_by_token', 'created_at'],
+                    on: {
+                        '$booking.token$': {
+                            [Sequelize.Op.eq]: Sequelize.col(
+                                'booking_rejections.booking_token'
+                            ),
+                        },
+                    },
+                    attributes: [
+                        'token',
+                        'reason',
+                        'rejected_by_token',
+                        'created_at',
+                    ],
                     include: [
                         {
                             model: db.vendor,
                             as: 'rejecter',
-                            attributes: ['token', 'first_name', 'last_name', 'contact']
-                        }
-                    ]
-                }
+                            required: false,
+                            on: {
+                                '$booking_rejections.rejected_by_token$': {
+                                    [Sequelize.Op.eq]: Sequelize.col(
+                                        'booking_rejections->rejecter.token'
+                                    ),
+                                },
+                            },
+                            attributes: [
+                                'token',
+                                'first_name',
+                                'last_name',
+                                'contact',
+                            ],
+                        },
+                    ],
+                },
             ],
             order: [
-                [{ model: db.bookingRequest, as: 'booking_requests' }, 'created_at', 'DESC'],
-                [{ model: db.bookingRejection, as: 'booking_rejections' }, 'created_at', 'DESC']
-            ]
+                [
+                    { model: db.bookingRequest, as: 'booking_requests' },
+                    'created_at',
+                    'DESC',
+                ],
+                [
+                    { model: db.bookingRejection, as: 'booking_rejections' },
+                    'created_at',
+                    'DESC',
+                ],
+            ],
         });
 
         if (!booking) {
             return res.status(404).json(
-                responseData('Booking not found or access denied', {}, req, false)
+                responseData(
+                    'Booking not found or access denied',
+                    {},
+                    req,
+                    false
+                )
             );
         }
 
         const acceptedRequest =
-            booking.booking_requests.find(r => r.status === 'ACCEPTED') || null;
-
-        const formattedRequests = booking.booking_requests.map(reqItem => {
-
-            const rating = booking.ratings?.find(r =>
-                r.rater_token === reqItem.requested_by_vendor_token
+            booking.booking_requests?.find(
+                (r) => r.status === 'ACCEPTED'
             ) || null;
 
-            const plainRequest = reqItem.get({ plain: true });
+        const formattedRequests =
+            booking.booking_requests?.map((reqItem) => {
+                const plain = reqItem.get({ plain: true });
 
-            return {
-                token: plainRequest.token,
-                status: plainRequest.status,
-                accept_type: plainRequest.accept_type,
-                requested_by_vendor_token: plainRequest.requested_by_vendor_token,
-                created_at: plainRequest.created_at,
+                return {
+                    token: plain.token,
+                    status: plain.status,
+                    accept_type: plain.accept_type,
+                    requested_at: plain.created_at,
 
-                // 🔥 Bid Details (if BID type)
-                bid_details:
-                    plainRequest.accept_type === 'BID'
+                    vendor: plain.requester
                         ? {
-                            amount: plainRequest.bid_amount,
-                            currency: plainRequest.bid_currency,
-                            valid_till: plainRequest.bid_valid_till,
-                            remarks: plainRequest.remarks
+                            token: plain.requester.token,
+                            first_name: plain.requester.first_name,
+                            last_name: plain.requester.last_name,
+                            contact: plain.requester.contact,
                         }
                         : null,
 
-                requester: plainRequest.requester,
+                    bid_details:
+                        plain.accept_type === 'BID'
+                            ? {
+                                amount: plain.bid_amount,
+                                currency: plain.bid_currency,
+                                valid_till: plain.bid_valid_till,
+                                remarks: plain.remarks,
+                            }
+                            : null,
+                };
+            }) || [];
 
-                rating_stars: rating ? rating.stars : null,
-                rating_comment: rating ? rating.comment : null
-            };
-        });
+        const formattedRejections =
+            booking.booking_rejections?.map((rej) => ({
+                token: rej.token,
+                reason: rej.reason,
+                rejected_at: rej.created_at,
+
+                vendor: rej.rejecter
+                    ? {
+                        token: rej.rejecter.token,
+                        first_name: rej.rejecter.first_name,
+                        last_name: rej.rejecter.last_name,
+                        contact: rej.rejecter.contact,
+                    }
+                    : null,
+            })) || [];
 
         const responseDataObj = {
             booking: {
@@ -3185,16 +3286,30 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                 accept_type: booking.accept_type,
                 pickup_datetime: booking.pickup_datetime,
                 return_datetime: booking.return_datetime,
-                created_at: booking.created_at
+                created_at: booking.created_at,
             },
+
             requests: formattedRequests,
+
             accepted_by: acceptedRequest
                 ? {
-                    vendor: acceptedRequest.requester,
-                    accepted_at: acceptedRequest.created_at
+                    accepted_at: acceptedRequest.created_at,
+                    vendor: acceptedRequest.requester
+                        ? {
+                            token:
+                                acceptedRequest.requester.token,
+                            first_name:
+                                acceptedRequest.requester.first_name,
+                            last_name:
+                                acceptedRequest.requester.last_name,
+                            contact:
+                                acceptedRequest.requester.contact,
+                        }
+                        : null,
                 }
                 : null,
-            rejections: booking.booking_rejections || []
+
+            rejections: formattedRejections,
         };
 
         return res.status(200).json(
@@ -3205,9 +3320,12 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                 true
             )
         );
-
     } catch (error) {
-        console.error('Booking request overview error:', error);
+        console.error(
+            'Booking request overview error:',
+            error
+        );
+
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
@@ -3338,25 +3456,31 @@ router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.v
         const {
             trip_type,
             vehicle_type,
-            vehicle_name,
+            vehicle_name = null,
             pickup_datetime,
-            return_datetime,
+            return_datetime = null,
             pickup_location,
             drop_location,
             city,
             state,
             accept_type,
-            booking_amount,
+            booking_amount = 0,
             commission = 0,
             total_amount,
             is_negotiable = false,
             secure_booking = false,
             visibility = 'public',
-            extra_requirements = {}
+            extra_requirements = {},
+            hide_info = false
         } = req.body;
+
+        // console.log('body ->>> ', req.body)
+
+        // process.exit(1)
 
         const vendorToken = req.user.token;
 
+        /* -------------------- DATE VALIDATION -------------------- */
         const pickupDate = new Date(pickup_datetime);
         if (isNaN(pickupDate.getTime()) || pickupDate < new Date()) {
             return res
@@ -3373,10 +3497,22 @@ router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.v
                     .json(responseData('Invalid return date', {}, req, false));
             }
         }
-
-        const normalizedAcceptType =
-            accept_type?.toLowerCase() === 'bidding' ? 'BID' : accept_type.toUpperCase();
-
+        /* -------------------- ACCEPT TYPE NORMALIZATION -------------------- */
+        let normalizedAcceptType;
+        switch (accept_type.toLowerCase()) {
+            case 'bidding':
+                normalizedAcceptType = 'BID';
+                break;
+            case 'instant':
+                normalizedAcceptType = 'INSTANT';
+                break;
+            case 'approval':
+                normalizedAcceptType = 'APPROVAL';
+                break;
+            default:
+                normalizedAcceptType = 'INSTANT';
+        }
+        /* -------------------- CREATE BOOKING -------------------- */
         const bookingData = {
             token: randomstring(64),
             vendor_token: vendorToken,
@@ -3390,37 +3526,43 @@ router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.v
             city,
             state,
             accept_type: normalizedAcceptType,
+            booking_amount: normalizedAcceptType === 'BID' ? 0 : booking_amount,
+            commission: normalizedAcceptType === 'BID' ? 0 : commission,
+            total_amount,
+            is_negotiable: normalizedAcceptType === 'BID' ? false : is_negotiable,
             secure_booking,
+            hide_info,
             visibility: visibility.toUpperCase(),
-            extra_requirements,
-            booking_amount: 0,
-            commission: 0,
-            total_amount: 0,
-            is_negotiable: false
+            extra_requirements
         };
-
-        if (normalizedAcceptType !== 'BID') {
-            bookingData.booking_amount = booking_amount;
-            bookingData.commission = commission;
-            bookingData.total_amount = total_amount;
-            bookingData.is_negotiable = is_negotiable;
-        }
-
         const booking = await Booking.create(bookingData);
 
-        res.status(201).json(
-            responseData('Booking posted successfully', {}, req, true)
-        );
-
-        const formattedPickupDate = new Date(booking.pickup_datetime).toLocaleString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
+        /* -------------------- NOTIFICATION SETTINGS -------------------- */
+        const notificationAccess = await SiteSetting.findOne({
+            attributes: ['send_to_all_cities'],
+            raw: true
         });
 
+        const { send_to_all_cities } = notificationAccess || {};
+
+        let whereCondition = {
+            flag: 0,
+            token: { [Op.ne]: vendorToken },
+            booking_notification_enabled: true
+        };
+
+        if (!send_to_all_cities) {
+
+            whereCondition.preferred_cities = {
+                [Op.like]: `%${booking.city}%`
+            };
+        }
+
+        /* -------------------- RESPONSE -------------------- */
+        res.status(201).json(
+            responseData('Booking posted successfully', booking, req, true)
+        );
+        /* -------------------- QUEUE -------------------- */
         bookingQueue.add(
             'BOOKING_CREATED',
             {
@@ -3432,44 +3574,31 @@ router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.v
                 jobId: `bookingCreated_${booking.token}`,
                 removeOnComplete: true
             }
-        ).catch(err => {
-            console.error('[BOOKING QUEUE ERROR]', err);
+        ).catch(console.error);
+        /* -------------------- SOCKET -------------------- */
+        const formattedPickupDate = pickupDate.toLocaleString('en-IN');
+        const io = getIO();
+        const vendors = await Vendor.findAll({
+            where: whereCondition,
+            attributes: ['token'],
+            raw: true
         });
 
-        (async () => {
-            try {
-                const io = getIO();
-
-                const vendors = await Vendor.findAll({
-                    where: Sequelize.and(
-                        { flag: 0 },
-                        { token: { [Op.ne]: vendorToken } },
-                        { booking_notification_enabled: true },
-                        Sequelize.literal(`JSON_CONTAINS(preferred_cities, '"${city}"')`)
-                    ),
-                    attributes: ['token'],
-                    raw: true
-                });
-
-                vendors.forEach(v => {
-                    io.to(`vendor:${v.token}`).emit('new_duty_alert', {
-                        booking_token: booking.token,
-                        vehicle_type: booking.vehicle_type,
-                        city: booking.city,
-                        title: 'LehConnect require',
-                        message: `New ${booking.vehicle_type} ${booking.vehicle_name} trip available in ${booking.city} at ${formattedPickupDate}`
-                    });
-                });
-            } catch (socketErr) {
-                console.error('[BOOKING SOCKET ERROR]', socketErr);
-            }
-        })();
-
+        vendors.forEach(v => {
+            io.to(`vendor:${v.token}`).emit('new_duty_alert', {
+                booking_token: booking.token,
+                vehicle_type: booking.vehicle_type,
+                city: booking.city,
+                title: 'New Booking',
+                message: `New ${booking.vehicle_type} trip in ${booking.city} at ${formattedPickupDate}`
+            });
+        });
     } catch (error) {
-        console.error('Post booking error:', error);
-        return res
-            .status(500)
-            .json(responseData('Error occurred', {}, req, false));
+        console.error(error);
+        res.status(500).json(
+            responseData('Server Error', {}, req, false)
+        );
+
     }
 });
 
@@ -4025,18 +4154,20 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
 });
 
 router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValidation.validate('bid-booking')], async (req, res) => {
-
     const t = await db.sequelize.transaction();
-
     try {
 
         const bidderToken = req.user.token;
         const { token } = req.params;
 
+        console.log('bidder token ->>>>> ', bidderToken)
+
         const {
             bid_amount,
             remarks
         } = req.body;
+
+        console.log('body ->>>>> ', req.body)
 
         const now = new Date();
 
@@ -4073,6 +4204,7 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
             lock: t.LOCK.UPDATE
         });
 
+        console.log('booking ->>>>> ', booking)
         if (!booking) {
             await t.rollback();
             return res.status(404).json(responseData('Booking not found', {}, req, false));
@@ -4361,6 +4493,256 @@ router.post('/booking/:token/cancel', [vendorMiddleware, verifiedOnly], async (r
         );
     }
 });
+
+// jatin api
+
+router.post("/holiday-package-enquiry", [vendorMiddleware, vendorValidation.validate('post-holiday-package')], async (req, res) => {
+    try {
+        const vendorToken = req?.user?.token || null;
+        const {
+            from_city,
+            to_city,
+            departure_date,
+            adults,
+            children,
+            rooms
+        } = req.body;
+
+        await HolidayPackageEnquiry.create({
+            token: randomstring(64),
+            vendor_token: vendorToken,
+            from_city,
+            to_city,
+            departure_date,
+            adults: adults || 1,
+            children: children || 0,
+            rooms: rooms || 1,
+        });
+
+        return res.status(201).json(
+            responseData(
+                "Holiday enquiry submitted successfully",
+                {},
+                req,
+                true
+            )
+        );
+    }
+    catch (error) {
+        console.log("Holiday enquiry error", error);
+        return res.status(500).json(
+            responseData(
+                "Internal server error",
+                {},
+                req,
+                false
+            )
+        );
+    }
+
+});
+
+router.post("/insurance-enquiry", [vendorMiddleware, vendorValidation.validate('post-insurance-enquiry')], async (req, res) => {
+
+    try {
+
+        const vendorToken = req?.user?.token || null;
+
+        const {
+            car_number,
+            name,
+            contact,
+            agree_policy,
+            whatsapp
+        } = req.body;
+
+
+        await InsuranceEnquiry.create({
+
+            token: randomstring(64),
+
+            vendor_token: vendorToken,
+
+            car_number,
+
+            name,
+
+            contact,
+
+            agree_policy,
+
+            whatsapp
+
+        });
+
+
+        return res.status(201).json(
+            responseData(
+                "Insurance enquiry submitted successfully",
+                {},
+                req,
+                true
+            )
+        );
+
+
+    }
+    catch (error) {
+
+        console.log("Insurance enquiry error", error);
+
+        return res.status(500).json(
+            responseData(
+                "Internal server error",
+                {},
+                req,
+                false
+            )
+        );
+
+    }
+
+});
+
+router.post("/hotel-enquiry", [vendorMiddleware, vendorValidation.validate('post-hotel-enquiry')], async (req, res) => {
+
+    try {
+
+        const vendorToken = req?.user?.token || null;
+
+        const {
+            area,
+            check_in,
+            check_out,
+            adults,
+            children,
+            rooms
+        } = req.body;
+
+
+        await HotelEnquiry.create({
+
+            token: randomstring(64),
+
+            vendor_token: vendorToken,
+
+            area,
+
+            check_in,
+
+            check_out,
+
+            adults: adults || 1,
+
+            children: children || 0,
+
+            rooms: rooms || 1,
+
+        });
+
+
+        return res.status(201).json(
+            responseData(
+                "Hotel enquiry submitted successfully",
+                {},
+                req,
+                true
+            )
+        );
+
+
+    }
+    catch (error) {
+
+        console.log("Hotel enquiry error", error);
+
+        return res.status(500).json(
+            responseData(
+                "Internal server error",
+                {},
+                req,
+                false
+            )
+        );
+
+    }
+
+});
+
+router.post("/flight-enquiry", [vendorMiddleware, vendorValidation.validate('post-flight-enquiry')], async (req, res) => {
+
+    try {
+
+        const vendorToken = req?.user?.token || null;
+
+        const {
+            trip_type,
+            from_location,
+            to_location,
+            departure_date,
+            return_date,
+            adults,
+            children,
+            class_type
+        } = req.body;
+
+
+        await FlightEnquiry.create({
+
+            token: randomstring(64),
+
+            vendor_token: vendorToken,
+
+            trip_type,
+
+            from_location,
+
+            to_location,
+
+            departure_date,
+
+            return_date,
+
+            adults: adults || 1,
+
+            children: children || 0,
+
+            class_type
+
+        });
+
+
+        return res.status(201).json(
+            responseData(
+                "Flight enquiry submitted successfully",
+                {},
+                req,
+                true
+            )
+        );
+
+
+    }
+    catch (error) {
+
+        console.log("Flight enquiry error", error);
+
+        return res.status(500).json(
+            responseData(
+                "Internal server error",
+                {},
+                req,
+                false
+            )
+        );
+
+    }
+
+});
+
+
+
+
 
 
 /* --------------- wallet -------------- */

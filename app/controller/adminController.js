@@ -29,6 +29,8 @@ const VendorHelp = db.vendor_help
 const VendorHelpAnswer = db.vendor_help_answer
 const ReferralSetting = db.referral_setting
 const ReferralHistory = db.referral_history
+const SiteSetting = db.siteSettings
+const HotelEnquiry = db.hotelEnquiry
 
 
 const vendorDeleteQueue = require('../queues/vendor/vendor_delete.queue.js');
@@ -1702,7 +1704,7 @@ const adminController = {
 
                 } else if (currentFile) {
                     // ===== CREATE NEW SLIDE =====
-                    const newToken = randomstring.generate(64);
+                    const newToken = randomstring(64);
 
                     await SiteSlider.create({
                         token: newToken,
@@ -3150,6 +3152,152 @@ const adminController = {
             console.error('Error updating settings:', error);
             req.flash('error', 'Internal Server Error while saving settings.');
             return res.redirect('/vendor-referral');
+        }
+    },
+
+    getNotificationSettings: async () => {
+
+        let settings = await SiteSetting.findOne({
+            attributes: [
+                'send_to_all_cities',
+                'city_filter_enabled',
+                'selected_cities',
+                'notification_type',
+                'instant_dispatch'
+            ]
+        });
+
+        if (!settings) {
+            settings = await SiteSetting.create({});
+        }
+
+        settings = settings.get({ plain: true });
+
+        settings.selected_cities = settings.selected_cities
+            ? JSON.parse(settings.selected_cities)
+            : [];
+
+        return settings;
+    },
+
+    toggleBookingNotification: async (req, res) => {
+        try {
+
+            let settings = await SiteSetting.findOne();
+
+            if (!settings) {
+                settings = await SiteSetting.create({});
+            }
+
+            // Checkboxes
+            settings.send_to_all_cities = !!req.body.send_to_all_cities;
+            settings.city_filter_enabled = !!req.body.city_filter_enabled;
+            settings.instant_dispatch = !!req.body.instant_dispatch;
+
+            // Dropdown
+            settings.notification_type = req.body.notification_type;
+
+            // Multiple select (city names)
+            let selectedCities = req.body.selected_cities || [];
+
+            if (!Array.isArray(selectedCities)) {
+                selectedCities = [selectedCities];
+            }
+
+            selectedCities = selectedCities
+                .map(city => city.trim())
+                .filter(city => city.length > 0);
+
+            settings.selected_cities = JSON.stringify(selectedCities);
+
+            await settings.save();
+
+            req.setFlash('success', 'Notification settings updated successfully');
+            return res.redirect('/manage-notifications');
+
+        } catch (error) {
+            console.error(error);
+            req.setFlash('error', 'Notification update failed');
+            return res.redirect('/manage-notifications');
+        }
+    },
+
+    getAllHotelEnquiries: async (req, res) => {
+        try {
+            const hotelEnquiries = await HotelEnquiry.findAll({
+                where: {
+                    flag: 0
+                },
+                attributes: [
+                    'id',
+                    'token',
+                    'vendor_token',
+                    'area',
+                    'check_in',
+                    'check_out',
+                    'rooms',
+                    'status',
+                    'create_date',
+                    [sequelize.literal(`(
+                    SELECT CONCAT(v.first_name, ' ', v.last_name) 
+                    FROM tbl_vendor v 
+                    WHERE v.token = HotelEnquiry.vendor_token
+                )`), 'vendor_name'],
+                    [sequelize.literal(`(
+                    SELECT v.profile_image 
+                    FROM tbl_vendor v 
+                    WHERE v.token = HotelEnquiry.vendor_token
+                )`), 'vendor_profile_image'],
+                    [sequelize.literal(`(
+                    SELECT 
+                        CASE 
+                            WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
+                            THEN CONCAT('${admin_url}/', v.profile_image) 
+                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg') 
+                        END
+                    FROM tbl_vendor v 
+                    WHERE v.token = HotelEnquiry.vendor_token
+                )`), 'vendor_profile_image_url']
+                ],
+                order: [['create_date', 'DESC']]
+            });
+
+            const formattedEnquiries = hotelEnquiries.map(enquiry => ({
+                id: enquiry.id,
+                token: enquiry.token,
+                vendor_token: enquiry.vendor_token,
+                area: enquiry.area,
+                checkInDate: enquiry.check_in ? new Date(enquiry.check_in).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }) : 'N/A',
+                checkOutDate: enquiry.check_out ? new Date(enquiry.check_out).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                }) : 'N/A',
+                rooms: enquiry.rooms,
+                status: enquiry.status,
+                createdDate: enquiry.create_date ? new Date(enquiry.create_date).toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }) : 'N/A',
+                vendor: {
+                    name: enquiry.dataValues.vendor_name || 'N/A',
+                    profileImage: enquiry.dataValues.vendor_profile_image,
+                    profileImageUrl: enquiry.dataValues.vendor_profile_image_url
+                }
+            }));
+
+            return responseData_('Fetched hotel enquiries', formattedEnquiries, true);
+
+        } catch (error) {
+            console.error('Error fetching hotel enquiries:', error);
+            return responseData_('Internal server error', { error: error.message }, false);
         }
     }
 

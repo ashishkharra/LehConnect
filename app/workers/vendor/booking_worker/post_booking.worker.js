@@ -7,6 +7,7 @@ const admin = require('../../../config/firebase');
 const Booking = db.booking;
 const Vendor = db.vendor;
 const Notification = db.notification;
+const SiteSetting = db.siteSettings
 
 const normalizeCity = (city) =>
   `city_${String(city || "")
@@ -24,62 +25,110 @@ new Worker(
     const booking = await Booking.findOne({
       where: { token: bookingToken }
     });
+
     if (!booking) return;
 
+    const notificationAccess = await SiteSetting.findOne({
+      attributes: [
+        'send_to_all_cities',
+        'city_filter_enabled'
+      ],
+      raw: true
+    });
+
+    if (!notificationAccess) return;
+
+    const {
+      send_to_all_cities,
+      city_filter_enabled,
+    } = notificationAccess;
+
+    if (!send_to_all_cities && !city_filter_enabled) {
+      console.log('[BOOKING_WORKER] Notifications disabled.');
+      return;
+    }
+
+    let whereCondition = {
+      flag: 0,
+      token: { [Op.ne]: booking.vendor_token },
+      booking_notification_enabled: true
+    };
+
+
     const vendors = await Vendor.findAll({
-      where: Sequelize.and(
-        { flag: 0 },
-        { token: { [Op.ne]: booking.vendor_token } },
-        { booking_notification_enabled: true },
-        Sequelize.literal(
-          `JSON_CONTAINS(preferred_cities, '"${booking.city}"')`
-        )
-      ),
+      where: whereCondition,
       attributes: ['token'],
       raw: true
     });
 
-    if (vendors.length) {
-      await Notification.bulkCreate(
-        vendors.map(v => ({
-          receiver_token: v.token,
-          receiver_role: 'vendor',
-          booking_token: booking.token,
-          type: 'BOOKING_CREATED',
-          title: 'New Duty Alert!',
-          message: `A new ${booking.vehicle_type} trip is available in ${booking.city}`,
-          city: booking.city,
-          state: booking.state,
-          is_read: false
-        }))
-      );
+    if (!vendors.length) {
+      console.log('[BOOKING_WORKER] No vendors matched.');
+      return;
     }
 
-    const topic = normalizeCity(booking.city);
+    await Notification.bulkCreate(
+      vendors.map(v => ({
+        receiver_token: v.token,
+        receiver_role: 'vendor',
+        booking_token: booking.token,
+        type: 'BOOKING_CREATED',
+        title: 'New Duty Alert!',
+        message: `A new ${booking.vehicle_type} trip is available in ${booking.city}`,
+        city: booking.city,
+        state: booking.state,
+        is_read: false
+      }))
+    );
 
     try {
-      await admin.messaging().send({
-        topic,
-        notification: {
-          title: 'New Duty Alert! 🚗',
-          body: `New ${booking.vehicle_type} available in ${booking.city}.`
-        },
-        android: {
-          priority: 'high',
+
+      if (city_filter_enabled) {
+        const topic = normalizeCity(booking.city);
+
+        await admin.messaging().send({
+          topic,
           notification: {
-            channelId: 'duty-alerts',
-            sound: 'villian'
+            title: 'New Duty Alert! 🚗',
+            body: `New ${booking.vehicle_type} available in ${booking.city}.`
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'duty-alerts',
+              sound: 'villian'
+            }
+          },
+          data: {
+            booking_token: booking.token,
+            type: 'BOOKING_CREATED'
           }
-        },
-        data: {
-          booking_token: booking.token,
-          type: 'BOOKING_CREATED'
-        }
-      });
+        });
+
+      } else if (send_to_all_cities) {
+        await admin.messaging().send({
+          topic: 'all_vendors',
+          notification: {
+            title: 'New Duty Alert! 🚗',
+            body: `New ${booking.vehicle_type} available in ${booking.city}.`
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'duty-alerts',
+              sound: 'villian'
+            }
+          },
+          data: {
+            booking_token: booking.token,
+            type: 'BOOKING_CREATED'
+          }
+        });
+      }
 
     } catch (err) {
       console.error('[BOOKING_WORKER] FCM ERROR:', err);
     }
+
   },
   {
     connection: bullConnection,

@@ -29,8 +29,6 @@
                                             <th>Check-in Date</th>
                                             <th>Check-out Date</th>
                                             <th>Rooms</th>
-                                            <th>Room Type</th>
-                                            <th>Budget Range</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
@@ -39,47 +37,38 @@
                                         <% if (hotelEnquiries && hotelEnquiries.length> 0) { %>
                                             <% hotelEnquiries.forEach(enquiry=> { %>
                                                 <tr>
-                                                    <td>#<%= enquiry.enquiryId %>
+                                                    <td>#<%= enquiry?.id %>
                                                     </td>
                                                     <td>
                                                         <h2 class="table-avatar">
                                                             <a href="javascript:void(0);" class="avatar avatar-sm me-2">
                                                                 <img class="avatar-img rounded-circle"
-                                                                    src="<%= enquiry.customerAvatar || 'assets/img/profiles/avatar-02.jpg' %>"
+                                                                    src="<%= enquiry?.vendor?.profileImage %>"
                                                                     alt="User Image">
                                                             </a>
                                                             <a href="javascript:void(0);">
-                                                                <%= enquiry.customerName %>
+                                                                <%= enquiry?.vendor?.name %>
                                                             </a>
                                                         </h2>
                                                     </td>
                                                     <td>
-                                                        <%= enquiry.hotelLocation %>
+                                                        <%= enquiry?.area %>
                                                     </td>
                                                     <td>
-                                                        <%= enquiry.checkInDate.toLocaleDateString() %>
+                                                        <%= enquiry?.checkInDate %>
                                                     </td>
                                                     <td>
-                                                        <%= enquiry.checkOutDate.toLocaleDateString() %>
+                                                        <%= enquiry?.checkOutDate %>
                                                     </td>
                                                     <td>
-                                                        <%= enquiry.roomsRequired %>
+                                                        <%= enquiry?.rooms %>
                                                     </td>
                                                     <td>
-                                                        <%= enquiry.roomType %>
-                                                    </td>
-                                                    <td>₹<%= enquiry.budgetRange %>
-                                                    </td>
-                                                    <td>
-                                                        <% if (enquiry.status==='Pending' ) { %>
-                                                            <span class="badge bg-warning">Pending</span>
-                                                            <% } else if (enquiry.status==='Quoted' ) { %>
-                                                                <span class="badge bg-info">Quoted</span>
-                                                                <% } else if (enquiry.status==='Confirmed' ) { %>
-                                                                    <span class="badge bg-success">Confirmed</span>
-                                                                    <% } else if (enquiry.status==='Cancelled' ) { %>
-                                                                        <span class="badge bg-danger">Cancelled</span>
-                                                                        <% } %>
+                                                        <% if (enquiry.status==='active' ) { %>
+                                                            <span class="badge bg-info">Active</span>
+                                                            <% } else if (enquiry.status==='inactive' ) { %>
+                                                                <span class="badge bg-danger">inactive</span>
+                                                                <% } %>
                                                     </td>
                                                     <td>
                                                         <div class="actions">

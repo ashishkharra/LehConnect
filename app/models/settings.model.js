@@ -1,5 +1,5 @@
 module.exports = (sequelize, Sequelize) => {
-    const SiteSetting = sequelize.define('site_setting', {
+    const SiteSetting = sequelize.define('tbl_vendor_site_settings', {
         id: {
             type: Sequelize.INTEGER,
             autoIncrement: true,
@@ -59,6 +59,90 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: '#6366f1'
         },
 
+        /* ===================================================== */
+        /* ===== NOTIFICATION SETTINGS ===== */
+        /* ===================================================== */
+
+        send_to_all_cities: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: true
+        },
+
+        city_filter_enabled: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
+
+        selected_cities: {
+            // Store as JSON string: [1,2,3,5]
+            type: Sequelize.TEXT('long'),
+            allowNull: true
+        },
+
+        notification_type: {
+            type: Sequelize.ENUM('booking', 'cancellation', 'promotion'),
+            defaultValue: 'booking'
+        },
+
+        instant_dispatch: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: true
+        },
+
+        /* ===================================================== */
+        /* ===== COUNTER SETTINGS ===== */
+        /* ===================================================== */
+
+        happy_customers: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        verified_vendors: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        app_rating: {
+            type: Sequelize.FLOAT,
+            defaultValue: 0
+        },
+
+        total_cities: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        total_bookings: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        active_users: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        support_rating: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        app_downloads: {
+            type: Sequelize.INTEGER,
+            defaultValue: 0
+        },
+
+        show_counters: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: true
+        },
+
+        auto_update: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
+
         /* ===== FLAGS ===== */
         slider_status: {
             type: Sequelize.BOOLEAN,
@@ -77,8 +161,9 @@ module.exports = (sequelize, Sequelize) => {
             type: Sequelize.DATE,
             defaultValue: Sequelize.NOW
         }
+
     }, {
-        tableName: 'site_settings',
+        tableName: 'tbl_vendor_site_settings',
         timestamps: false
     });
 

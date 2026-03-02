@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const {asyncHandler} = require('../shared/utils/helper.js')
+const { asyncHandler } = require('../shared/utils/helper.js')
 const adminController = require('../controller/adminController.js');
 const { authMiddleware } = require('../middleware/auth.js');
 const validationRule = require('../validation/admin.auth.js')
@@ -212,7 +212,6 @@ router.post('/review/vendor', [authMiddleware], adminController.reviewVendor)
 router.post('/process-delete-request', [authMiddleware, validationRule.validate('delete-request-action')], adminController.processDeleteRequest)
 
 
-
 // customer page
 router.get('/customer', [authMiddleware], asyncHandler(async (req, res) => {
     const admin = req?.session?.user
@@ -260,11 +259,12 @@ router.get('/taxi-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
 
 router.get('/hotel-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
     const admin = req?.session?.user
-
+    const result = await adminController.getAllHotelEnquiries();
+    req.setFlash(result.success ? 'success' : 'error', result.message)
     res.render('enquiry/hotel', {
         title: 'LehConnect | Hotel-enquiry',
         admin: admin || null,
-        hotelEnquiries: [],
+        hotelEnquiries: result.results || [],
         currentPage: 'hotel-enquiry'
     });
 }))
@@ -757,5 +757,28 @@ router.get('/feedback/customer-table', [authMiddleware], asyncHandler(async (req
 }));
 
 router.post('/review/create', [authMiddleware, validationRule.validate('review-create')], adminController.reviewCreate)
+
+router.get('/manage-notifications', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+    const settings = await adminController.getNotificationSettings();
+    const cities = [
+        { id: 1, name: 'Leh' },
+        { id: 2, name: 'Kargil' },
+        { id: 3, name: 'Srinagar' },
+        { id: 4, name: 'Jammu' },
+        { id: 5, name: 'Delhi' }
+    ];
+    return res.render('app_management/notification_preferences', {
+        title: 'LehConnect || Notification Management',
+        admin: admin || null,
+        data: {
+            settings,
+            cities
+        },
+        currentPage: 'manage-notifications'
+    });
+}));
+
+router.post('/toggle-booking-notification-preferences', [authMiddleware], adminController?.toggleBookingNotification);
 
 module.exports = router;

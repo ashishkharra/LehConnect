@@ -26,13 +26,15 @@ async function recordReferral(newVendorId) {
       return console.log("No referral code used.");
     }
     const settings = await db.referral_setting.findByPk(1);
+
+    console.log(settings)
     const referrerId = newVendor.referer_code_used;
 
     await db.referral_history.create({
       referrer_id: referrerId,
       referee_id: newVendorId,
-      referrer_amount: settings.referrer_bonus,
-      referee_amount: settings.referee_bonus,
+      referrer_amount: settings.referrer_bonus === null || settings.referrer_bonus === '' ? settings.referrer_bonus : 500,
+      referee_amount: settings.referee_bonus === null || settings.referee_bonus === '' ? settings.referee_bonus : 250,
       status: "PENDING",
     });
 
@@ -278,13 +280,8 @@ router.post("/verifyOtp", async (req, res) => {
 
     let referralVendorId = null;
 
-    /* ===========================================================
-       🔥 ADDED STRICT REFERRAL VALIDATION (NOT REMOVING ANYTHING)
-       =========================================================== */
+    if (refCode && refCode !== "null" && refCode !== "undefined") {
 
-    if (refCode) {
-
-      // 🚫 Only vendors can use referral code
       if (role !== "vendor") {
         await transaction.rollback();
         return res.status(403).json(
@@ -292,7 +289,6 @@ router.post("/verifyOtp", async (req, res) => {
         );
       }
 
-      // 🚫 Referral only allowed for new registration
       if (!isNew) {
         await transaction.rollback();
         return res.status(400).json(
@@ -300,7 +296,6 @@ router.post("/verifyOtp", async (req, res) => {
         );
       }
 
-      // 🔎 Check referral belongs to vendor
       const referringVendor = await db.vendor.findOne({
         where: { ref_code: refCode, flag: 0 },
         transaction,
@@ -313,17 +308,12 @@ router.post("/verifyOtp", async (req, res) => {
         );
       }
 
-      // 🚫 Prevent self-referral
       if (referringVendor.token === userToken) {
         await transaction.rollback();
         return res.status(400).json(
           responseData("You cannot use your own referral code", {}, req, false)
         );
       }
-
-      // =====================================================
-      // YOUR ORIGINAL LOGIC CONTINUES BELOW (UNCHANGED)
-      // =====================================================
 
       await db.vendor.update(
         { referer_code_used: referringVendor.id },
@@ -395,8 +385,6 @@ router.post("/verifyOtp", async (req, res) => {
       await creditWallet(userToken, referringVendor.id, refereeBonus);
     }
 
-    /* ================= COMMIT ================= */
-
     await transaction.commit();
 
     if (referralVendorId) {
@@ -404,8 +392,6 @@ router.post("/verifyOtp", async (req, res) => {
         console.error("Referral history error:", err),
       );
     }
-
-    /* ================= SESSION ================= */
 
     const deviceHash = getDeviceHash(req) || randomstring(32);
 
@@ -433,8 +419,6 @@ router.post("/verifyOtp", async (req, res) => {
       user_agent: req.get("User-Agent"),
       last_used_at: new Date(),
     });
-
-    /* ================= FCM ================= */
 
     if (role === "vendor" && fcmToken && deviceId) {
       const existingDevice = await db.vendor_device_fcm.findOne({

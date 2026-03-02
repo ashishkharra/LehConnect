@@ -1,6 +1,6 @@
 const db = require("../models/index");
 const { getIO } = require("./index");
-const { v4: uuidv4 } = require("uuid");
+const { randomstring } = require('../shared/utils/helper')
 
 const Chat = db.chat;
 
@@ -26,7 +26,7 @@ module.exports = (socket) => {
         if (!booking_token || !receiver_token || (!message && !attachment_url)) return;
 
         const chatMessage = await Chat.create({
-            token: uuidv4(),
+            token: randomstring(32),
             booking_token,
             sender_token,
             receiver_token,

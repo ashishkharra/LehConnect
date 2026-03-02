@@ -7,6 +7,8 @@ public/
 # macOS zip metadata
 _MACOSX/
 
+# config
+app/config/serviceAccountKey.json
 # Logs
 logs/
 *.log

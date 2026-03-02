@@ -103,6 +103,11 @@
                             <div class="form-login">
                                 <button type="submit" class="btn btn-primary w-100">Sign In</button>
                             </div>
+                            <% if(error_msg) { %>
+                                <div class="alert alert-danger">
+                                    <%= error_msg %>
+                                </div>
+                          <%  }%>
                             <div class="my-4 d-flex justify-content-center align-items-center copyright-text">
                                 <p>Copyright &copy; 2025 LehConnect</p>
                             </div>

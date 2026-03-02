@@ -57,6 +57,11 @@ db.wallet_transaction = require('./wallet_transaction.model.js')(sequelize,Seque
 db.wallet_hold = require('./wallet_holds.model.js')(sequelize,Sequelize)
 db.referral_setting = require('./referral_setting.model.js')(sequelize,Sequelize)
 db.referral_history = require('./referral_history.model.js')(sequelize,Sequelize)
+db.holydaypackageEnquiry = require('./holidaypackageEnquiry.model.js')(sequelize,Sequelize)
+db.insuranceEnquiry = require('./insuranceEnquiry.model.js')(sequelize,Sequelize)
+db.hotelEnquiry = require('./hotelEnquiry.model.js')(sequelize,Sequelize)
+db.flightEnquiry = require('./flightEnquiry.model.js')(sequelize,Sequelize)
+db.siteSettings = require('./settings.model.js')(sequelize,Sequelize)
 
 
 db.freeVehicle.belongsTo(db.vendor, { as: 'vendor', constraints: false });
