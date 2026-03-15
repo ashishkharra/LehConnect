@@ -1,10 +1,10 @@
 const enc_key = 'f7275a9f1f2715b1f450a2d486e7b5b3ccad2d820e96c69a783a8a8edfc550f0';
 const api_key = 'wefadsfwedcjkd';
-const admin_url = 'http://192.168.29.176:3000'
+const admin_url = 'http://192.168.29.176:3001'
 const verifyByAdmin = true
 const ENV = 'development';
 const RUN_CRON = true
-const PORT = 3000
+const PORT = 3001
 const isWeb = false
 RAZORPAY_KEY_ID = 'rzp_test_SBxG4YiBq9OvkC'
 RAZORPAY_KEY_SECRET = 'vFyQBJf1XoX01oycDz4Ze6Lw'

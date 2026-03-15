@@ -49,7 +49,10 @@ new Worker(
       raw: true
     });
 
+    console.log('fc  toke ->>>> ', devices)
+
     if (devices.length) {
+      console.log('ttttttttttttttt')
       const tokens = devices.map(d => d.fcm_token);
 
       await admin.messaging().sendMulticast({
@@ -70,6 +73,7 @@ new Worker(
           }
         }
       });
+      console.log('yyyyyyyyyyyyyyyyy')
     }
   },
   {

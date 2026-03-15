@@ -19,30 +19,7 @@ const { ENV, testNumbers } = require("../config/globals.js");
 const querystring = require("querystring");
 const axios = require("axios");
 
-async function recordReferral(newVendorId) {
-  try {
-    const newVendor = await db.vendor.findByPk(newVendorId);
-    if (!newVendor || !newVendor.referer_code_used) {
-      return console.log("No referral code used.");
-    }
-    const settings = await db.referral_setting.findByPk(1);
 
-    console.log(settings)
-    const referrerId = newVendor.referer_code_used;
-
-    await db.referral_history.create({
-      referrer_id: referrerId,
-      referee_id: newVendorId,
-      referrer_amount: settings.referrer_bonus === null || settings.referrer_bonus === '' ? settings.referrer_bonus : 500,
-      referee_amount: settings.referee_bonus === null || settings.referee_bonus === '' ? settings.referee_bonus : 250,
-      status: "PENDING",
-    });
-
-    console.log("Referral info saved successfully.");
-  } catch (error) {
-    console.error("Error saving referral info:", error);
-  }
-}
 
 router.get("/", (req, res) => {
   res.json({ success: true, message: "Server is running" });
@@ -209,11 +186,13 @@ router.post("/verifyOtp", async (req, res) => {
     }
 
     const expireTime = Number(otpData.server_time) + 3 * 60 * 1000;
+
     if (Date.now() > expireTime) {
       await db.otp.update(
         { flag: 1 },
-        { where: { contact: phone, role }, transaction },
+        { where: { contact: phone, role }, transaction }
       );
+
       await transaction.rollback();
       return res.status(403).json(responseData("OTP expired", {}, req, false));
     }
@@ -227,7 +206,7 @@ router.post("/verifyOtp", async (req, res) => {
 
     await db.otp.update(
       { flag: 1 },
-      { where: { id: otpData.id }, transaction },
+      { where: { id: otpData.id }, transaction }
     );
 
     const Model = role === "customer" ? db.customer : db.vendor;
@@ -237,8 +216,8 @@ router.post("/verifyOtp", async (req, res) => {
       transaction,
     });
 
-    const userToken = user ? user.token : randomstring(64);
     let isNew = false;
+    const userToken = user ? user.token : randomstring(64);
 
     if (!user) {
       user = await Model.create(
@@ -249,7 +228,7 @@ router.post("/verifyOtp", async (req, res) => {
           ip: req.ip,
           user_agent: req.get("User-Agent"),
         },
-        { transaction },
+        { transaction }
       );
 
       isNew = true;
@@ -274,14 +253,11 @@ router.post("/verifyOtp", async (req, res) => {
           currency: "INR",
           status: "ACTIVE",
         },
-        { transaction },
+        { transaction }
       );
     }
 
-    let referralVendorId = null;
-
     if (refCode && refCode !== "null" && refCode !== "undefined") {
-
       if (role !== "vendor") {
         await transaction.rollback();
         return res.status(403).json(
@@ -292,7 +268,12 @@ router.post("/verifyOtp", async (req, res) => {
       if (!isNew) {
         await transaction.rollback();
         return res.status(400).json(
-          responseData("Referral code can only be used during registration", {}, req, false)
+          responseData(
+            "Referral code can only be used during registration",
+            {},
+            req,
+            false
+          )
         );
       }
 
@@ -317,10 +298,8 @@ router.post("/verifyOtp", async (req, res) => {
 
       await db.vendor.update(
         { referer_code_used: referringVendor.id },
-        { where: { id: user.id }, transaction },
+        { where: { id: user.id }, transaction }
       );
-
-      referralVendorId = user.id;
 
       const referralCodeInfo = await db.referral_setting.findOne({
         where: { id: 1 },
@@ -352,16 +331,19 @@ router.post("/verifyOtp", async (req, res) => {
               currency: "INR",
               status: "ACTIVE",
             },
-            { transaction },
+            { transaction }
           );
         }
 
-        const opening = Number(wallet.balance);
+        const opening = Number(wallet.balance) || 0;
         const closing = opening + amount;
 
-        await db.wallet.update(
-          { balance: closing, last_transaction_at: new Date() },
-          { where: { id: wallet.id }, transaction },
+        await wallet.update(
+          {
+            balance: closing,
+            last_transaction_at: new Date(),
+          },
+          { transaction }
         );
 
         await db.wallet_transaction.create(
@@ -377,21 +359,26 @@ router.post("/verifyOtp", async (req, res) => {
             reference_id: referenceId,
             status: "SUCCESS",
           },
-          { transaction },
+          { transaction }
         );
       };
 
       await creditWallet(referringVendor.token, user.id, referrerBonus);
       await creditWallet(userToken, referringVendor.id, refereeBonus);
+
+      await db.referral_history.create(
+        {
+          referrer_id: referringVendor.id,
+          referee_id: user.id,
+          referrer_amount: referrerBonus,
+          referee_amount: refereeBonus,
+          status: "PAID",
+        },
+        { transaction }
+      );
     }
 
     await transaction.commit();
-
-    if (referralVendorId) {
-      recordReferral(referralVendorId).catch((err) =>
-        console.error("Referral history error:", err),
-      );
-    }
 
     const deviceHash = getDeviceHash(req) || randomstring(32);
 
@@ -403,7 +390,7 @@ router.post("/verifyOtp", async (req, res) => {
           device_hash: deviceHash,
           revoked_at: null,
         },
-      },
+      }
     );
 
     const refreshToken = randomstring(128);
@@ -454,14 +441,16 @@ router.post("/verifyOtp", async (req, res) => {
           isNew,
         },
         req,
-        true,
-      ),
+        true
+      )
     );
   } catch (error) {
     if (transaction) await transaction.rollback();
     console.error("verify otp error:", error);
 
-    return res.status(500).json(responseData("Error occurred", {}, req, false));
+    return res.status(500).json(
+      responseData("Error occurred", {}, req, false)
+    );
   }
 });
 

@@ -22,6 +22,17 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        who_posted: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
+        from_web: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
+
         trip_type: {
             type: Sequelize.ENUM('oneway', 'round', 'multi'),
             defaultValue: 'oneway'

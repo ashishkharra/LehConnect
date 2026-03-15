@@ -162,6 +162,7 @@
                                             <th>Referee Gets</th>
                                             <th>Status</th>
                                             <th>Date</th>
+                                            <th>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -179,7 +180,7 @@
                                                                 <%= item.Referrer?.first_name %>
                                                                     <%= item.Referrer?.last_name %>
                                                                         <span class="d-block text-muted">
-                                                                            <%= item.Referrer?.email %>
+                                                                            <%= item.Referrer?.contact %>
                                                                         </span>
                                                             </a>
                                                         </h2>
@@ -196,7 +197,7 @@
                                                                 <%= item.Referee?.first_name %>
                                                                     <%= item.Referee?.last_name %>
                                                                         <span class="d-block text-muted">
-                                                                            <%= item.Referee?.email %>
+                                                                            <%= item.Referee?.contact %>
                                                                         </span>
                                                             </a>
                                                         </h2>
@@ -217,6 +218,10 @@
 
                                                     <td>
                                                         <%= new Date(item.createdAt).toLocaleDateString() %>
+                                                    </td>
+
+                                                    <td>
+                                                        <a href="/vendor-referral-details/<%= item.id %>">show</a>
                                                     </td>
                                                 </tr>
                                                 <% }); %>

@@ -99,6 +99,51 @@ module.exports = (sequelize, Sequelize) => {
         defaultValue: false
       },
 
+      completion_requested_by: {
+        type: Sequelize.STRING(64),
+        allowNull: true
+      },
+
+      completion_requested_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+
+      completion_confirmed_by: {
+        type: Sequelize.STRING(64),
+        allowNull: true
+      },
+
+      completion_confirmed_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+
+      completion_rejected_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+
+      completion_rejection_reason: {
+        type: Sequelize.TEXT,
+        allowNull: true
+      },
+
+      auto_complete_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+
+      completion_proof: {
+        type: Sequelize.JSON,
+        allowNull: true
+      },
+
+      completed_at: {
+        type: Sequelize.DATE,
+        allowNull: true
+      },
+
       extra_requirements: {
         type: Sequelize.JSON,
         allowNull: true
@@ -111,7 +156,8 @@ module.exports = (sequelize, Sequelize) => {
           'IN_PROGRESS',
           'COMPLETED',
           'CANCELLED',
-          'EXPIRED'
+          'EXPIRED',
+          'REJECTED'
         ),
         defaultValue: 'OPEN'
       },

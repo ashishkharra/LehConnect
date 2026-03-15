@@ -18,6 +18,17 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        who_posted: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
+        from_web: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
+
         area: {
             type: Sequelize.STRING,
             defaultValue: null

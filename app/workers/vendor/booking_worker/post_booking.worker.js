@@ -26,6 +26,8 @@ new Worker(
       where: { token: bookingToken }
     });
 
+    const formattedPickupDate = booking.pickupDate.toLocaleString('en-IN');
+
     if (!booking) return;
 
     const notificationAccess = await SiteSetting.findOne({
@@ -72,8 +74,8 @@ new Worker(
         receiver_role: 'vendor',
         booking_token: booking.token,
         type: 'BOOKING_CREATED',
-        title: 'New Duty Alert!',
-        message: `A new ${booking.vehicle_type} trip is available in ${booking.city}`,
+        title: 'LehConnect Required',
+        message: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`,
         city: booking.city,
         state: booking.state,
         is_read: false
@@ -88,8 +90,8 @@ new Worker(
         await admin.messaging().send({
           topic,
           notification: {
-            title: 'New Duty Alert! 🚗',
-            body: `New ${booking.vehicle_type} available in ${booking.city}.`
+            title: 'LehConnect Required',
+            body: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`
           },
           android: {
             priority: 'high',
@@ -109,7 +111,7 @@ new Worker(
           topic: 'all_vendors',
           notification: {
             title: 'New Duty Alert! 🚗',
-            body: `New ${booking.vehicle_type} available in ${booking.city}.`
+            body: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`
           },
           android: {
             priority: 'high',

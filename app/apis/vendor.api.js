@@ -1,7 +1,7 @@
 const router = require('express').Router()
 const crypto = require('crypto')
 const razorpay = require('../config/razorpay.js');
-const { Op, Transaction, Sequelize } = require("sequelize");
+const { Op, Transaction, Sequelize, col, literal, where } = require("sequelize");
 const { vendorMiddleware, verifiedOnly } = require('../middleware/auth.js')
 const { responseData, getSequelizePagination, getCache, setCache, randomstring, generateRefCode } = require("../shared/utils/helper.js")
 const { admin_url, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } = require('../config/globals.js')
@@ -19,7 +19,8 @@ const ratingNotificationQueue = require('../queues/vendor/booking_queue/booking_
 const bookingCancelQueue = require('../queues/vendor/booking_queue/booking_cancel.queue.js')
 
 const freeVehicleNotificationQueue = require('../queues/vendor/freeVehicle_queue/post_free_vehicle.queue.js')
-const freeVehicleCancelQueue = require('../queues/vendor/freeVehicle_queue/free_vehicle_cancel.queue.js')
+const freeVehicleCancelQueue = require('../queues/vendor/freeVehicle_queue/free_vehicle_cancel.queue.js');
+const bookingCompletionQueue = require('../queues/vendor/booking_queue/booking_completion.queue.js');
 
 // const vendorHelpQueue = require('../queues/vendor/vendor_help.queue.js')
 
@@ -50,6 +51,9 @@ const InsuranceEnquiry = db.insuranceEnquiry
 const HotelEnquiry = db.hotelEnquiry
 const FlightEnquiry = db.flightEnquiry
 const SiteSetting = db.siteSettings
+const Chat = db.chat
+const Conversation = db.conversation
+const VendorRating = db.vendorRating
 
 
 router.get('/get/dashboard', [vendorMiddleware], async (req, res) => {
@@ -870,6 +874,8 @@ router.get('/get/my-free-vehicle-with-requests', [vendorMiddleware, verifiedOnly
 router.get('/get/free-vehicle/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('get-free-vehicle')], async (req, res) => {
     try {
         const { token } = req.params;
+
+        console.log('toke ->>>>> ', token)
         const requesterToken = req.user.token;
 
         const result = await FreeVehicle.findOne({
@@ -890,7 +896,7 @@ router.get('/get/free-vehicle/:token', [vendorMiddleware, verifiedOnly, vendorVa
                 },
                 {
                     model: FreeVehicleRequest,
-                    as: 'requests',               // ⚠️ use your actual alias
+                    as: 'requests',
                     attributes: ['status'],
                     where: {
                         requested_by_vendor_token: requesterToken
@@ -922,24 +928,11 @@ router.get('/get-requests/free-vehicle/:token', [vendorMiddleware, verifiedOnly]
     try {
         const freeVehicleToken = req.params.token;
         const { page = 1, limit = 12, type = 'APPROVAL', status = 'ACCEPTED' } = req.query;
-        // const cacheKey = `free_vehicle_requests_${freeVehicleToken}_${page}_${limit}_${type}_${status}`;
-
-        // const lastUpdate = await db.requestFreeVehicle.max('updated_at', {
-        //     where: { free_vehicle_token: freeVehicleToken }
-        // });
-
-        // const cached = await getCache(cacheKey);
-
-        // if (cached && cached.lastModified === new Date(lastUpdate).getTime()) {
-        //     return res.status(200).json(
-        //         responseData('Free vehicle requests fetched successfully (from cache)', cached.data, req, true)
-        //     );
-        // }
 
         const result = await getSequelizePagination({
             page,
             limit,
-            model: db.requestFreeVehicle,
+            model: FreeVehicleRequest,
             attributes: [
                 'id',
                 'token',
@@ -951,14 +944,14 @@ router.get('/get-requests/free-vehicle/:token', [vendorMiddleware, verifiedOnly]
             order: [['created_at', 'DESC']],
             include: [
                 {
-                    model: db.freeVehicle,
+                    model: FreeVehicle,
                     as: 'freeVehicle',
                     required: true,
                     where: { token: freeVehicleToken, accept_type: type },
                     attributes: ['token']
                 },
                 {
-                    model: db.vendor,
+                    model: Vendor,
                     as: 'requester',
                     required: false,
                     attributes: ['token', 'first_name', 'last_name', 'contact']
@@ -970,7 +963,7 @@ router.get('/get-requests/free-vehicle/:token', [vendorMiddleware, verifiedOnly]
         const data = result.docs.map(row => ({
             requestedBy: row.requester
                 ? {
-                    token: row.requester.token,
+                    token: row.freeVehicle.token,
                     first_name: row.requester.first_name,
                     last_name: row.requester.last_name,
                     contact: row.requester.contact,
@@ -979,8 +972,6 @@ router.get('/get-requests/free-vehicle/:token', [vendorMiddleware, verifiedOnly]
                 }
                 : null
         }));
-
-        // await setCache(cacheKey, { data: { docs: data, page: result.page, limit: result.limit, totalDocs: result.totalDocs, totalPages: result.totalPages }, lastModified: new Date(lastUpdate).getTime() }, 300);
 
         return res.status(200).json(
             responseData(
@@ -1127,29 +1118,15 @@ router.get('/my/accepted/free-vehicle', [vendorMiddleware, verifiedOnly], async 
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
-        // const cacheKey = `my_accepted_free_vehicles_${vendorToken}_${page}_${limit}`;
 
-        // const lastUpdate = await db.freeVehicle.max('updated_at', {
-        //     where: { vendor_token: vendorToken }
-        // });
-
-        // const cached = await getCache(cacheKey);
-
-        // if (cached && cached.lastModified === new Date(lastUpdate).getTime()) {
-        //     return res.status(200).json(
-        //         responseData('Accepted free vehicles fetched successfully (from cache)', cached.data, req, true)
-        //     );
-        // }
-
-        const { count, rows } = await db.freeVehicle.findAndCountAll({
+        const { count, rows } = await FreeVehicle.findAndCountAll({
             where: {
-                vendor_token: vendorToken,
-                status: { [db.Sequelize.Op.in]: ['AVAILABLE', 'REQUESTED', 'BOOKED', 'EXPIRED'] },
                 flag: 0
             },
             attributes: [
                 'id',
                 'token',
+                'vendor_token',
                 'vehicle_type',
                 'vehicle_name',
                 'state',
@@ -1165,12 +1142,14 @@ router.get('/my/accepted/free-vehicle', [vendorMiddleware, verifiedOnly], async 
             ],
             include: [
                 {
-                    model: db.requestFreeVehicle,
+                    model: FreeVehicleRequest,
                     as: 'requests',
-                    required: false,
+                    required: true,
                     where: {
-                        status: 'ACCEPTED',
-                        accepted_by_vendor_token: vendorToken
+                        requested_by_vendor_token: vendorToken,
+                        status: {
+                            [db.Sequelize.Op.in]: ['PENDING', 'ACCEPTED']
+                        }
                     },
                     attributes: [
                         'id',
@@ -1179,26 +1158,26 @@ router.get('/my/accepted/free-vehicle', [vendorMiddleware, verifiedOnly], async 
                         'requested_start_time',
                         'requested_end_time',
                         'accepted_at',
+                        'accepted_by_vendor_token',
                         'status'
-                    ],
-                    include: [
-                        {
-                            model: db.vendor,
-                            as: 'requester',
-                            required: false,
-                            attributes: ['first_name', 'last_name', 'contact']
-                        }
                     ]
+                },
+                {
+                    model: Vendor,
+                    as: 'vendor',
+                    required: false,
+                    attributes: ['token', 'first_name', 'last_name', 'contact']
                 }
             ],
             order: [
-                ['status', 'ASC'],
                 ['created_at', 'DESC']
             ],
             limit,
             offset,
             distinct: true
         });
+
+        console.log('ffffffff ', rows[0].requests)
 
         const responseDataObj = {
             total: count,
@@ -1207,10 +1186,13 @@ router.get('/my/accepted/free-vehicle', [vendorMiddleware, verifiedOnly], async 
             free_vehicles: rows
         };
 
-        // await setCache(cacheKey, { data: responseDataObj, lastModified: new Date(lastUpdate).getTime() }, 300);
-
         return res.status(200).json(
-            responseData('Accepted free vehicles fetched successfully', responseDataObj, req, true)
+            responseData(
+                'Accepted requested free vehicles fetched successfully',
+                responseDataObj,
+                req,
+                true
+            )
         );
 
     } catch (error) {
@@ -1368,7 +1350,7 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
         const freeVehicle = await FreeVehicle.findOne({
             where: {
                 token: freeVehicleToken,
-                status: ['AVAILABLE', 'REQUESTED']
+                status: { [Op.in]: ['AVAILABLE', 'REQUESTED'] }
             },
             transaction: t,
             lock: t.LOCK.UPDATE
@@ -1425,6 +1407,7 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
                     token: randomstring(64),
                     free_vehicle_token: freeVehicle.token,
                     requested_by_vendor_token: requester.token,
+                    owner_vendor_token: owner.token,
                     requested_start_time,
                     requested_end_time,
                     status: 'ACCEPTED',
@@ -1435,6 +1418,10 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
             );
 
             await t.commit();
+
+            res.status(200).json(
+                responseData('Vehicle booked successfully', {}, req, true)
+            );
 
             const io = getIO();
             io?.to(`vendor:${owner.token}`).emit('free_vehicle:booked', {
@@ -1450,16 +1437,28 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
                 city: freeVehicle.city
             });
 
-            return res.status(200).json(
-                responseData('Vehicle booked successfully', {}, req, true)
-            );
+            return;
         }
 
         const existingRequest = await FreeVehicleRequest.findOne({
+            attributes: [
+                'id',
+                'token',
+                'free_vehicle_token',
+                'requested_by_vendor_token',
+                'requested_start_time',
+                'requested_end_time',
+                'status',
+                'accepted_at',
+                'accepted_by_vendor_token',
+                'rejection_reason',
+                'created_at',
+                'updated_at'
+            ],
             where: {
                 free_vehicle_token: freeVehicle.token,
                 requested_by_vendor_token: requester.token,
-                status: ['PENDING', 'ACCEPTED']
+                status: { [Op.in]: ['PENDING', 'ACCEPTED'] }
             },
             transaction: t,
             lock: t.LOCK.UPDATE
@@ -1482,6 +1481,7 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
                 token: randomstring(64),
                 free_vehicle_token: freeVehicle.token,
                 requested_by_vendor_token: requester.token,
+                owner_vendor_token: owner.token,
                 requested_start_time,
                 requested_end_time,
                 status: 'PENDING'
@@ -1491,18 +1491,23 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
 
         if (freeVehicle.status === 'AVAILABLE') {
             await freeVehicle.update(
-                { status: 'AVAILABLE' },
+                { status: 'REQUESTED' },
                 { transaction: t }
             );
         }
 
         await t.commit();
 
+        console.log('Adding notification job...');
+
         res.status(200).json(
             responseData('Request sent successfully', {}, req, true)
         );
 
         const io = getIO();
+        // const io = getIO();
+        console.log('io exists:', !!io);
+        console.log('emitting to room:', `vendor:${owner.token}`);
         io?.to(`vendor:${owner.token}`).emit('free_vehicle:request', {
             vehicle: vehiclePayload,
             requester: requester.token
@@ -1526,12 +1531,17 @@ router.post('/free-vehicle/:token/request', [vendorMiddleware, verifiedOnly], as
     }
 });
 
-router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOnly, vendorValidation.validate('free-vehicle-request-action')], async (req, res) => {
+router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOnly], async (req, res) => {
     const { action, reason } = req.body;
-    const { token } = req.params
+    console.log('body ', req.body, req.params)
+    const { token } = req.params;
     const vendor = req.user;
 
-    console.log('action ->>>>> ', action)
+    if (!['ACCEPT', 'REJECT'].includes(action)) {
+        return res.status(409).json(
+            responseData('Invalid action', {}, req, false)
+        )
+    }
 
     const t = await db.sequelize.transaction({
         isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED
@@ -1540,24 +1550,35 @@ router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOn
     try {
         const request = await FreeVehicleRequest.findOne({
             where: {
-                token,
+                free_vehicle_token: token,
                 status: 'PENDING'
             },
             include: [
                 {
                     model: FreeVehicle,
                     as: 'freeVehicle',
-                    lock: t.LOCK.UPDATE
+                    required: true
                 }
             ],
             transaction: t,
             lock: t.LOCK.UPDATE
         });
 
-        if (!request || !request.freeVehicle) {
+        console.log('request token =>', token);
+        console.log('request found =>', !!request);
+        console.log('request freeVehicle =>', request?.freeVehicle);
+
+        if (!request) {
             await t.rollback();
             return res.status(404).json(
                 responseData('Request not found or already handled', {}, req, false)
+            );
+        }
+
+        if (!request.freeVehicle) {
+            await t.rollback();
+            return res.status(404).json(
+                responseData('Vehicle linked to request not found', {}, req, false)
             );
         }
 
@@ -1578,18 +1599,23 @@ router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOn
         }
 
         if (action === 'ACCEPT') {
+            await request.update(
+                {
+                    status: 'ACCEPTED',
+                    accepted_at: new Date(),
+                    accepted_by_vendor_token: vendor.token
+                },
+                { transaction: t }
+            );
 
-            await request.update({
-                status: 'ACCEPTED',
-                accepted_at: new Date(),
-                accepted_by_vendor_token: vendor.token
-            }, { transaction: t });
-
-            await freeVehicle.update({
-                status: 'BOOKED',
-                booked_by_vendor_token: request.requested_by_vendor_token,
-                booked_at: new Date()
-            }, { transaction: t });
+            await freeVehicle.update(
+                {
+                    status: 'BOOKED',
+                    booked_by_vendor_token: request.requested_by_vendor_token,
+                    booked_at: new Date()
+                },
+                { transaction: t }
+            );
 
             await FreeVehicleRequest.update(
                 { status: 'REJECTED' },
@@ -1597,17 +1623,19 @@ router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOn
                     where: {
                         free_vehicle_token: freeVehicle.token,
                         status: 'PENDING',
-                        id: { [db.Sequelize.Op.ne]: request.token }
+                        token: { [db.Sequelize.Op.ne]: request.token }
                     },
                     transaction: t
                 }
             );
-
         } else {
-            await request.update({
-                status: 'REJECTED',
-                rejections_reason: reason
-            }, { transaction: t });
+            await request.update(
+                {
+                    status: 'REJECTED',
+                    rejection_reason: reason
+                },
+                { transaction: t }
+            );
 
             const pendingCount = await FreeVehicleRequest.count({
                 where: {
@@ -1626,6 +1654,10 @@ router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOn
         }
 
         await t.commit();
+
+        res.status(200).json(
+            responseData(`Request ${action.toLowerCase()}ed successfully`, {}, req, true)
+        );
 
         const io = getIO();
 
@@ -1656,15 +1688,10 @@ router.post('/free-vehicle/:token/request-action', [vendorMiddleware, verifiedOn
                 receiver_role: 'vendor',
                 type: `FREE_VEHICLE_${action}`,
                 title: `Request ${action.toLowerCase()}`,
-                message: `Your request was ${action.toLowerCase()} by ${vendor.first_name + ' ' + vendor.last_name}`,
+                message: `Your request was ${action.toLowerCase()} by ${vendor.first_name} ${vendor.last_name}`,
                 visibility: 'private'
             }
         ]);
-
-        return res.status(200).json(
-            responseData(`Request ${action.toLowerCase()}ed successfully`, {}, req, true)
-        );
-
     } catch (error) {
         if (!t.finished) await t.rollback();
 
@@ -1751,6 +1778,10 @@ router.post('/free-vehicle/request/:token/cancel', [vendorMiddleware, verifiedOn
 
         await t.commit();
 
+        res.status(200).json(
+            responseData('Request cancelled successfully', {}, req, true)
+        );
+
         await freeVehicleCancelQueue.add(
             'FREE_VEHICLE_REQUEST_CANCELLED',
             {
@@ -1771,10 +1802,6 @@ router.post('/free-vehicle/request/:token/cancel', [vendorMiddleware, verifiedOn
             }
         );
 
-        return res.status(200).json(
-            responseData('Request cancelled successfully', {}, req, true)
-        );
-
     } catch (err) {
         if (!t.finished) await t.rollback();
 
@@ -1793,10 +1820,7 @@ router.get('/get-profile-status', [vendorMiddleware], async (req, res) => {
         const result = await Vendor.findOne({
             where: { token },
             attributes: [
-                'aadhaar_verified',
-                'dl_verified',
-                'verification_status',
-                'verification_percentage'
+                'verification_status'
             ]
         });
         return res.status(200).json(
@@ -1852,6 +1876,8 @@ router.get('/get-profile', [vendorMiddleware], async (req, res) => {
 
         // await setCache(cacheKey, { data: result, lastModified: new Date(lastUpdate).getTime() }, 300);
 
+        // console.log(result)
+
         return res.status(200).json(
             responseData('Profile fetched successfully', result, req, true)
         );
@@ -1864,7 +1890,7 @@ router.get('/get-profile', [vendorMiddleware], async (req, res) => {
     }
 });
 
-router.post('/update-basic-details', [vendorMiddleware, uploadImages, vendorValidation.validate('basic-details')], async (req, res) => {
+router.put('/update-basic-details', [vendorMiddleware, uploadImages, vendorValidation.validate('basic-details')], async (req, res) => {
     try {
         const {
             first_name,
@@ -1880,35 +1906,13 @@ router.post('/update-basic-details', [vendorMiddleware, uploadImages, vendorVali
         } = req.body;
 
         const { token } = req?.user;
-        // const io = getIO();
 
-        // const verification_status = req?.user?.verification_status
-        // const VP = req?.user?.verification_percentage
-
-        // if (!req.files?.identity_front_image || !req.files?.identity_back_image) {
-        //     return res.status(400).json(
-        //         responseData('Both identity images are required', {}, req, false)
-        //     )
-        // }
-
-        if (!req.files?.profile_image) {
-            return res.status(400).json(
-                responseData('Profile image is required', {}, req, false)
-            )
-        }
-
-        // const frontImage = `/uploads/${req.files.identity_front_image[0].filename}`
-        // const backImage = `/uploads/${req.files.identity_back_image[0].filename}`
-        const profileImage = `/uploads/${req.files.profile_image[0].filename}`
-
-        // const { vp, vp_status } = calculateVerificationPercentage({ name, city, state }, VP, verification_status)
-
-        const ref = generateRefCode({
-            role: "vendor",
-            state: "Rajasthan"
+        const ref_code = generateRefCode({
+            role: 'vendor',
+            state
         });
 
-        const updateData = {
+        let updateData = {
             first_name,
             last_name,
             email,
@@ -1919,15 +1923,12 @@ router.post('/update-basic-details', [vendorMiddleware, uploadImages, vendorVali
             pincode,
             address,
             about_me,
-            ref_code: ref,
-            /*identity_type,*/
-            /*identity_front_image: frontImage,*/
-            /*identity_back_image: backImage,*/
-            profile_image: profileImage
-            /*verification_percentage: vp,*/
-            // verification_status: 'PARTIAL',
-            /*identity_submitted_at: new Date()*/
+            ref_code
         };
+
+        if (req.files?.profile_image) {
+            updateData.profile_image = `/uploads/${req.files.profile_image[0].filename}`;
+        }
 
         await Vendor.update(updateData, {
             where: { token }
@@ -1936,8 +1937,10 @@ router.post('/update-basic-details', [vendorMiddleware, uploadImages, vendorVali
         return res.status(200).json(
             responseData('Details saved successfully', {}, req, true)
         );
+
     } catch (error) {
         console.error('Saving basic details error:', error);
+
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
@@ -2581,7 +2584,7 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
                         [Sequelize.literal(`CONCAT('${admin_url}', vendor.profile_image)`), 'profile_image']
                     ],
                     on: {
-                        '$Booking.vendor_token$': {
+                        '$booking.vendor_token$': {
                             [Op.eq]: Sequelize.col('vendor.token')
                         }
                     }
@@ -2599,7 +2602,6 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
                 'token',
                 'trip_type',
                 'vehicle_type',
-                'vehicle_name',
                 'pickup_datetime',
                 'return_datetime',
                 'pickup_location',
@@ -2630,10 +2632,12 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
             ],
 
             group: [
-                'Booking.id',
-                'vendor.id'
+                Sequelize.col('booking.id'),
+                Sequelize.col('vendor.id')
             ]
         });
+
+        // console.log(result.docs)
 
         return res.status(200).json(
             responseData('Bookings fetched successfully', result, req, true)
@@ -2650,6 +2654,7 @@ router.get('/get/all-bookings', [vendorMiddleware], async (req, res) => {
 router.get('/get-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('get-booking')], async (req, res) => {
     try {
         const { token } = req.params;
+        const vendor_token = req.user.token
 
         const booking = await Booking.findOne({
             where: { token },
@@ -2679,11 +2684,21 @@ router.get('/get-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidat
 
                 [
                     Sequelize.literal(`(
-                            SELECT COALESCE(AVG(br.stars), 5)
-                            FROM tbl_booking_rating AS br
-                            WHERE br.booking_token = Booking.token
-                        )`),
+                SELECT COALESCE(AVG(br.stars), 5)
+                FROM tbl_booking_rating AS br
+                WHERE br.booking_token = booking.token
+            )`),
                     'rating_quality'
+                ],
+
+                [
+                    Sequelize.literal(`EXISTS (
+                SELECT 1
+                FROM tbl_booking_requests brq
+                WHERE brq.booking_token = booking.token
+                AND brq.requested_by_vendor_token = '${vendor_token}'
+            )`),
+                    'has_already_bid'
                 ]
             ],
 
@@ -2701,15 +2716,29 @@ router.get('/get-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidat
                         'verification_status'
                     ],
                     on: {
-                        '$Booking.vendor_token$': {
+                        '$booking.vendor_token$': {
                             [Op.eq]: Sequelize.col('vendor.token')
+                        }
+                    }
+                },
+                {
+                    model: BookingRequest,
+                    as: 'booking_requests',
+                    required: false,
+                    attributes: ['status', 'bid_amount', 'requested_by_vendor_token'],
+                    where: {
+                        requested_by_vendor_token: vendor_token
+                    },
+                    on: {
+                        booking_token: {
+                            [Op.eq]: Sequelize.col('booking.token')
                         }
                     }
                 }
             ]
         });
 
-        console.log(booking)
+        // console.log(booking)
 
         if (!booking) {
             return res.status(404).json(
@@ -2746,13 +2775,16 @@ router.get('/get-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidat
 router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('get-booking')], async (req, res) => {
     try {
         const { token } = req.params;
+        const userToken = req.user.token;
+
+        const Chat = db.chat;
 
         const booking = await Booking.findOne({
             where: { token },
             subQuery: false,
-
             attributes: [
                 'token',
+                'vendor_token',
                 'accept_type',
                 'status',
                 'trip_type',
@@ -2772,19 +2804,16 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
                 'visibility',
                 'extra_requirements',
                 'created_at',
-
                 [
                     Sequelize.literal(`(
-                            SELECT COALESCE(AVG(br.stars), 5)
-                            FROM tbl_booking_rating br
-                            WHERE br.booking_token = Booking.token
-                        )`),
+                SELECT COALESCE(AVG(br.stars), 5)
+                FROM tbl_booking_rating br
+                WHERE br.booking_token = booking.token
+            )`),
                     'rating_quality'
                 ]
             ],
-
             include: [
-                // Booking Owner
                 {
                     model: Vendor,
                     as: 'vendor',
@@ -2795,21 +2824,15 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
                         'last_name',
                         'contact',
                         'verification_status'
-                    ],
-                    on: {
-                        '$Booking.vendor_token$': {
-                            [Op.eq]: Sequelize.col('vendor.token')
-                        }
-                    }
+                    ]
                 },
-
-                // Booking Requests
                 {
                     model: db.bookingRequest,
                     as: 'booking_requests',
                     required: false,
                     attributes: [
                         'token',
+                        'booking_token',
                         'status',
                         'requested_by_vendor_token',
                         'responded_at',
@@ -2824,25 +2847,18 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
                                 'token',
                                 'first_name',
                                 'last_name',
-                                'contact',
-                                'profile_image'
-                            ],
-                            on: {
-                                '$booking_requests.requested_by_vendor_token$': {
-                                    [Op.eq]: Sequelize.col('booking_requests->requester.token')
-                                }
-                            }
+                                'contact'
+                            ]
                         }
                     ]
                 },
-
-                // Booking Rejections
                 {
                     model: db.bookingRejection,
                     as: 'booking_rejections',
                     required: false,
                     attributes: [
                         'token',
+                        'booking_token',
                         'reason',
                         'rejected_by_token',
                         'created_at'
@@ -2856,19 +2872,12 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
                                 'token',
                                 'first_name',
                                 'last_name',
-                                'contact',
-                                'profile_image'
-                            ],
-                            on: {
-                                '$booking_rejections.rejected_by_token$': {
-                                    [Op.eq]: Sequelize.col('booking_rejections->rejecter.token')
-                                }
-                            }
+                                'contact'
+                            ]
                         }
                     ]
                 }
             ],
-
             order: [
                 [{ model: db.bookingRequest, as: 'booking_requests' }, 'created_at', 'DESC'],
                 [{ model: db.bookingRejection, as: 'booking_rejections' }, 'created_at', 'DESC']
@@ -2882,10 +2891,29 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
         }
 
         const acceptedRequest =
-            booking.booking_requests?.find(r => r.status === 'ACCEPTED') || null;
+            booking.booking_requests?.find(r => r.status === 'ACCEPTED') ||
+            null;
 
         const rejectedRequests =
-            booking.booking_requests?.filter(r => r.status === 'REJECTED') || [];
+            booking.booking_requests?.filter(r => r.status === 'REJECTED') ||
+            [];
+
+        let enableChat = null;
+
+        // Only check chat if user is NOT booking owner
+        if (userToken !== booking.vendor_token) {
+            const requesterToken = userToken;
+
+            const chatCount = await Chat.count({
+                where: {
+                    booking_token: booking.token,
+                    sender_token: booking.vendor_token,
+                    receiver_token: requesterToken
+                }
+            });
+
+            enableChat = chatCount > 0;
+        }
 
         const responseDataObj = {
             booking,
@@ -2894,17 +2922,235 @@ router.get('/get-booking-with-requests/:token', [vendorMiddleware, verifiedOnly,
             rejections: booking.booking_rejections || []
         };
 
+        // console.log(responseDataObj.accepted_request)
+
+        // Add enable_chat only for non-owners
+        if (userToken !== booking.vendor_token) {
+            responseDataObj.enable_chat = enableChat;
+        }
+
+        // console.log(responseDataObj)
+
         return res.status(200).json(
-            responseData('Booking fetched successfully', responseDataObj, req, true)
+            responseData(
+                'Booking fetched successfully',
+                responseDataObj,
+                req,
+                true
+            )
         );
 
     } catch (error) {
         console.error('Get booking with requests error:', error);
+
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
     }
 });
+
+// router.get('/get/my-accepted-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('get-booking')], async (req, res) => {
+//     try {
+//         const { token } = req.params;
+
+//         const Chat = db.chat;
+
+//         const booking = await Booking.findOne({
+//             where: { token },
+//             subQuery: false,
+
+//             attributes: [
+//                 'token',
+//                 'accept_type',
+//                 'status',
+//                 'trip_type',
+//                 'pickup_datetime',
+//                 'return_datetime',
+//                 'vehicle_type',
+//                 'vehicle_name',
+//                 'pickup_location',
+//                 'drop_location',
+//                 'city',
+//                 'state',
+//                 'booking_amount',
+//                 'commission',
+//                 'total_amount',
+//                 'is_negotiable',
+//                 'secure_booking',
+//                 'visibility',
+//                 'extra_requirements',
+//                 'created_at',
+//                 'vendor_token',
+
+//                 [
+//                     Sequelize.literal(`(
+//                             SELECT COALESCE(AVG(br.stars), 5)
+//                             FROM tbl_booking_rating br
+//                             WHERE br.booking_token = booking.token
+//                         )`),
+//                     'rating_quality'
+//                 ]
+//             ],
+
+//             include: [
+//                 // Booking Owner
+//                 {
+//                     model: Vendor,
+//                     as: 'vendor',
+//                     required: false,
+//                     attributes: [
+//                         'token',
+//                         'first_name',
+//                         'last_name',
+//                         'contact',
+//                         'verification_status'
+//                     ],
+//                     on: {
+//                         '$booking.vendor_token$': {
+//                             [Op.eq]: Sequelize.col('vendor.token')
+//                         }
+//                     }
+//                 },
+
+//                 // Booking Requests
+//                 {
+//                     model: db.bookingRequest,
+//                     as: 'booking_requests',
+//                     required: false,
+//                     attributes: [
+//                         'token',
+//                         'status',
+//                         'requested_by_vendor_token',
+//                         'responded_at',
+//                         'created_at'
+//                     ],
+//                     include: [
+//                         {
+//                             model: Vendor,
+//                             as: 'requester',
+//                             required: false,
+//                             attributes: [
+//                                 'token',
+//                                 'first_name',
+//                                 'last_name',
+//                                 'contact',
+//                                 'profile_image'
+//                             ],
+//                             on: {
+//                                 '$booking_requests.requested_by_vendor_token$': {
+//                                     [Op.eq]: Sequelize.col(
+//                                         'booking_requests->requester.token'
+//                                     )
+//                                 }
+//                             }
+//                         }
+//                     ]
+//                 },
+
+//                 // Booking Rejections
+//                 {
+//                     model: db.bookingRejection,
+//                     as: 'booking_rejections',
+//                     required: false,
+//                     attributes: [
+//                         'token',
+//                         'reason',
+//                         'rejected_by_token',
+//                         'created_at'
+//                     ],
+//                     include: [
+//                         {
+//                             model: Vendor,
+//                             as: 'rejecter',
+//                             required: false,
+//                             attributes: [
+//                                 'token',
+//                                 'first_name',
+//                                 'last_name',
+//                                 'contact',
+//                                 'profile_image'
+//                             ],
+//                             on: {
+//                                 '$booking_rejections.rejected_by_token$': {
+//                                     [Op.eq]: Sequelize.col(
+//                                         'booking_rejections->rejecter.token'
+//                                     )
+//                                 }
+//                             }
+//                         }
+//                     ]
+//                 }
+//             ],
+
+//             order: [
+//                 [
+//                     { model: db.bookingRequest, as: 'booking_requests' },
+//                     'created_at',
+//                     'DESC'
+//                 ],
+//                 [
+//                     { model: db.bookingRejection, as: 'booking_rejections' },
+//                     'created_at',
+//                     'DESC'
+//                 ]
+//             ]
+//         });
+
+//         if (!booking) {
+//             return res.status(404).json(
+//                 responseData('Booking not found', {}, req, false)
+//             );
+//         }
+
+//         const acceptedRequest =
+//             booking.booking_requests?.find(r => r.status === 'ACCEPTED') ||
+//             null;
+
+//         const rejectedRequests =
+//             booking.booking_requests?.filter(r => r.status === 'REJECTED') ||
+//             [];
+
+//         let enableChat = false;
+
+//         if (acceptedRequest) {
+//             const acceptedVendorToken =
+//                 acceptedRequest.requested_by_vendor_token;
+
+//             const chatCount = await Chat.count({
+//                 where: {
+//                     booking_token: booking.token,
+//                     sender_token: booking.vendor_token,
+//                     receiver_token: acceptedVendorToken
+//                 }
+//             });
+
+//             enableChat = chatCount > 0;
+//         }
+
+//         const responseDataObj = {
+//             booking,
+//             accepted_request: acceptedRequest,
+//             rejected_requests: rejectedRequests,
+//             rejections: booking.booking_rejections || [],
+//             enable_chat: enableChat
+//         };
+
+//         return res.status(200).json(
+//             responseData(
+//                 'Booking fetched successfully',
+//                 responseDataObj,
+//                 req,
+//                 true
+//             )
+//         );
+//     } catch (error) {
+//         console.error('Get booking with requests error:', error);
+
+//         return res.status(500).json(
+//             responseData('Error occurred', {}, req, false)
+//         );
+//     }
+// });
 
 router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) => {
     try {
@@ -2913,6 +3159,10 @@ router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) =>
 
         const whereClause = {
             vendor_token: vendorToken
+        };
+
+        whereClause.status = {
+            [Op.ne]: 'EXPIRED'
         };
 
         if (type) {
@@ -2948,7 +3198,7 @@ router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) =>
                         [Sequelize.literal(`CONCAT('${admin_url}', vendor.profile_image)`), 'profile_image']
                     ],
                     on: {
-                        '$Booking.vendor_token$': {
+                        '$booking.vendor_token$': {
                             [Op.eq]: Sequelize.col('vendor.token')
                         }
                     }
@@ -2972,12 +3222,14 @@ router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) =>
                     Sequelize.literal(`(
                         SELECT COALESCE(AVG(br.stars), 5)
                         FROM tbl_booking_rating AS br
-                        WHERE br.booking_token = Booking.token
+                        WHERE br.booking_token = booking.token
                     )`),
                     'rating_quality'
                 ]
             ]
         });
+
+        // console.log(paginatedResult.docs)
 
         const responseDataObj = {
             bookings: paginatedResult.docs,
@@ -3002,95 +3254,127 @@ router.get('/my-bookings', [vendorMiddleware, verifiedOnly], async (req, res) =>
     }
 });
 
-router.get('/my/accepted/booking', [vendorMiddleware, verifiedOnly], async (req, res) => {
+router.get("/my/accepted/booking", [vendorMiddleware, verifiedOnly], async (req, res) => {
     try {
-        const vendorToken = req.vendor.token;
+        const vendorToken = req.user.token;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const offset = (page - 1) * limit;
 
-        // const cacheKey = `my_accepted_booking_${vendorToken}_${page}_${limit}`;
-        // const lastUpdate = await db.booking.max('updated_at', {
-        //     where: {
-        //         vendor_token: vendorToken,
-        //         status: { [db.Sequelize.Op.in]: ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'] },
-        //         flag: 0
-        //     }
-        // });
-
-        // const cached = await getCache(cacheKey);
-        // if (cached && cached.lastModified === new Date(lastUpdate).getTime()) {
-        //     return res.status(200).json(
-        //         responseData('Accepted bookings fetched successfully (from cache)', cached.data, req, true)
-        //     );
-        // }
-
-        const { count, rows } = await db.booking.findAndCountAll({
-            where: {
-                vendor_token: vendorToken,
-                status: { [db.Sequelize.Op.in]: ['ACCEPTED', 'IN_PROGRESS', 'COMPLETED'] },
-                flag: 0
-            },
-            attributes: [
-                'id',
-                'token',
-                'trip_type',
-                'vehicle_type',
-                'vehicle_name',
-                'pickup_datetime',
-                'return_datetime',
-                'pickup_location',
-                'drop_location',
-                'city',
-                'state',
-                'booking_amount',
-                'commission',
-                'total_amount',
-                'accept_type',
-                'status',
-                'created_at'
-            ],
-            include: [
-                {
-                    model: db.bookingRequest,
-                    as: 'booking_requests',
-                    required: false,
-                    where: {
-                        status: 'ACCEPTED',
-                        owner_vendor_token: vendorToken
-                    },
-                    attributes: [
-                        'id',
-                        'token',
-                        'requested_by_vendor_token',
-                        'responded_at',
-                        'remarks'
-                    ]
-                }
-            ],
-            order: [['created_at', 'DESC']],
-            limit,
-            offset
+        const bookings = await db.sequelize.query(`
+            SELECT 
+                -- Booking details
+                b.id AS booking_id,
+                b.token AS booking_token,
+                b.trip_type,
+                b.vehicle_type,
+                b.vehicle_name,
+                b.pickup_datetime,
+                b.return_datetime,
+                b.pickup_location,
+                b.drop_location,
+                b.city,
+                b.state,
+                b.booking_amount,
+                b.commission,
+                b.total_amount,
+                b.accept_type,
+                b.status AS booking_status,
+                b.created_at AS booking_created_at,
+                b.vendor_token AS owner_vendor_token,
+                
+                -- Request details
+                br.id AS request_id,
+                br.token AS request_token,
+                br.status AS request_status,
+                br.responded_at,
+                br.remarks,
+                br.bid_amount,
+                br.bid_currency,
+                br.created_at AS request_created_at
+                
+            FROM tbl_booking_requests br
+            INNER JOIN tbl_booking b ON br.booking_token = b.token
+            WHERE br.requested_by_vendor_token = ?
+            -- REMOVED the booking status filter
+            ORDER BY 
+                -- You might want to order by request status or date
+                CASE br.status
+                    WHEN 'PENDING' THEN 1
+                    WHEN 'ACCEPTED' THEN 2
+                    WHEN 'REJECTED' THEN 3
+                    WHEN 'CANCELLED' THEN 4
+                    ELSE 5
+                END,
+                br.created_at DESC
+            LIMIT ? OFFSET ?
+        `, {
+            replacements: [vendorToken, limit, offset],
+            type: db.sequelize.QueryTypes.SELECT
         });
 
-        const responseDataObj = {
-            total: count,
-            page,
-            limit,
-            bookings: rows
-        };
+        const totalResult = await db.sequelize.query(`
+            SELECT COUNT(*) as total
+            FROM tbl_booking_requests br
+            INNER JOIN tbl_booking b ON br.booking_token = b.token
+            WHERE br.requested_by_vendor_token = ?
+        `, {
+            replacements: [vendorToken],
+            type: db.sequelize.QueryTypes.SELECT
+        });
 
-        // await setCache(cacheKey, { data: responseDataObj, lastModified: new Date(lastUpdate).getTime() }, 300);
+        const formattedBookings = bookings.map(row => ({
+            id: row.booking_id,
+            token: row.booking_token,
+            trip_type: row.trip_type,
+            vehicle_type: row.vehicle_type,
+            vehicle_name: row.vehicle_name,
+            pickup_datetime: row.pickup_datetime,
+            return_datetime: row.return_datetime,
+            pickup_location: row.pickup_location,
+            drop_location: row.drop_location,
+            city: row.city,
+            state: row.state,
+            booking_amount: parseFloat(row.booking_amount),
+            commission: parseFloat(row.commission),
+            total_amount: parseFloat(row.total_amount),
+            accept_type: row.accept_type,
+            booking_status: row.booking_status,
+            created_at: row.booking_created_at,
+            owner_vendor_token: row.owner_vendor_token,
 
-        return res.status(200).json(
-            responseData('Accepted bookings fetched successfully', responseDataObj, req, true)
-        );
+            request: {
+                id: row.request_id,
+                token: row.request_token,
+                status: row.request_status,
+                responded_at: row.responded_at,
+                remarks: row.remarks,
+                bid_amount: row.bid_amount ? parseFloat(row.bid_amount) : null,
+                bid_currency: row.bid_currency,
+                created_at: row.request_created_at
+            }
+        }));
+
+        return res.status(200).json(responseData(
+            "Bookings fetched successfully",
+            {
+                total: totalResult[0]?.total || 0,
+                page,
+                limit,
+                bookings: formattedBookings
+            },
+            req,
+            true
+        ))
 
     } catch (error) {
-        console.error('My accepted booking error:', error);
-        return res.status(500).json(
-            responseData('Error occurred', {}, req, false)
-        );
+        console.error("My bookings error:", error);
+        return res.status(500).json(responseData(
+            "Server error",
+            { error: error.message },
+            req,
+            false
+        ))
     }
 });
 
@@ -3110,23 +3394,13 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                 'accept_type',
                 'pickup_datetime',
                 'return_datetime',
-                'created_at',
+                'created_at'
             ],
             include: [
-                // ===============================
-                // BOOKING REQUESTS (includes BID)
-                // ===============================
                 {
-                    model: db.bookingRequest,
+                    model: BookingRequest,
                     as: 'booking_requests',
                     required: false,
-                    on: {
-                        '$booking.token$': {
-                            [Sequelize.Op.eq]: Sequelize.col(
-                                'booking_requests.booking_token'
-                            ),
-                        },
-                    },
                     attributes: [
                         'token',
                         'status',
@@ -3140,40 +3414,34 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                     ],
                     include: [
                         {
-                            model: db.vendor,
+                            model: Vendor,
                             as: 'requester',
-                            required: false,
-                            on: {
-                                '$booking_requests.requested_by_vendor_token$': {
-                                    [Sequelize.Op.eq]: Sequelize.col(
-                                        'booking_requests->requester.token'
-                                    ),
-                                },
-                            },
+                            required: true,
                             attributes: [
                                 'token',
                                 'first_name',
                                 'last_name',
                                 'contact',
-                            ],
+                                [
+                                    Sequelize.literal(`(
+                                        SELECT ROUND(COALESCE(AVG(vr.rating), 5), 1)
+                                        FROM tbl_vendor_rating AS vr
+                                        WHERE vr.vendor_token = \`booking_requests->requester\`.\`token\`
+                                    )`),
+                                    'rating'
+                                ],
+                                [
+                                    Sequelize.literal(`CONCAT('${admin_url}', \`booking_requests->requester\`.\`profile_image\`)`),
+                                    'profile_image'
+                                ]
+                            ]
                         },
                     ],
                 },
-
-                // ===============================
-                // BOOKING REJECTIONS
-                // ===============================
                 {
-                    model: db.bookingRejection,
+                    model: BookingReject,
                     as: 'booking_rejections',
                     required: false,
-                    on: {
-                        '$booking.token$': {
-                            [Sequelize.Op.eq]: Sequelize.col(
-                                'booking_rejections.booking_token'
-                            ),
-                        },
-                    },
                     attributes: [
                         'token',
                         'reason',
@@ -3182,16 +3450,9 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                     ],
                     include: [
                         {
-                            model: db.vendor,
+                            model: Vendor,
                             as: 'rejecter',
                             required: false,
-                            on: {
-                                '$booking_rejections.rejected_by_token$': {
-                                    [Sequelize.Op.eq]: Sequelize.col(
-                                        'booking_rejections->rejecter.token'
-                                    ),
-                                },
-                            },
                             attributes: [
                                 'token',
                                 'first_name',
@@ -3204,12 +3465,12 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
             ],
             order: [
                 [
-                    { model: db.bookingRequest, as: 'booking_requests' },
+                    { model: BookingRequest, as: 'booking_requests' },
                     'created_at',
                     'DESC',
                 ],
                 [
-                    { model: db.bookingRejection, as: 'booking_rejections' },
+                    { model: BookingReject, as: 'booking_rejections' },
                     'created_at',
                     'DESC',
                 ],
@@ -3228,9 +3489,7 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
         }
 
         const acceptedRequest =
-            booking.booking_requests?.find(
-                (r) => r.status === 'ACCEPTED'
-            ) || null;
+            booking.booking_requests?.find((r) => r.status === 'ACCEPTED') || null;
 
         const formattedRequests =
             booking.booking_requests?.map((reqItem) => {
@@ -3248,6 +3507,8 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
                             first_name: plain.requester.first_name,
                             last_name: plain.requester.last_name,
                             contact: plain.requester.contact,
+                            rating: Number(plain.requester.rating ?? 5),
+                            profile_image: plain.requester.profile_image
                         }
                         : null,
 
@@ -3264,20 +3525,27 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
             }) || [];
 
         const formattedRejections =
-            booking.booking_rejections?.map((rej) => ({
-                token: rej.token,
-                reason: rej.reason,
-                rejected_at: rej.created_at,
+            booking.booking_rejections?.map((rej) => {
+                const plain = rej.get ? rej.get({ plain: true }) : rej;
 
-                vendor: rej.rejecter
-                    ? {
-                        token: rej.rejecter.token,
-                        first_name: rej.rejecter.first_name,
-                        last_name: rej.rejecter.last_name,
-                        contact: rej.rejecter.contact,
-                    }
-                    : null,
-            })) || [];
+                return {
+                    token: plain.token,
+                    reason: plain.reason,
+                    rejected_at: plain.created_at,
+                    vendor: plain.rejecter
+                        ? {
+                            token: plain.rejecter.token,
+                            first_name: plain.rejecter.first_name,
+                            last_name: plain.rejecter.last_name,
+                            contact: plain.rejecter.contact,
+                        }
+                        : null,
+                };
+            }) || [];
+
+        const acceptedPlain = acceptedRequest?.get
+            ? acceptedRequest.get({ plain: true })
+            : acceptedRequest;
 
         const responseDataObj = {
             booking: {
@@ -3291,19 +3559,17 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
 
             requests: formattedRequests,
 
-            accepted_by: acceptedRequest
+            accepted_by: acceptedPlain
                 ? {
-                    accepted_at: acceptedRequest.created_at,
-                    vendor: acceptedRequest.requester
+                    accepted_at: acceptedPlain.created_at,
+                    vendor: acceptedPlain.requester
                         ? {
-                            token:
-                                acceptedRequest.requester.token,
-                            first_name:
-                                acceptedRequest.requester.first_name,
-                            last_name:
-                                acceptedRequest.requester.last_name,
-                            contact:
-                                acceptedRequest.requester.contact,
+                            token: acceptedPlain.requester.token,
+                            first_name: acceptedPlain.requester.first_name,
+                            last_name: acceptedPlain.requester.last_name,
+                            contact: acceptedPlain.requester.contact,
+                            rating: Number(acceptedPlain.requester.rating ?? 5),
+                            total_ratings: Number(acceptedPlain.requester.total_ratings ?? 0),
                         }
                         : null,
                 }
@@ -3321,135 +3587,13 @@ router.get('/my-booking/:token/requests-overview', [vendorMiddleware, verifiedOn
             )
         );
     } catch (error) {
-        console.error(
-            'Booking request overview error:',
-            error
-        );
+        console.error('Booking request overview error:', error);
 
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
     }
 });
-
-// router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.validate('post-booking')], async (req, res) => {
-//     try {
-//         const {
-//             trip_type,
-//             vehicle_type,
-//             vehicle_name,
-//             pickup_datetime,
-//             return_datetime,
-//             pickup_location,
-//             drop_location,
-//             city,
-//             state,
-//             accept_type,
-//             booking_amount,
-//             commission = 0,
-//             total_amount,
-//             is_negotiable = false,
-//             secure_booking = false,
-//             visibility = 'public',
-//             extra_requirements = {}
-//         } = req.body;
-
-//         const vendorToken = req.user.token;
-
-//         const pickupDate = new Date(pickup_datetime);
-//         if (isNaN(pickupDate.getTime()) || pickupDate < new Date()) {
-//             return res
-//                 .status(400)
-//                 .json(responseData('Invalid pickup date', {}, req, false));
-//         }
-
-//         let returnDate = null;
-//         if (trip_type === 'round_trip') {
-//             returnDate = new Date(return_datetime);
-//             if (isNaN(returnDate.getTime()) || returnDate <= pickupDate) {
-//                 return res
-//                     .status(400)
-//                     .json(responseData('Invalid return date', {}, req, false));
-//             }
-//         }
-
-//         const booking = await Booking.create({
-//             token: randomstring(64),
-//             vendor_token: vendorToken,
-//             trip_type: trip_type.toUpperCase(),
-//             vehicle_type,
-//             vehicle_name,
-//             pickup_datetime: pickupDate,
-//             return_datetime: returnDate,
-//             pickup_location,
-//             drop_location,
-//             city,
-//             state,
-//             accept_type: accept_type.toUpperCase(),
-//             booking_amount,
-//             commission,
-//             total_amount,
-//             is_negotiable,
-//             secure_booking,
-//             visibility: visibility.toUpperCase(),
-//             extra_requirements
-//         });
-
-//         res.status(201).json(
-//             responseData('Booking posted successfully', {}, req, true)
-//         );
-
-//         bookingQueue.add(
-//             'BOOKING_CREATED',
-//             {
-//                 bookingToken: booking.token,
-//                 city: booking.city,
-//                 vehicle_type: booking.vehicle_type
-//             },
-//             {
-//                 jobId: `bookingCreated_${booking.token}`,
-//                 removeOnComplete: true
-//             }
-//         ).catch(err => {
-//             console.error('[BOOKING QUEUE ERROR]', err);
-//         });
-
-//         (async () => {
-//             try {
-//                 const io = getIO();
-
-//                 const vendors = await Vendor.findAll({
-//                     where: Sequelize.and(
-//                         { flag: 0 },
-//                         { token: { [Op.ne]: vendorToken } },
-//                         { booking_notification_enabled: true },
-//                         Sequelize.literal(`JSON_CONTAINS(preferred_cities, '"${city}"')`)
-//                     ),
-//                     attributes: ['token'],
-//                     raw: true
-//                 });
-
-//                 vendors.forEach(v => {
-//                     io.to(`vendor:${v.token}`).emit('new_duty_alert', {
-//                         booking_token: booking.token,
-//                         vehicle_type: booking.vehicle_type,
-//                         city: booking.city,
-//                         title: 'LehConnect require',
-//                         message: `New ${booking.vehicle_type} ${booking.vehicle_name} trip available in ${booking.city} at ${booking.pickup_datetime}`
-//                     });
-//                 });
-//             } catch (socketErr) {
-//                 console.error('[BOOKING SOCKET ERROR]', socketErr);
-//             }
-//         })();
-
-//     } catch (error) {
-//         console.error('Post booking error:', error);
-//         return res
-//             .status(500)
-//             .json(responseData('Error occurred', {}, req, false));
-//     }
-// });
 
 router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.validate('post-booking')], async (req, res) => {
     try {
@@ -3589,8 +3733,8 @@ router.post('/post-booking', [vendorMiddleware, verifiedOnly, vendorValidation.v
                 booking_token: booking.token,
                 vehicle_type: booking.vehicle_type,
                 city: booking.city,
-                title: 'New Booking',
-                message: `New ${booking.vehicle_type} trip in ${booking.city} at ${formattedPickupDate}`
+                title: 'LehConnect Required',
+                message: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`
             });
         });
     } catch (error) {
@@ -3607,12 +3751,9 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
     const t = await db.sequelize.transaction();
 
     try {
-
         const { action, reason, request_token } = req.body;
         const ownerToken = req.user.token;
-        const ownerRole = req.user.role;
         const bookingToken = req.params.token;
-
         if (!['accept', 'reject', 'ACCEPT', 'REJECT'].includes(action)) {
             await t.rollback();
             return res.status(400).json(
@@ -3620,80 +3761,70 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
             );
         }
 
-        /* =========================
-           FETCH BOOKING
-        ========================== */
-        const booking = await db.booking.findOne({
+        const booking = await Booking.findOne({
             where: { token: bookingToken },
             attributes: ['token', 'vendor_token', 'accept_type', 'status'],
-            include: [{
-                model: db.bookingRequest,
-                as: 'booking_requests',
-                attributes: [
-                    'token',
-                    'requested_by_vendor_token',
-                    'status',
-                    'accept_type',
-                    'bid_amount'
-                ]
-            }],
+            include: [
+                {
+                    model: db.bookingRequest,
+                    as: 'booking_requests',
+                    attributes: [
+                        'token',
+                        'requested_by_vendor_token',
+                        'status',
+                        'accept_type',
+                        'bid_amount'
+                    ],
+                    required: false,
+                    on: {
+                        [db.Sequelize.Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_requests.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { status: 'PENDING' }
+                        ]
+                    }
+                }
+            ],
             transaction: t,
             lock: t.LOCK.UPDATE
         });
-
         if (!booking) {
             await t.rollback();
             return res.status(404).json(
                 responseData('Booking not found', {}, req, false)
             );
         }
-
         if (booking.vendor_token !== ownerToken) {
             await t.rollback();
             return res.status(403).json(
                 responseData('Not authorized', {}, req, false)
             );
         }
-
         if (booking.status !== 'OPEN') {
             await t.rollback();
             return res.status(400).json(
                 responseData('Booking already processed', {}, req, false)
             );
         }
-
         if (!['APPROVAL', 'BID'].includes(booking.accept_type)) {
             await t.rollback();
             return res.status(400).json(
                 responseData('Invalid booking type for request action', {}, req, false)
             );
         }
-
-        /* =========================
-           FIND TARGET REQUEST
-        ========================== */
-
         let bookingRequest;
-
-        if (booking.accept_type === 'APPROVAL') {
-
-            bookingRequest = booking.booking_requests?.find(
-                r => r.status === 'PENDING'
-            );
-
-        } else {
-            // BID → require specific request_token
-            if (!request_token) {
-                await t.rollback();
-                return res.status(400).json(
-                    responseData('Request token required for bid action', {}, req, false)
-                );
-            }
-
-            bookingRequest = booking.booking_requests?.find(
-                r => r.token === request_token && r.status === 'PENDING'
+        if (!request_token) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('Request token is required', {}, req, false)
             );
         }
+        bookingRequest = booking.booking_requests?.find(
+            r => r.token === request_token && r.status === 'PENDING'
+        );
 
         if (!bookingRequest) {
             await t.rollback();
@@ -3701,23 +3832,16 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
                 responseData('Invalid booking request state', {}, req, false)
             );
         }
-
         if ((action.toUpperCase() === 'REJECT') && !reason) {
             await t.rollback();
             return res.status(400).json(
                 responseData('Reject reason required', {}, req, false)
             );
         }
-
         const finalStatus =
             action.toUpperCase() === 'ACCEPT'
                 ? 'ACCEPTED'
                 : 'REJECTED';
-
-        /* =========================
-           UPDATE SELECTED REQUEST
-        ========================== */
-
         await db.bookingRequest.update(
             {
                 status: finalStatus,
@@ -3727,71 +3851,30 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
             { where: { token: bookingRequest.token }, transaction: t }
         );
 
-        /* =========================
-           IF ACCEPT → UPDATE BOOKING
-        ========================== */
-
         if (finalStatus === 'ACCEPTED') {
-
             await db.booking.update(
                 { status: 'ACCEPTED' },
                 { where: { token: bookingToken }, transaction: t }
             );
-
-            // 🔥 If BID → Reject all other bids automatically
-            if (booking.accept_type === 'BID') {
-
-                await db.bookingRequest.update(
-                    {
-                        status: 'REJECTED',
-                        responded_at: new Date(),
-                        remarks: 'Another bid accepted'
+            await db.bookingRequest.update(
+                {
+                    status: 'REJECTED',
+                    responded_at: new Date(),
+                    remarks: 'Another request accepted'
+                },
+                {
+                    where: {
+                        booking_token: bookingToken,
+                        status: 'PENDING',
+                        token: { [db.Sequelize.Op.ne]: bookingRequest.token }
                     },
-                    {
-                        where: {
-                            booking_token: bookingToken,
-                            status: 'PENDING',
-                            token: { [db.Sequelize.Op.ne]: bookingRequest.token }
-                        },
-                        transaction: t
-                    }
-                );
-            }
+                    transaction: t
+                }
+            );
         }
 
         await t.commit();
-
-        /* =========================
-           SOCKET EVENT
-        ========================== */
-        const io = getIO();
-
-        io.to(`vendor:${bookingRequest.requested_by_vendor_token}`).emit(
-            'booking:request-action',
-            {
-                event:
-                    finalStatus === 'ACCEPTED'
-                        ? 'BOOKING_REQUEST_ACCEPTED'
-                        : 'BOOKING_REQUEST_REJECTED',
-                booking_token: bookingToken,
-                request_token: bookingRequest.token,
-                action: finalStatus
-            }
-        );
-
-        /* =========================
-           QUEUE EVENT
-        ========================== */
-        await bookingRequestActionQueue.add('REQUEST_ACTION', {
-            bookingToken,
-            requestToken: bookingRequest.token,
-            receiverVendorToken: bookingRequest.requested_by_vendor_token,
-            action: finalStatus,
-            reason: finalStatus === 'REJECTED' ? reason : null,
-            actorToken: ownerToken
-        });
-
-        return res.status(200).json(
+        res.status(200).json(
             responseData(
                 `Booking request ${finalStatus.toLowerCase()} successfully`,
                 {
@@ -3808,11 +3891,32 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
             )
         );
 
+        const io = getIO();
+        io.to(`vendor:${bookingRequest.requested_by_vendor_token}`).emit(
+            'booking:request-action',
+            {
+                event:
+                    finalStatus === 'ACCEPTED'
+                        ? 'BOOKING_REQUEST_ACCEPTED'
+                        : 'BOOKING_REQUEST_REJECTED',
+                booking_token: bookingToken,
+                request_token: bookingRequest.token,
+                action: finalStatus
+            }
+        );
+        await bookingRequestActionQueue.add('REQUEST_ACTION', {
+            bookingToken,
+            requestToken: bookingRequest.token,
+            receiverVendorToken: bookingRequest.requested_by_vendor_token,
+            action: finalStatus,
+            reason: finalStatus === 'REJECTED' ? reason : null,
+            actorToken: ownerToken
+        });
     } catch (error) {
-
-        await t.rollback();
+        if (!t.finished) {
+            await t.rollback();
+        }
         console.error('Booking request action error:', error);
-
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
@@ -3820,11 +3924,12 @@ router.post('/booking/:token/request-action', [vendorMiddleware, verifiedOnly, v
 });
 
 router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorValidation.validate('booking-accept')], async (req, res) => {
-
     const t = await db.sequelize.transaction();
+    const io = getIO()
 
     try {
         const requesterToken = req.user.token;
+        const { first_name, last_name } = req.user
         const { token } = req.params;
         const now = new Date();
 
@@ -3843,8 +3948,15 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
                     as: 'booking_requests',
                     required: false,
                     attributes: ['token', 'status'],
-                    where: {
-                        requested_by_vendor_token: requesterToken
+                    on: {
+                        [Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_requests.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { requested_by_vendor_token: requesterToken }
+                        ]
                     }
                 },
                 {
@@ -3852,8 +3964,15 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
                     as: 'booking_rejections',
                     required: false,
                     attributes: ['token'],
-                    where: {
-                        rejected_by_token: requesterToken
+                    on: {
+                        [Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_rejections.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { rejected_by_token: requesterToken }
+                        ]
                     }
                 }
             ],
@@ -3868,7 +3987,7 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
 
         if (booking.vendor_token === requesterToken) {
             await t.rollback();
-            return res.status(404).json(responseData('You can not booking own booking', {}, req, false));
+            return res.status(404).json(responseData("You cannot accept your own booking", {}, req, false));
         }
 
         if (booking.status !== 'OPEN') {
@@ -3878,7 +3997,7 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
 
         if (new Date(booking.pickup_datetime) <= now) {
             await t.rollback();
-            return res.status(404).json(responseData('Booking pickup time expired', {}, req, false));
+            return res.status(409).json(responseData('Booking pickup time expired', {}, req, false));
         }
 
         if (booking.booking_requests?.length) {
@@ -3954,6 +4073,29 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
 
             await t.commit();
 
+            res.status(201).json(
+                responseData(
+                    'Booking accepted successfully',
+                    {
+                        booking_token: booking.token,
+                        booking_request_token: bookingRequest.token
+                    },
+                    req,
+                    true
+                )
+            );
+
+            io.to(`vendor:${booking.vendor_token}`).emit('booking:instant', {
+                booking_token: booking.token,
+                accepted_by: `${first_name} ${last_name}`,
+                event: 'BOOKING_REQUEST_ACCEPTED'
+            });
+
+            io.to(`vendor:${requesterToken}`).emit('booking:request-action', {
+                booking_token: booking.token,
+                event: 'BOOKING_REQUEST_ACCEPTED'
+            });
+
             // Queue push notifications
             await bookingNotificationQueue.add('instant-accepted', {
                 receiver_token: booking.vendor_token,
@@ -3973,20 +4115,9 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
                 event: 'booking:confirmed'
             });
 
-            return res.status(201).json(
-                responseData(
-                    'Booking accepted successfully',
-                    {
-                        booking_token: booking.token,
-                        booking_request_token: bookingRequest.token
-                    },
-                    req,
-                    true
-                )
-            );
+            return;
         }
 
-        // for approval type
         await Notification.create(
             {
                 sender_token: requesterToken,
@@ -4003,16 +4134,7 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
 
         await t.commit();
 
-        await bookingNotificationQueue.add('approval-request', {
-            receiver_token: booking.vendor_token,
-            type: 'BOOKING_REQUEST',
-            title: 'New Booking Request',
-            message: 'A vendor has requested your booking.',
-            booking_token: booking.token,
-            event: 'booking:request'
-        });
-
-        return res.status(201).json(
+        res.status(201).json(
             responseData(
                 'Booking request sent successfully',
                 {
@@ -4024,10 +4146,29 @@ router.post('/booking/:token/accept', [vendorMiddleware, verifiedOnly, vendorVal
             )
         );
 
+        io.to(`vendor:${booking.vendor_token}`).emit('booking:request', {
+            booking_token: booking.token,
+            accepted_by: `${first_name} ${last_name}`,
+            event: "BOOKING_REQUEST"
+        });
+
+        await bookingNotificationQueue.add('approval-request', {
+            receiver_token: booking.vendor_token,
+            type: 'BOOKING_REQUEST',
+            title: 'New Booking Request',
+            message: 'एक वेंडर ने आपकी बुकिंग के लिए अनुरोध भेजा है।',
+            booking_token: booking.token,
+            event: 'booking:request'
+        });
+
     } catch (error) {
-        await t.rollback();
+        if (!t.finished) {
+            await t.rollback();
+        }
         console.error('Booking accept error:', error);
-        return res.status(500).json(responseData('Error occured', {}, req, false))
+        return res.status(500).json(
+            responseData('Error occured', {}, req, false)
+        );
     }
 });
 
@@ -4049,13 +4190,33 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
                     model: BookingRequest,
                     as: 'booking_requests',
                     required: false,
-                    attributes: ['token', 'status']
+                    attributes: ['token', 'status'],
+                    on: {
+                        [Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_requests.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { requested_by_vendor_token: rejecterToken }
+                        ]
+                    }
                 },
                 {
                     model: BookingReject,
                     as: 'booking_rejections',
                     required: false,
-                    attributes: ['token']
+                    attributes: ['token'],
+                    on: {
+                        [Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_rejections.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { rejected_by_token: rejecterToken }
+                        ]
+                    }
                 }
             ],
             transaction: t,
@@ -4068,6 +4229,9 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
                 responseData('Booking not found', {}, req, false)
             );
         }
+
+        // console.log('booking ->>>>> ', booking)
+
 
         if (booking.vendor_token === rejecterToken) {
             await t.rollback();
@@ -4109,7 +4273,7 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
         );
 
         await Booking.update(
-            { status: 'REJECTED' },
+            { status: 'CANCELLED' },
             {
                 where: { token: bookingToken, status: 'OPEN' },
                 transaction: t
@@ -4117,6 +4281,10 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
         );
 
         await t.commit();
+
+        res.status(200).json(
+            responseData('Booking rejected successfully', {}, req, true)
+        );
 
         // **ENQUEUE NOTIFICATION BEFORE RESPONDING**
         await bookingNotificationQueue.add('booking-rejected', {
@@ -4132,16 +4300,13 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
 
         // Socket emit (if needed)
         const io = getIO();
-        io?.to(`vendor:${booking.vendor_token}`).emit(
-            'booking:rejected',
+        io.to(`vendor:${booking.vendor_token}`).emit(
+            'booking:request-action',
             {
                 booking_token: bookingToken,
+                event: 'BOOKING_REQUEST_REJECTED',
                 reason
             }
-        );
-
-        return res.status(200).json(
-            responseData('Booking rejected successfully', {}, req, true)
         );
 
     } catch (error) {
@@ -4155,19 +4320,11 @@ router.post('/booking/:token/reject', [vendorMiddleware, verifiedOnly, vendorVal
 
 router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValidation.validate('bid-booking')], async (req, res) => {
     const t = await db.sequelize.transaction();
-    try {
 
+    try {
         const bidderToken = req.user.token;
         const { token } = req.params;
-
-        console.log('bidder token ->>>>> ', bidderToken)
-
-        const {
-            bid_amount,
-            remarks
-        } = req.body;
-
-        console.log('body ->>>>> ', req.body)
+        const { bid_amount, remarks } = req.body;
 
         const now = new Date();
 
@@ -4182,21 +4339,19 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
             ],
             include: [
                 {
-                    model: BookingRequest,
-                    as: 'booking_requests',
-                    required: false,
-                    attributes: ['token'],
-                    where: {
-                        requested_by_vendor_token: bidderToken
-                    }
-                },
-                {
                     model: BookingReject,
                     as: 'booking_rejections',
                     required: false,
                     attributes: ['token'],
-                    where: {
-                        rejected_by_token: bidderToken
+                    on: {
+                        [db.Sequelize.Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_rejections.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                            { rejected_by_token: bidderToken }
+                        ]
                     }
                 }
             ],
@@ -4204,64 +4359,120 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
             lock: t.LOCK.UPDATE
         });
 
-        console.log('booking ->>>>> ', booking)
         if (!booking) {
             await t.rollback();
-            return res.status(404).json(responseData('Booking not found', {}, req, false));
+            return res.status(404).json(
+                responseData('Booking not found', {}, req, false)
+            );
         }
 
         if (booking.vendor_token === bidderToken) {
             await t.rollback();
-            return res.status(400).json(responseData('You cannot bid on your own booking', {}, req, false));
+            return res.status(400).json(
+                responseData('You cannot bid on your own booking', {}, req, false)
+            );
         }
 
         if (booking.status !== 'OPEN') {
             await t.rollback();
-            return res.status(400).json(responseData('Booking is not open for bidding', {}, req, false));
+            return res.status(400).json(
+                responseData('Booking is not open for bidding', {}, req, false)
+            );
         }
 
         if (booking.accept_type !== 'BID') {
             await t.rollback();
-            return res.status(400).json(responseData('This booking does not allow bidding', {}, req, false));
+            return res.status(400).json(
+                responseData('This booking does not allow bidding', {}, req, false)
+            );
         }
 
         if (new Date(booking.pickup_datetime) <= now) {
             await t.rollback();
-            return res.status(400).json(responseData('Booking pickup time expired', {}, req, false));
-        }
-
-        if (booking.booking_requests?.length) {
-            await t.rollback();
-            return res.status(400).json(responseData('You have already placed a bid on this booking', {}, req, false));
+            return res.status(400).json(
+                responseData('Booking pickup time expired', {}, req, false)
+            );
         }
 
         if (booking.booking_rejections?.length) {
             await t.rollback();
-            return res.status(403).json(responseData('You are not allowed to bid on this booking', {}, req, false));
+            return res.status(403).json(
+                responseData('You are not allowed to bid on this booking', {}, req, false)
+            );
         }
 
         if (!bid_amount || Number(bid_amount) <= 0) {
             await t.rollback();
-            return res.status(400).json(responseData('Invalid bid amount', {}, req, false));
+            return res.status(400).json(
+                responseData('Invalid bid amount', {}, req, false)
+            );
         }
 
-        const validTillDate = new Date(Date.now() + (24 * 60 * 60 * 1000));
+        const validTillDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        const bookingRequest = await BookingRequest.create(
-            {
-                token: randomstring(64),
+        let bookingRequest = await BookingRequest.findOne({
+            where: {
                 booking_token: booking.token,
                 requested_by_vendor_token: bidderToken,
-                owner_vendor_token: booking.vendor_token,
-                accept_type: 'BID',
-                bid_amount,
-                bid_currency: 'INR',
-                bid_valid_till: validTillDate,
-                remarks,
-                status: 'PENDING'
+                accept_type: 'BID'
             },
-            { transaction: t }
-        );
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        let actionType = 'CREATED';
+
+        if (!bookingRequest) {
+            bookingRequest = await BookingRequest.create(
+                {
+                    token: randomstring(64),
+                    booking_token: booking.token,
+                    requested_by_vendor_token: bidderToken,
+                    owner_vendor_token: booking.vendor_token,
+                    accept_type: 'BID',
+                    bid_amount,
+                    bid_currency: 'INR',
+                    bid_valid_till: validTillDate,
+                    remarks,
+                    bid_attempt_count: 1,
+                    status: 'PENDING'
+                },
+                { transaction: t }
+            );
+        } else {
+            if (['ACCEPTED', 'REJECTED', 'CANCELLED'].includes(bookingRequest.status)) {
+                await t.rollback();
+                return res.status(400).json(
+                    responseData(
+                        `You cannot update this bid because it is already ${bookingRequest.status.toLowerCase()}`,
+                        {},
+                        req,
+                        false
+                    )
+                );
+            }
+
+            if (Number(bookingRequest.bid_attempt_count || 0) >= 4) {
+                await t.rollback();
+                return res.status(400).json(
+                    responseData('You can bid maximum 3 times on this booking', {}, req, false)
+                );
+            }
+
+            await bookingRequest.update(
+                {
+                    bid_amount,
+                    bid_currency: 'INR',
+                    bid_valid_till: validTillDate,
+                    remarks,
+                    bid_attempt_count: Number(bookingRequest.bid_attempt_count || 0) + 1,
+                    status: 'PENDING'
+                },
+                { transaction: t }
+            );
+
+            actionType = 'UPDATED';
+        }
 
         await Notification.create(
             {
@@ -4269,9 +4480,12 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
                 receiver_token: booking.vendor_token,
                 receiver_role: 'vendor',
                 booking_token: booking.token,
-                type: 'NEW_BID',
-                title: 'New Bid Received',
-                message: `A vendor has placed a bid of ₹${bid_amount} on your booking.`,
+                type: actionType === 'CREATED' ? 'NEW_BID' : 'BID_UPDATED',
+                title: actionType === 'CREATED' ? 'New Bid Received' : 'Bid Updated',
+                message:
+                    actionType === 'CREATED'
+                        ? `A vendor has placed a bid of ₹${bid_amount} on your booking.`
+                        : `A vendor has updated the bid to ₹${bid_amount} on your booking.`,
                 visibility: 'private'
             },
             { transaction: t }
@@ -4279,29 +4493,44 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
 
         await t.commit();
 
-        await bookingNotificationQueue.add('new-bid', {
-            receiver_token: booking.vendor_token,
-            type: 'NEW_BID',
-            title: 'New Bid Received',
-            message: `A vendor has placed a bid of ₹${bid_amount} on your booking.`,
-            booking_token: booking.token,
-            event: 'booking:bid'
-        });
-
-        return res.status(201).json(
+        res.status(201).json(
             responseData(
-                'Bid placed successfully',
+                actionType === 'CREATED' ? 'Bid placed successfully' : 'Bid updated successfully',
                 {
                     booking_token: booking.token,
-                    booking_request_token: bookingRequest.token
+                    booking_request_token: bookingRequest.token,
+                    bid_attempt_count: bookingRequest.bid_attempt_count
                 },
                 req,
                 true
             )
         );
 
-    } catch (error) {
+        const io = getIO();
+        io.to(`vendor:${booking.vendor_token}`).emit('booking:new-bid', {
+            booking_token: booking.token,
+            bidder_token: bidderToken,
+            bid_amount,
+            bid_currency: 'INR',
+            remarks,
+            bid_valid_till: validTillDate,
+            bid_attempt_count: bookingRequest.bid_attempt_count,
+            action: actionType
+        });
 
+        await bookingNotificationQueue.add('new-bid', {
+            receiver_token: booking.vendor_token,
+            type: actionType === 'CREATED' ? 'NEW_BID' : 'BID_UPDATED',
+            title: actionType === 'CREATED' ? 'New Bid Received' : 'Bid Updated',
+            message:
+                actionType === 'CREATED'
+                    ? `A vendor has placed a bid of ₹${bid_amount} on your booking.`
+                    : `A vendor has updated the bid to ₹${bid_amount} on your booking.`,
+            booking_token: booking.token,
+            event: 'booking:bid'
+        });
+
+    } catch (error) {
         await t.rollback();
         console.error('Booking bid error:', error);
 
@@ -4311,8 +4540,159 @@ router.post('/booking/:token/bid', [vendorMiddleware, verifiedOnly, vendorValida
     }
 });
 
-router.post('/report-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('rate-booking')], async (req, res) => {
+router.post('/booking/:token/bid-action', [vendorMiddleware, verifiedOnly], async (req, res) => {
+    const t = await db.sequelize.transaction();
 
+    try {
+        const ownerToken = req.user.token;
+        const { token: bookingToken } = req.params;
+        const { request_token, action } = req.body;
+
+        if (!['ACCEPT', 'REJECT'].includes(action?.toUpperCase())) {
+            await t.rollback();
+            return res.status(400).json(responseData('Invalid action type', {}, req, false));
+        }
+
+        const booking = await Booking.findOne({
+            where: { token: bookingToken },
+            attributes: ['token', 'vendor_token', 'status', 'accept_type'],
+            include: [
+                {
+                    model: BookingRequest,
+                    as: 'booking_requests',
+                    required: false,
+                    attributes: ['token', 'requested_by_vendor_token', 'status', 'bid_amount'],
+                    on: {
+                        [db.Sequelize.Op.and]: [
+                            db.sequelize.where(
+                                db.sequelize.col('booking_requests.booking_token'),
+                                '=',
+                                db.sequelize.col('booking.token')
+                            ),
+                        ]
+                    }
+                }
+            ],
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            await t.rollback();
+            return res.status(404).json(responseData('Booking not found', {}, req, false));
+        }
+
+        if (booking.vendor_token !== ownerToken) {
+            await t.rollback();
+            return res.status(403).json(responseData('Not authorized', {}, req, false));
+        }
+
+        if (booking.status !== 'OPEN') {
+            await t.rollback();
+            return res.status(400).json(responseData('Booking already processed', {}, req, false));
+        }
+
+        if (booking.accept_type !== 'BID') {
+            await t.rollback();
+            return res.status(400).json(responseData('This booking is not for bidding', {}, req, false));
+        }
+
+        const bidRequest = booking.booking_requests.find(
+            r => r.token === request_token && r.status === 'PENDING'
+        );
+
+        if (!bidRequest) {
+            await t.rollback();
+            return res.status(400).json(responseData('Invalid or already processed bid', {}, req, false));
+        }
+
+        const finalStatus = action.toUpperCase() === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED';
+
+        await BookingRequest.update(
+            {
+                status: finalStatus,
+                responded_at: new Date(),
+                remarks: finalStatus === 'REJECTED' ? 'Rejected by owner' : null
+            },
+            { where: { token: bidRequest.token }, transaction: t }
+        );
+
+        if (finalStatus === 'ACCEPTED') {
+            await Booking.update(
+                { status: 'ACCEPTED' },
+                { where: { token: bookingToken }, transaction: t }
+            );
+
+            await BookingRequest.update(
+                {
+                    status: 'REJECTED',
+                    responded_at: new Date(),
+                    remarks: 'Another bid accepted'
+                },
+                {
+                    where: {
+                        booking_token: bookingToken,
+                        status: 'PENDING',
+                        token: { [db.Sequelize.Op.ne]: bidRequest.token }
+                    },
+                    transaction: t
+                }
+            );
+        }
+
+        await t.commit();
+        // console.log('yyyyyyyyyxxxxxxx')
+
+        res.status(200).json(
+            responseData(
+                `Bid ${finalStatus.toLowerCase()} successfully`,
+                {
+                    booking_token: bookingToken,
+                    request_token: bidRequest.token,
+                    status: finalStatus,
+                    accepted_bid_amount: finalStatus === 'ACCEPTED' ? bidRequest.bid_amount : null
+                },
+                req,
+                true
+            )
+        );
+
+        const io = getIO();
+        io.to(`vendor:${bidRequest.requested_by_vendor_token}`).emit('booking:bid-action', {
+            event: finalStatus === 'ACCEPTED' ? 'BID_ACCEPTED' : 'BID_REJECTED',
+            booking_token: bookingToken,
+            request_token: bidRequest.token,
+            bid_amount: bidRequest.bid_amount,
+            action: finalStatus
+        });
+
+        // console.log('tttttttzzzzzzzzzz')
+
+        await bookingNotificationQueue.add('bid-action', {
+            receiver_token: bidRequest.requested_by_vendor_token,
+            type: finalStatus === 'ACCEPTED' ? 'BID_ACCEPTED' : 'BID_REJECTED',
+            title:
+                finalStatus === 'ACCEPTED'
+                    ? 'Your bid has been accepted'
+                    : 'Your bid has been rejected',
+            message:
+                finalStatus === 'ACCEPTED'
+                    ? `Your bid of ₹${bidRequest.bid_amount} has been accepted`
+                    : `Your bid of ₹${bidRequest.bid_amount} has been rejected`,
+            booking_token: bookingToken,
+            request_token: bidRequest.token,
+            event: 'booking:bid-action'
+        });
+
+        // console.log('pppppjjjjjjjjj')
+    } catch (error) {
+        await t.rollback();
+        console.error('Bid action error:', error);
+        return res.status(500).json(responseData('Error occurred', {}, req, false));
+    }
+});
+
+router.post('/report-booking/:token', [vendorMiddleware, verifiedOnly, vendorValidation.validate('rate-booking')], async (req, res) => {
     const t = await db.sequelize.transaction();
 
     try {
@@ -4320,7 +4700,8 @@ router.post('/report-booking/:token', [vendorMiddleware, verifiedOnly, vendorVal
         const raterToken = req.user.token;
         const bookingToken = req.params.token;
 
-        if (!stars || stars < 1 || stars > 5) {
+        if (!stars || Number(stars) < 1 || Number(stars) > 5) {
+            await t.rollback();
             return res.status(400).json(
                 responseData('Invalid rating value', {}, req, false)
             );
@@ -4340,13 +4721,25 @@ router.post('/report-booking/:token', [vendorMiddleware, verifiedOnly, vendorVal
             );
         }
 
-        if (booking.vendor_token === raterToken) {
+        // Vendor who created/posted the booking
+        const vendorToRate = booking.vendor_token;
+
+        if (!vendorToRate) {
             await t.rollback();
-            return res.status(403).json(
-                responseData('You are not authorized to rate this booking', {}, req, false)
+            return res.status(400).json(
+                responseData('Vendor not found for this booking', {}, req, false)
             );
         }
 
+        // Prevent self rating
+        if (vendorToRate === raterToken) {
+            await t.rollback();
+            return res.status(403).json(
+                responseData('You cannot rate your own booking vendor', {}, req, false)
+            );
+        }
+
+        // Optional: allow only completed bookings
         // if (booking.status !== 'COMPLETED') {
         //     await t.rollback();
         //     return res.status(400).json(
@@ -4354,72 +4747,70 @@ router.post('/report-booking/:token', [vendorMiddleware, verifiedOnly, vendorVal
         //     );
         // }
 
-        const alreadyRated = await BookingRating.findOne({
-            where: { booking_token: bookingToken, rater_token: raterToken },
+        const alreadyRated = await VendorRating.findOne({
+            where: {
+                booking_token: bookingToken,
+                vendor_token: vendorToRate,
+                rater_token: raterToken
+            },
             transaction: t
         });
 
         if (alreadyRated) {
             await t.rollback();
             return res.status(400).json(
-                responseData('You have already rated this booking', {}, req, false)
+                responseData('You have already rated this vendor for this booking', {}, req, false)
             );
         }
 
-        const quality =
-            stars <= 2 ? 'LOW' : stars === 3 ? 'MEDIUM' : 'HIGH';
-
-        await BookingRating.create(
-            {
-                token: randomstring(64),
-                booking_token: bookingToken,
-                rater_token: raterToken,
-                rater_role: 'VENDOR',
-                ratee_token: booking.vendor_token,
-                ratee_role: 'VENDOR',
-                stars,
-                quality,
-                comment: comment?.trim() || null,
-                created_ip: req.ip.replace('::ffff:', ''),
-                user_agent: req.get('User-Agent')
-            },
-            { transaction: t }
-        );
+        await VendorRating.create({
+            token: randomstring(64),
+            booking_token: bookingToken,
+            vendor_token: vendorToRate,
+            rater_token: raterToken,
+            rating: Number(stars),
+            comment: comment?.trim() || null,
+            created_ip: req.ip?.replace('::ffff:', '') || null,
+            user_agent: req.get('User-Agent') || null
+        }, { transaction: t });
 
         await t.commit();
 
-        // Socket (Foreground)
-        const io = getIO();
-        io?.to(`vendor:${raterToken}`).emit('booking:rated', {
-            booking_token: bookingToken,
-            stars,
-            comment,
-            role: 'reporter'
-        });
-
-        io?.to(`customer:${booking.customer_token}`).emit('booking:rated', {
-            booking_token: bookingToken,
-            stars,
-            comment,
-            role: 'ratee'
-        });
-
-        // Queue for DB + Push
-        await ratingNotificationQueue.add('rating-created', {
-            booking_token: bookingToken,
-            reporter_token: raterToken,
-            ratee_token: booking.customer_token,
-            stars,
-            comment
-        });
-
         return res.status(201).json(
-            responseData('Booking rated successfully', {}, req, true)
+            responseData('Vendor rated successfully', {}, req, true)
         );
+
+        // Socket
+        // const io = getIO();
+
+        // io?.to(`vendor:${raterToken}`).emit('vendor:rated', {
+        //     booking_token: bookingToken,
+        //     vendor_token: vendorToRate,
+        //     rating: Number(stars),
+        //     comment: comment?.trim() || null,
+        //     role: 'rater'
+        // });
+
+        // io?.to(`vendor:${vendorToRate}`).emit('vendor:rated', {
+        //     booking_token: bookingToken,
+        //     vendor_token: vendorToRate,
+        //     rating: Number(stars),
+        //     comment: comment?.trim() || null,
+        //     role: 'ratee'
+        // });
+
+        // // Queue
+        // await ratingNotificationQueue.add('vendor-rating-created', {
+        //     booking_token: bookingToken,
+        //     rater_token: raterToken,
+        //     vendor_token: vendorToRate,
+        //     rating: Number(stars),
+        //     comment: comment?.trim() || null
+        // });
 
     } catch (error) {
         await t.rollback();
-        console.error('Booking rating error:', error);
+        console.error('Vendor rating error:', error);
         return res.status(500).json(
             responseData('Error occurred', {}, req, false)
         );
@@ -4466,6 +4857,10 @@ router.post('/booking/:token/cancel', [vendorMiddleware, verifiedOnly], async (r
 
         await t.commit();
 
+        res.status(200).json(
+            responseData('Booking cancelled successfully', {}, req, true)
+        );
+
         await bookingCancelQueue.add('BOOKING_CANCELLED', {
             booking_token: booking.token,
             cancelled_by_token: user.token,
@@ -4480,16 +4875,455 @@ router.post('/booking/:token/cancel', [vendorMiddleware, verifiedOnly], async (r
             reason
         });
 
-
-        return res.status(200).json(
-            responseData('Booking cancelled successfully', {}, req, true)
-        );
-
     } catch (err) {
         await t.rollback();
         console.error('[BOOKING CANCEL ERROR]', err);
         return res.status(500).json(
             responseData('Something went wrong', {}, req, false)
+        );
+    }
+});
+
+// new api socket added
+router.post('/booking/:token/request-completion', [vendorMiddleware, verifiedOnly], async (req, res) => {
+    const t = await db.sequelize.transaction();
+
+    try {
+        const bookingToken = req.params.token;
+        const vendorToken = req.user.token;
+        const { remarks, completion_proof } = req.body;
+
+        const booking = await Booking.findOne({
+            where: { token: bookingToken },
+            attributes: [
+                'id',
+                'token',
+                'vendor_token',
+                'assigned_vendor_token',
+                'status',
+                'completion_requested_by',
+                'completion_requested_at',
+                'completed_at'
+            ],
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            await t.rollback();
+            return res.status(404).json(
+                responseData('Booking not found', {}, req, false)
+            );
+        }
+
+        // only assigned vendor can request completion
+        if (booking.assigned_vendor_token !== vendorToken) {
+            await t.rollback();
+            return res.status(403).json(
+                responseData('You are not allowed to complete this booking', {}, req, false)
+            );
+        }
+
+        // owner cannot complete own posted booking from this API
+        if (booking.vendor_token === vendorToken) {
+            await t.rollback();
+            return res.status(403).json(
+                responseData('Booking owner cannot request completion from this action', {}, req, false)
+            );
+        }
+
+        // only active running booking can be requested for completion
+        if (!['ACCEPTED', 'IN_PROGRESS', 'COMPLETION_DISPUTED'].includes(booking.status)) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData(
+                    `Completion cannot be requested when booking status is ${booking.status}`,
+                    {},
+                    req,
+                    false
+                )
+            );
+        }
+
+        // already completed
+        if (booking.status === 'COMPLETED' || booking.completed_at) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('Booking is already completed', {}, req, false)
+            );
+        }
+
+        // already requested and waiting for owner confirmation
+        if (booking.status === 'COMPLETION_REQUESTED') {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('Completion already requested for this booking', {}, req, false)
+            );
+        }
+
+        const now = new Date();
+
+        await Booking.update(
+            {
+                status: 'COMPLETION_REQUESTED',
+                completion_requested_by: vendorToken,
+                completion_requested_at: now,
+                completion_confirmed_by: null,
+                completion_confirmed_at: null,
+                completion_rejected_at: null,
+                completion_rejection_reason: null,
+                completion_proof: completion_proof || null,
+                extra_requirements: booking.extra_requirements
+            },
+            {
+                where: { id: booking.id },
+                transaction: t
+            }
+        );
+
+        await t.commit();
+
+        res.status(200).json(
+            responseData(
+                'Completion requested successfully. Waiting for booking owner confirmation.',
+                {
+                    booking_token: booking.token,
+                    status: 'COMPLETION_REQUESTED',
+                    completion_requested_by: vendorToken,
+                    completion_requested_at: now,
+                    auto_complete_at: new Date(now.getTime() + 24 * 60 * 60 * 1000)
+                },
+                req,
+                true
+            )
+        );
+
+        // optional socket events
+        try {
+            const io = getIO?.();
+
+            io?.to(`vendor:${booking.vendor_token}`).emit('booking:completion-requested', {
+                booking_token: booking.token,
+                requested_by: vendorToken,
+                status: 'COMPLETION_REQUESTED',
+                completion_requested_at: now,
+                remarks: remarks || null,
+                completion_proof: completion_proof || null
+            });
+
+            io?.to(`vendor:${vendorToken}`).emit('booking:completion-requested', {
+                booking_token: booking.token,
+                requested_by: vendorToken,
+                status: 'COMPLETION_REQUESTED',
+                completion_requested_at: now,
+                remarks: remarks || null,
+                completion_proof: completion_proof || null,
+                role: 'requester'
+            });
+
+            await bookingCompletionQueue.add('BOOKING_COMPLETION_REQUESTED', {
+                booking_token: booking.token,
+                owner_token: booking.vendor_token,
+                assigned_vendor_token: booking.assigned_vendor_token,
+                sender_token: vendorToken,
+                vehicle_type: booking.vehicle_type,
+                city: booking.city,
+                remarks: remarks || null,
+                completion_proof: completion_proof || null
+            });
+        } catch (socketError) {
+            console.error('Completion request socket emit error:', socketError);
+        }
+    } catch (error) {
+        await t.rollback();
+        console.error('Request completion error:', error);
+
+        return res.status(500).json(
+            responseData('Error occurred', {}, req, false)
+        );
+    }
+});
+
+router.post('/booking/:token/confirm-completion', [vendorMiddleware, verifiedOnly], async (req, res) => {
+    const t = await db.sequelize.transaction();
+
+    try {
+        const bookingToken = req.params.token;
+        const ownerToken = req.user.token;
+
+        const booking = await Booking.findOne({
+            where: { token: bookingToken },
+            attributes: [
+                'id',
+                'token',
+                'vendor_token',
+                'assigned_vendor_token',
+                'status',
+                'completion_requested_by',
+                'completion_requested_at',
+                'completion_confirmed_by',
+                'completion_confirmed_at',
+                'completed_at',
+                'vehicle_type',
+                'city'
+            ],
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            await t.rollback();
+            return res.status(404).json(
+                responseData('Booking not found', {}, req, false)
+            );
+        }
+
+        // only booking owner can confirm
+        if (booking.vendor_token !== ownerToken) {
+            await t.rollback();
+            return res.status(403).json(
+                responseData('You are not authorized to confirm this booking', {}, req, false)
+            );
+        }
+
+        if (!booking.assigned_vendor_token) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('No assigned vendor found for this booking', {}, req, false)
+            );
+        }
+
+        if (booking.status !== 'COMPLETION_REQUESTED') {
+            await t.rollback();
+            return res.status(400).json(
+                responseData(
+                    `Booking cannot be confirmed in ${booking.status} status`,
+                    {},
+                    req,
+                    false
+                )
+            );
+        }
+
+        const now = new Date();
+
+        await Booking.update(
+            {
+                status: 'COMPLETED',
+                completion_confirmed_by: ownerToken,
+                completion_confirmed_at: now,
+                completed_at: now,
+                completion_rejected_at: null,
+                completion_rejection_reason: null,
+                auto_complete_at: null
+            },
+            {
+                where: { id: booking.id },
+                transaction: t
+            }
+        );
+
+        await t.commit();
+
+        res.status(200).json(
+            responseData(
+                'Booking completed successfully',
+                {
+                    booking_token: booking.token,
+                    status: 'COMPLETED',
+                    completed_at: now,
+                    completion_confirmed_by: ownerToken,
+                    completion_confirmed_at: now
+                },
+                req,
+                true
+            )
+        );
+
+        // background notification
+        try {
+            await bookingCompletionQueue.add('BOOKING_COMPLETION_CONFIRMED', {
+                booking_token: booking.token,
+                owner_token: booking.vendor_token,
+                assigned_vendor_token: booking.assigned_vendor_token,
+                sender_token: ownerToken,
+                vehicle_type: booking.vehicle_type,
+                city: booking.city
+            });
+        } catch (queueError) {
+            console.error('BOOKING_COMPLETION_CONFIRMED queue error:', queueError);
+        }
+
+        // optional socket
+        try {
+            const io = getIO?.();
+
+            io?.to(`vendor:${booking.assigned_vendor_token}`).emit('booking:completion-confirmed', {
+                booking_token: booking.token,
+                status: 'COMPLETED',
+                completed_at: now
+            });
+
+            io?.to(`vendor:${booking.vendor_token}`).emit('booking:completion-confirmed', {
+                booking_token: booking.token,
+                status: 'COMPLETED',
+                completed_at: now,
+                role: 'owner'
+            });
+        } catch (socketError) {
+            console.error('booking:completion-confirmed socket error:', socketError);
+        }
+    } catch (error) {
+        await t.rollback();
+        console.error('Confirm booking completion error:', error);
+
+        return res.status(500).json(
+            responseData('Error occurred', {}, req, false)
+        );
+    }
+});
+
+router.post('/booking/:token/raise-completion-dispute', [vendorMiddleware, verifiedOnly], async (req, res) => {
+    const t = await db.sequelize.transaction();
+
+    try {
+        const bookingToken = req.params.token;
+        const ownerToken = req.user.token;
+        const { reason } = req.body;
+
+        if (!reason || !reason.trim()) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('Dispute reason is required', {}, req, false)
+            );
+        }
+
+        const booking = await Booking.findOne({
+            where: { token: bookingToken },
+            attributes: [
+                'id',
+                'token',
+                'vendor_token',
+                'assigned_vendor_token',
+                'status',
+                'completion_requested_by',
+                'completion_requested_at',
+                'vehicle_type',
+                'city'
+            ],
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            await t.rollback();
+            return res.status(404).json(
+                responseData('Booking not found', {}, req, false)
+            );
+        }
+
+        // only booking owner can raise dispute
+        if (booking.vendor_token !== ownerToken) {
+            await t.rollback();
+            return res.status(403).json(
+                responseData('You are not authorized to raise dispute for this booking', {}, req, false)
+            );
+        }
+
+        if (!booking.assigned_vendor_token) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('No assigned vendor found for this booking', {}, req, false)
+            );
+        }
+
+        if (booking.status !== 'COMPLETION_REQUESTED') {
+            await t.rollback();
+            return res.status(400).json(
+                responseData(
+                    `Dispute can only be raised when booking is in COMPLETION_REQUESTED status`,
+                    {},
+                    req,
+                    false
+                )
+            );
+        }
+
+        const now = new Date();
+
+        await Booking.update(
+            {
+                status: 'COMPLETION_DISPUTED',
+                completion_rejected_at: now,
+                completion_rejection_reason: reason.trim(),
+                completion_confirmed_by: null,
+                completion_confirmed_at: null,
+                auto_complete_at: null
+            },
+            {
+                where: { id: booking.id },
+                transaction: t
+            }
+        );
+
+        await t.commit();
+
+        res.status(200).json(
+            responseData(
+                'Completion dispute raised successfully',
+                {
+                    booking_token: booking.token,
+                    status: 'COMPLETION_DISPUTED',
+                    completion_rejected_at: now,
+                    completion_rejection_reason: reason.trim()
+                },
+                req,
+                true
+            )
+        );
+
+        // background notification
+        try {
+            await bookingCompletionQueue.add('BOOKING_COMPLETION_REJECTED', {
+                booking_token: booking.token,
+                owner_token: booking.vendor_token,
+                assigned_vendor_token: booking.assigned_vendor_token,
+                sender_token: ownerToken,
+                vehicle_type: booking.vehicle_type,
+                city: booking.city,
+                remarks: reason.trim()
+            });
+        } catch (queueError) {
+            console.error('BOOKING_COMPLETION_REJECTED queue error:', queueError);
+        }
+
+        // optional socket
+        try {
+            const io = getIO?.();
+
+            io?.to(`vendor:${booking.assigned_vendor_token}`).emit('booking:completion-disputed', {
+                booking_token: booking.token,
+                status: 'COMPLETION_DISPUTED',
+                reason: reason.trim(),
+                disputed_at: now
+            });
+
+            io?.to(`vendor:${booking.vendor_token}`).emit('booking:completion-disputed', {
+                booking_token: booking.token,
+                status: 'COMPLETION_DISPUTED',
+                reason: reason.trim(),
+                disputed_at: now,
+                role: 'owner'
+            });
+        } catch (socketError) {
+            console.error('booking:completion-disputed socket error:', socketError);
+        }
+    } catch (error) {
+        await t.rollback();
+        console.error('Raise completion dispute error:', error);
+
+        return res.status(500).json(
+            responseData('Error occurred', {}, req, false)
         );
     }
 });
@@ -4505,7 +5339,9 @@ router.post("/holiday-package-enquiry", [vendorMiddleware, vendorValidation.vali
             departure_date,
             adults,
             children,
-            rooms
+            rooms,
+            contact = null,
+            from_web = false
         } = req.body;
 
         await HolidayPackageEnquiry.create({
@@ -4516,6 +5352,8 @@ router.post("/holiday-package-enquiry", [vendorMiddleware, vendorValidation.vali
             departure_date,
             adults: adults || 1,
             children: children || 0,
+            who_posted: contact,
+            from_web: from_web,
             rooms: rooms || 1,
         });
 
@@ -4553,7 +5391,8 @@ router.post("/insurance-enquiry", [vendorMiddleware, vendorValidation.validate('
             name,
             contact,
             agree_policy,
-            whatsapp
+            whatsapp,
+            from_web = false
         } = req.body;
 
 
@@ -4571,7 +5410,9 @@ router.post("/insurance-enquiry", [vendorMiddleware, vendorValidation.validate('
 
             agree_policy,
 
-            whatsapp
+            whatsapp,
+
+            from_web: from_web
 
         });
 
@@ -4616,7 +5457,9 @@ router.post("/hotel-enquiry", [vendorMiddleware, vendorValidation.validate('post
             check_out,
             adults,
             children,
-            rooms
+            rooms,
+            contact = null,
+            from_web = false
         } = req.body;
 
 
@@ -4637,6 +5480,8 @@ router.post("/hotel-enquiry", [vendorMiddleware, vendorValidation.validate('post
             children: children || 0,
 
             rooms: rooms || 1,
+            who_posted: contact,
+            from_web: from_web
 
         });
 
@@ -4683,7 +5528,9 @@ router.post("/flight-enquiry", [vendorMiddleware, vendorValidation.validate('pos
             return_date,
             adults,
             children,
-            class_type
+            class_type,
+            contact = null,
+            from_web = false
         } = req.body;
 
 
@@ -4707,7 +5554,9 @@ router.post("/flight-enquiry", [vendorMiddleware, vendorValidation.validate('pos
 
             children: children || 0,
 
-            class_type
+            class_type,
+            who_posted: contact,
+            from_web: from_web
 
         });
 
@@ -4742,7 +5591,327 @@ router.post("/flight-enquiry", [vendorMiddleware, vendorValidation.validate('pos
 
 
 
+/* --------------- chat list ----------- */
+router.get("/my-chats", [vendorMiddleware, verifiedOnly], async (req, res) => {
+    try {
+        const userToken = req.user.token;
+        const search = (req.query.search || "").trim();
 
+        const conversationWhere = {
+            is_active: true,
+            [Sequelize.Op.or]: [
+                { owner_token: userToken },
+                { requester_token: userToken },
+            ],
+        };
+
+        const conversations = await Conversation.findAll({
+            where: conversationWhere,
+            attributes: [
+                "token",
+                "booking_token",
+                "owner_token",
+                "requester_token",
+                "last_message_token",
+                "last_message",
+                "last_message_type",
+                "last_message_sender_token",
+                "last_message_at",
+                "unread_count_owner",
+                "unread_count_requester",
+                "created_at",
+                "updated_at",
+            ],
+            order: [
+                ["last_message_at", "DESC"],
+                ["updated_at", "DESC"],
+                ["created_at", "DESC"],
+            ],
+        });
+
+        if (!conversations || conversations.length === 0) {
+            return res.status(200).json(
+                responseData(
+                    "Chat list fetched successfully",
+                    {
+                        total: 0,
+                        conversations: [],
+                    },
+                    req,
+                    true
+                )
+            );
+        }
+
+        const otherUserTokens = [
+            ...new Set(
+                conversations
+                    .map((conv) =>
+                        conv.owner_token === userToken
+                            ? conv.requester_token
+                            : conv.owner_token
+                    )
+                    .filter(Boolean)
+            ),
+        ];
+
+        const bookingTokens = [
+            ...new Set(
+                conversations.map((conv) => conv.booking_token).filter(Boolean)
+            ),
+        ];
+
+        const vendorWhere = {
+            token: {
+                [Sequelize.Op.in]: otherUserTokens,
+            },
+        };
+
+        const bookingWhere = {
+            token: {
+                [Sequelize.Op.in]: bookingTokens,
+            },
+        };
+
+        const vendors = await Vendor.findAll({
+            where: vendorWhere,
+            attributes: [
+                "token",
+                "first_name",
+                "last_name",
+                "contact",
+                [Sequelize.literal(`CONCAT('${admin_url}', profile_image)`), 'profile_image'],
+                "city",
+                "state",
+            ],
+        });
+
+        const bookings = await Booking.findAll({
+            where: bookingWhere,
+            attributes: [
+                "token",
+                "trip_type",
+                "vehicle_type",
+                "vehicle_name",
+                "pickup_datetime",
+                "return_datetime",
+                "pickup_location",
+                "drop_location",
+                "city",
+                "state",
+                "status",
+                "created_at",
+            ],
+        });
+
+        const vendorMap = {};
+        vendors.forEach((vendor) => {
+            vendorMap[vendor.token] = vendor.get({ plain: true });
+        });
+
+        const bookingMap = {};
+        bookings.forEach((booking) => {
+            bookingMap[booking.token] = booking.get({ plain: true });
+        });
+
+        let formattedConversations = conversations.map((conv) => {
+            const plain = conv.get({ plain: true });
+
+            const isOwner = plain.owner_token === userToken;
+            const otherUserToken = isOwner
+                ? plain.requester_token
+                : plain.owner_token;
+
+            const otherUser = vendorMap[otherUserToken] || null;
+            const booking = bookingMap[plain.booking_token] || null;
+
+            return {
+                conversation: {
+                    token: plain.token,
+                    booking_token: plain.booking_token,
+                    owner_token: plain.owner_token,
+                    requester_token: plain.requester_token,
+                    last_message_token: plain.last_message_token,
+                    last_message: plain.last_message,
+                    last_message_type: plain.last_message_type,
+                    last_message_sender_token: plain.last_message_sender_token,
+                    last_message_at: plain.last_message_at,
+                    unread_count: isOwner
+                        ? plain.unread_count_owner
+                        : plain.unread_count_requester,
+                    created_at: plain.created_at,
+                    updated_at: plain.updated_at,
+                },
+
+                other_user: otherUser
+                    ? {
+                        token: otherUser.token,
+                        first_name: otherUser.first_name,
+                        last_name: otherUser.last_name,
+                        contact: otherUser.contact,
+                        profile_image: otherUser.profile_image,
+                        city: otherUser.city,
+                        state: otherUser.state,
+                    }
+                    : null,
+
+                booking: booking
+                    ? {
+                        token: booking.token,
+                        trip_type: booking.trip_type,
+                        vehicle_type: booking.vehicle_type,
+                        vehicle_name: booking.vehicle_name,
+                        pickup_datetime: booking.pickup_datetime,
+                        return_datetime: booking.return_datetime,
+                        pickup_location: booking.pickup_location,
+                        drop_location: booking.drop_location,
+                        city: booking.city,
+                        state: booking.state,
+                        status: booking.status,
+                        created_at: booking.created_at,
+                    }
+                    : null,
+            };
+        });
+
+        // SEARCH FILTER
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const regex = new RegExp(escapedSearch, "i");
+
+            formattedConversations = formattedConversations.filter((item) => {
+                const firstName = item.other_user?.first_name || "";
+                const lastName = item.other_user?.last_name || "";
+                const fullName = `${firstName} ${lastName}`.trim();
+                const contact = item.other_user?.contact || "";
+
+                const vehicleType = item.booking?.vehicle_type || "";
+                const vehicleName = item.booking?.vehicle_name || "";
+                const pickupLocation = item.booking?.pickup_location || "";
+                const dropLocation = item.booking?.drop_location || "";
+                const city = item.booking?.city || "";
+                const state = item.booking?.state || "";
+
+                const lastMessage = item.conversation?.last_message || "";
+
+                return (
+                    regex.test(firstName) ||
+                    regex.test(lastName) ||
+                    regex.test(fullName) ||
+                    regex.test(contact) ||
+                    regex.test(vehicleType) ||
+                    regex.test(vehicleName) ||
+                    regex.test(pickupLocation) ||
+                    regex.test(dropLocation) ||
+                    regex.test(city) ||
+                    regex.test(state) ||
+                    regex.test(lastMessage)
+                );
+            });
+        }
+
+        return res.status(200).json(
+            responseData(
+                "Chat list fetched successfully",
+                {
+                    total: formattedConversations.length,
+                    conversations: formattedConversations,
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        console.error("Fetch chat list error:", error);
+
+        return res.status(500).json(
+            responseData("Error occurred", {}, req, false)
+        );
+    }
+});
+
+router.get("/messages/:conversationToken", [vendorMiddleware, verifiedOnly], async (req, res) => {
+    try {
+        const userToken = req.user.token;
+        const conversationToken = req.params.conversationToken;
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+        const before = req.query.before || null;
+
+        const conversation = await Conversation.findOne({
+            where: {
+                token: conversationToken,
+                is_active: true,
+                [Sequelize.Op.or]: [
+                    { owner_token: userToken },
+                    { requester_token: userToken },
+                ],
+            },
+        });
+
+        if (!conversation) {
+            return res.status(404).json(
+                responseData("Conversation not found", {}, req, false)
+            );
+        }
+
+        const where = {
+            conversation_token: conversation.token,
+        };
+
+        if (before) {
+            where.created_at = {
+                [Sequelize.Op.lt]: new Date(before),
+            };
+        }
+
+        const messages = await Chat.findAll({
+            where,
+            attributes: [
+                "token",
+                "conversation_token",
+                "booking_token",
+                "sender_token",
+                "receiver_token",
+                "message",
+                "message_type",
+                "attachment_url",
+                "status",
+                "created_at",
+            ],
+            order: [["created_at", "DESC"]],
+            limit,
+        });
+
+        const orderedMessages = messages.reverse();
+
+        const nextCursor =
+            messages.length === limit
+                ? messages[messages.length - 1].created_at
+                : null;
+
+        return res.status(200).json(
+            responseData(
+                "Messages fetched successfully",
+                {
+                    conversation_token: conversation.token,
+                    messages: orderedMessages,
+                    pagination: {
+                        limit,
+                        next_cursor: nextCursor,
+                        has_more: !!nextCursor,
+                    },
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        console.error("Fetch messages error:", error);
+        return res.status(500).json(
+            responseData("Error occurred", {}, req, false)
+        );
+    }
+});
 
 
 /* --------------- wallet -------------- */

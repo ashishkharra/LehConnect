@@ -1,5 +1,5 @@
 const { Worker } = require('bullmq');
-const bullConnection = require('../../config/bullMq');
+const bullConnection = require('../../config/bullMq.js');
 const db = require('../../models/index.js');
 const { redisClient } = require('../../config/redis.config.js');
 const IORedis = require('ioredis');
@@ -7,8 +7,6 @@ const IORedis = require('ioredis');
 const Vendor = db.vendor;
 const Notification = db.notification;
 
-const SOCKET_BATCH_THRESHOLD = 10000;
-const BATCH_SIZE = 500;
 const REMINDER_COOLDOWN_SECONDS = 86400;
 const pub = new IORedis();
 
@@ -56,27 +54,37 @@ new Worker(
     }
 
     if (!notifications.length) {
+      console.log('[REMINDER] All partial vendors already reminded recently');
       return;
     }
 
     await Notification.bulkCreate(notifications);
 
-    const socketPayload = {
-      type: 'SYSTEM_ALERT',
-      from: triggeredBy === 'CRON' ? 'SYSTEM' : 'ADMIN',
+    const socketPayloadForVendor = v => ({
+      notification_type: 'SYSTEM_ALERT',
       title: 'Verification Incomplete',
-      message: 'Please complete your verification'
-    };
+      message: `Hi ${v.first_name || ''} ${v.last_name || ''}, your verification is partially completed. Please complete it to continue.`,
+      receiver_token: v.token,
+      receiver_role: 'vendor',
+      payload: {
+        reason: 'PARTIAL_VERIFICATION',
+        action: 'COMPLETE_VERIFICATION'
+      },
+      from: triggeredBy === 'CRON' ? 'SYSTEM' : 'ADMIN'
+    });
 
     for (const v of socketTargets) {
       pub.publish(
         'socket:verification-incomplete',
         JSON.stringify({
           vendorToken: v.token,
-          payload: socketPayload
+          event: 'vendor_notification',
+          payload: socketPayloadForVendor(v)
         })
       );
     }
+
+    console.log(`[REMINDER] Sent partial verification reminders to ${socketTargets.length} vendors`);
   },
   {
     connection: bullConnection,

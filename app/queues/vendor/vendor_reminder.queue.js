@@ -1,5 +1,5 @@
 const { Queue } = require('bullmq');
-const bullConnection = require('../../config/bullmq');
+const bullConnection = require('../../config/bullMq');
 
 const vendorReminderQueue = new Queue('vendor-reminder', {
   connection: bullConnection,

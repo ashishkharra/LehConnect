@@ -5,6 +5,7 @@ const { admin_url } = require('../config/globals.js')
 const { Op, Sequelize } = require('sequelize');
 const { getSequelizePagination, responseData_, getIconForCounter, getSuffixForCounter, getCategoryForCounter, getPositionForCounter, codeGenerator, verifyPassword, hashPassword, randomstring } = require('../shared/utils/helper.js')
 const { validateEmail, validatePhone } = require('../shared/utils/validation')
+const vendorReminderQueue = require('../queues/vendor/vendor_reminder.queue.js')
 
 const db = require('../models/index');
 const sequelize = db.sequelize
@@ -500,20 +501,19 @@ const adminController = {
     },
 
     // socket added new
-    remindPartialVendors: async ({ triggeredBy }, req, res) => {
+    remindPartialVendors: async (req, res) => {
         try {
-            req.setFlash('success', 'Vendor reminder job queued');
-            res.redirect('/vendor-requests');
-
-            await vendorReminderQueue.add('REMIND_PARTIAL_VENDORS', {
-                triggeredBy,
-                requestedBy: 'SYSTEM'
+            await queuePartialVendorReminder({
+                triggeredBy: 'MANUAL',
+                requestedBy: req.user?.token || 'SYSTEM'
             });
 
+            req.setFlash('success', 'Vendor reminder job queued');
+            return res.redirect('/vendor-requests');
         } catch (err) {
             console.error('[REMINDER] Queue error:', err);
             req.setFlash('error', 'Failed to queue reminder job');
-            res.redirect('/vendor-requests');
+            return res.redirect('/vendor-requests');
         }
     },
 
@@ -3103,16 +3103,18 @@ const adminController = {
                         {
                             model: Vendor,
                             as: 'Referrer',
-                            attributes: ['id', 'first_name', 'last_name', 'email', 'profile_image']
+                            attributes: ['id', 'first_name', 'last_name', 'contact', 'profile_image']
                         },
                         {
                             model: Vendor,
                             as: 'Referee',
-                            attributes: ['id', 'first_name', 'last_name', 'email', 'profile_image']
+                            attributes: ['id', 'first_name', 'last_name', 'contact', 'profile_image']
                         }
                     ]
                 })
             ]);
+
+            // console.log('history ->>>> ', referralList)
 
             return responseData_('Referral fetched success', {
                 settings,
@@ -3131,6 +3133,142 @@ const adminController = {
 
         } catch (error) {
             console.error('Error fetching referral page:', error);
+            return responseData_('Internal server error', {}, false);
+        }
+    },
+
+    getReferralDetailsPage: async (id) => {
+        try {
+            const referral = await ReferralHistory.findOne({
+                where: {
+                    id: Number(id)
+                },
+                include: [
+                    {
+                        model: Vendor,
+                        as: 'Referrer',
+                        required: false,
+                        attributes: [
+                            'id',
+                            'token',
+                            'first_name',
+                            'last_name',
+                            'contact',
+                            'alt_contact',
+                            'email',
+                            'location',
+                            'address',
+                            'pincode',
+                            'profile_image',
+                            'country',
+                            'city',
+                            'state',
+                            'about_me',
+                            'status',
+                            'verification_status',
+                            'verification_percentage',
+                            'ref_code',
+                            'referer_code_used',
+                            'create_date',
+                            'update_date'
+                        ]
+                    },
+                    {
+                        model: Vendor,
+                        as: 'Referee',
+                        required: false,
+                        attributes: [
+                            'id',
+                            'token',
+                            'first_name',
+                            'last_name',
+                            'contact',
+                            'alt_contact',
+                            'email',
+                            'location',
+                            'address',
+                            'pincode',
+                            'profile_image',
+                            'country',
+                            'city',
+                            'state',
+                            'about_me',
+                            'status',
+                            'verification_status',
+                            'verification_percentage',
+                            'ref_code',
+                            'referer_code_used',
+                            'create_date',
+                            'update_date'
+                        ]
+                    }
+                ]
+            });
+
+            if (!referral) {
+                return responseData_('Referral history not found', {}, false);
+            }
+
+            const allHistory = await ReferralHistory.findAll({
+                where: {
+                    referrer_id: referral.referrer_id
+                },
+                order: [['createdAt', 'DESC']],
+                include: [
+                    {
+                        model: Vendor,
+                        as: 'Referee',
+                        required: false,
+                        attributes: [
+                            'id',
+                            'first_name',
+                            'last_name',
+                            'contact',
+                            'alt_contact',
+                            'email',
+                            'profile_image',
+                            'city',
+                            'state',
+                            'location',
+                            'address',
+                            'pincode',
+                            'status',
+                            'verification_status',
+                            'verification_percentage',
+                            'create_date'
+                        ]
+                    }
+                ]
+            });
+
+            const stats = {
+                totalReferred: allHistory.length,
+                totalReferrerAmount: allHistory.reduce(
+                    (sum, item) => sum + Number(item.referrer_amount || 0),
+                    0
+                ),
+                totalRefereeAmount: allHistory.reduce(
+                    (sum, item) => sum + Number(item.referee_amount || 0),
+                    0
+                ),
+                paidCount: allHistory.filter(item => item.status === 'PAID').length,
+                pendingCount: allHistory.filter(item => item.status === 'PENDING').length
+            };
+
+            return responseData_(
+                'Referral details fetched successfully',
+                {
+                    history: referral,
+                    vendor: referral.Referrer,
+                    referee: referral.Referee,
+                    stats,
+                    allHistory
+                },
+                true
+            );
+
+        } catch (error) {
+            console.error('Error fetching referral details page:', error);
             return responseData_('Internal server error', {}, false);
         }
     },
@@ -3303,4 +3441,11 @@ const adminController = {
 
 };
 
-module.exports = adminController;
+const queuePartialVendorReminder = async ({ triggeredBy, requestedBy = 'SYSTEM' }) => {
+    await vendorReminderQueue.add('REMIND_PARTIAL_VENDORS', {
+        triggeredBy,
+        requestedBy
+    });
+};
+
+module.exports = { adminController, queuePartialVendorReminder };

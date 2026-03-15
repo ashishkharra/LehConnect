@@ -1,6 +1,7 @@
 const { Server } = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const socketAuth = require("./socketAuth.js");
+const chatSocket = require('./message')
 
 let io;
 
@@ -18,10 +19,9 @@ module.exports = {
         });
 
         const pubClient = redisClient;
-        const subClient = pubClient.duplicate();
-
+        const subClient = redisClient.duplicate();
+        await subClient.connect();
         io.adapter(createAdapter(pubClient, subClient));
-
         io.use(socketAuth);
 
         io.on("connection", (socket) => {
@@ -29,7 +29,7 @@ module.exports = {
                 socket.join(`vendor:${socket.user.token}`);
                 socket.join(`vendor-network:${socket.user.token}`);
             }
-
+            chatSocket(socket);
             socket.on("disconnect", () => {
                 console.log("Disconnected:", socket.id);
             });
@@ -45,4 +45,3 @@ module.exports = {
         return io;
     }
 };
-

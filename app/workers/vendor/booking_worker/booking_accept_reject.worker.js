@@ -38,7 +38,7 @@ new Worker(
           priority: 'high',
           notification: {
             channelId: 'duty-alerts',
-            sound: 'villian'
+            sound: 'default'
           }
         },
         data: {

@@ -1,0 +1,595 @@
+<%- include('../shared/partials/header', { admin: admin, title: title }) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
+                    <a href="/vendor-referral" class="btn btn-outline-primary">
+                        <i class="ti ti-arrow-left me-1"></i> Back to Referral
+                    </a>
+                </div>
+                <div class="col-sm-7">
+                    <h3 class="page-title">Referral Detailed History</h3>
+                </div>
+            </div>
+        </div>
+
+        <% if (data?.history && data?.vendor) { %>
+
+            <!-- Stats Cards -->
+            <div class="row">
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-primary">
+                                    <i class="ti ti-users"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3><%= data?.stats?.totalReferred || 0 %></h3>
+                                    <h6 class="text-muted mb-0">Total Referred</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-success">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= Number(data?.stats?.totalReferrerAmount || 0).toLocaleString('en-IN') %></h3>
+                                    <h6 class="text-muted mb-0">Total Earned by Referrer</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-info">
+                                    <i class="ti ti-wallet"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= Number(data?.stats?.totalRefereeAmount || 0).toLocaleString('en-IN') %></h3>
+                                    <h6 class="text-muted mb-0">Total Given to Referees</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-warning">
+                                    <i class="ti ti-chart-arrows-vertical"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3><%= data?.stats?.paidCount || 0 %> / <%= data?.stats?.pendingCount || 0 %></h3>
+                                    <h6 class="text-muted mb-0">Paid / Pending</h6>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Selected Referral Record -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="ti ti-history me-2"></i>Selected Referral Record
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Referral ID</h6>
+                                <div class="fw-semibold">#<%= data?.history?.id %></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Referrer Earned</h6>
+                                <div class="fw-bold text-success">₹<%= Number(data?.history?.referrer_amount || 0).toLocaleString('en-IN') %></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Referee Got</h6>
+                                <div class="fw-bold text-info">₹<%= Number(data?.history?.referee_amount || 0).toLocaleString('en-IN') %></div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Status</h6>
+                                <% if (data?.history?.status === 'PAID') { %>
+                                    <span class="badge bg-success">Paid</span>
+                                <% } else { %>
+                                    <span class="badge bg-warning">Pending</span>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Created On</h6>
+                                <div class="fw-semibold">
+                                    <%= data?.history?.createdAt ? new Date(data.history.createdAt).toLocaleString('en-IN') : 'N/A' %>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6 col-md-6">
+                            <div class="border rounded p-3 h-100">
+                                <h6 class="text-muted mb-2">Updated On</h6>
+                                <div class="fw-semibold">
+                                    <%= data?.history?.updatedAt ? new Date(data.history.updatedAt).toLocaleString('en-IN') : 'N/A' %>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Referrer & Referee Info -->
+            <div class="row">
+                <!-- Referrer -->
+                <div class="col-xl-6 col-12">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-primary-subtle">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-user-star me-2"></i>Referrer Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center flex-wrap mb-4">
+                                <img
+                                    src="<%= data?.vendor?.profile_image || '/assets/img/profiles/avatar-01.jpg' %>"
+                                    alt="Referrer"
+                                    class="rounded-circle me-3 profile-lg">
+                                <div>
+                                    <h4 class="mb-1"><%= data?.vendor?.first_name || '' %> <%= data?.vendor?.last_name || '' %></h4>
+                                    <div class="text-muted mb-1">
+                                        <i class="ti ti-phone me-1"></i><%= data?.vendor?.contact || 'N/A' %>
+                                    </div>
+                                    <div class="text-muted mb-1">
+                                        <i class="ti ti-mail me-1"></i><%= data?.vendor?.email || 'N/A' %>
+                                    </div>
+                                    <div class="text-muted">
+                                        <i class="ti ti-map-pin me-1"></i><%= [data?.vendor?.city, data?.vendor?.state].filter(Boolean).join(', ') || 'Location not added' %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Vendor ID</span>
+                                        <span class="info-value">#<%= data?.vendor?.id || 'N/A' %></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Referral Code</span>
+                                        <span class="info-value text-primary"><%= data?.vendor?.ref_code || 'N/A' %></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Vendor Status</span>
+                                        <span class="info-value">
+                                            <% if (data?.vendor?.status === 'active') { %>
+                                                <span class="badge bg-success text-uppercase"><%= data.vendor.status %></span>
+                                            <% } else { %>
+                                                <span class="badge bg-danger text-uppercase"><%= data?.vendor?.status || 'inactive' %></span>
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Verification</span>
+                                        <span class="info-value">
+                                            <% if (data?.vendor?.verification_status === 'VERIFIED') { %>
+                                                <span class="badge bg-success"><%= data.vendor.verification_status %></span>
+                                            <% } else if (data?.vendor?.verification_status === 'UNDER_REVIEW' || data?.vendor?.verification_status === 'SUBMITTED') { %>
+                                                <span class="badge bg-warning"><%= data.vendor.verification_status %></span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary"><%= data?.vendor?.verification_status || 'NOT_STARTED' %></span>
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Completion %</span>
+                                        <span class="info-value"><%= data?.vendor?.verification_percentage || 0 %>%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Joined On</span>
+                                        <span class="info-value">
+                                            <%= data?.vendor?.create_date ? new Date(data.vendor.create_date).toLocaleDateString('en-IN') : 'N/A' %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="info-box">
+                                        <span class="info-label">Address</span>
+                                        <span class="info-value">
+                                            <%= data?.vendor?.address || 'N/A' %>
+                                            <% if (data?.vendor?.pincode) { %> - <%= data.vendor.pincode %><% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Referee -->
+                <div class="col-xl-6 col-12">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-header bg-info-subtle">
+                            <h5 class="card-title mb-0">
+                                <i class="ti ti-user-plus me-2"></i>Referee Details
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center flex-wrap mb-4">
+                                <img
+                                    src="<%= data?.referee?.profile_image || '/assets/img/profiles/avatar-02.jpg' %>"
+                                    alt="Referee"
+                                    class="rounded-circle me-3 profile-lg">
+                                <div>
+                                    <h4 class="mb-1"><%= data?.referee?.first_name || '' %> <%= data?.referee?.last_name || '' %></h4>
+                                    <div class="text-muted mb-1">
+                                        <i class="ti ti-phone me-1"></i><%= data?.referee?.contact || 'N/A' %>
+                                    </div>
+                                    <div class="text-muted mb-1">
+                                        <i class="ti ti-mail me-1"></i><%= data?.referee?.email || 'N/A' %>
+                                    </div>
+                                    <div class="text-muted">
+                                        <i class="ti ti-map-pin me-1"></i><%= [data?.referee?.city, data?.referee?.state].filter(Boolean).join(', ') || 'Location not added' %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Vendor ID</span>
+                                        <span class="info-value">#<%= data?.referee?.id || 'N/A' %></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Used Referrer ID</span>
+                                        <span class="info-value">#<%= data?.referee?.referer_code_used || 'N/A' %></span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Vendor Status</span>
+                                        <span class="info-value">
+                                            <% if (data?.referee?.status === 'active') { %>
+                                                <span class="badge bg-success text-uppercase"><%= data.referee.status %></span>
+                                            <% } else { %>
+                                                <span class="badge bg-danger text-uppercase"><%= data?.referee?.status || 'inactive' %></span>
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Verification</span>
+                                        <span class="info-value">
+                                            <% if (data?.referee?.verification_status === 'VERIFIED') { %>
+                                                <span class="badge bg-success"><%= data.referee.verification_status %></span>
+                                            <% } else if (data?.referee?.verification_status === 'UNDER_REVIEW' || data?.referee?.verification_status === 'SUBMITTED') { %>
+                                                <span class="badge bg-warning"><%= data.referee.verification_status %></span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary"><%= data?.referee?.verification_status || 'NOT_STARTED' %></span>
+                                            <% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Completion %</span>
+                                        <span class="info-value"><%= data?.referee?.verification_percentage || 0 %>%</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-box">
+                                        <span class="info-label">Joined On</span>
+                                        <span class="info-value">
+                                            <%= data?.referee?.create_date ? new Date(data.referee.create_date).toLocaleDateString('en-IN') : 'N/A' %>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="info-box">
+                                        <span class="info-label">Address</span>
+                                        <span class="info-value">
+                                            <%= data?.referee?.address || 'N/A' %>
+                                            <% if (data?.referee?.pincode) { %> - <%= data.referee.pincode %><% } %>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- All Referral History of this Referrer -->
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="card-title mb-0">
+                            <i class="ti ti-list-details me-2"></i>All Referrals By This Referrer
+                        </h5>
+                        <span class="badge bg-primary-light text-primary px-3 py-2">
+                            Total: <%= data?.stats?.totalReferred || 0 %>
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width: 200px;">Vendor Using Code</th>
+                                    <th>Contact Info</th>
+                                    <th>Location</th>
+                                    <th>Joined Date</th>
+                                    <th>Referrer Earned</th>
+                                    <th>Referee Got</th>
+                                    <th>Status</th>
+                                    <th>Record</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (data?.allHistory && data.allHistory.length > 0) { %>
+                                    <% data.allHistory.forEach((item) => { %>
+                                        <tr class="<%= data?.history?.id === item.id ? 'table-primary-row' : '' %>">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <a href="#" class="avatar avatar-md me-2">
+                                                        <img
+                                                            class="avatar-img rounded-circle"
+                                                            src="<%= item.Referee?.profile_image || '/assets/img/profiles/avatar-02.jpg' %>"
+                                                            alt="Vendor">
+                                                    </a>
+                                                    <div>
+                                                        <h6 class="mb-0">
+                                                            <%= item.Referee?.first_name || '' %> <%= item.Referee?.last_name || '' %>
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            Vendor ID: <%= item.Referee?.id || 'N/A' %>
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td>
+                                                <div><i class="ti ti-phone me-1"></i> <%= item.Referee?.contact || 'N/A' %></div>
+                                                <div class="text-muted small"><i class="ti ti-mail me-1"></i> <%= item.Referee?.email || 'N/A' %></div>
+                                            </td>
+
+                                            <td>
+                                                <%= [item.Referee?.city, item.Referee?.state].filter(Boolean).join(', ') || 'N/A' %>
+                                            </td>
+
+                                            <td>
+                                                <%= item.Referee?.create_date ? new Date(item.Referee.create_date).toLocaleDateString('en-IN') : 'N/A' %>
+                                            </td>
+
+                                            <td class="fw-bold text-success">
+                                                ₹<%= Number(item.referrer_amount || 0).toLocaleString('en-IN') %>
+                                            </td>
+
+                                            <td class="fw-bold text-info">
+                                                ₹<%= Number(item.referee_amount || 0).toLocaleString('en-IN') %>
+                                            </td>
+
+                                            <td>
+                                                <% if (item.status === 'PAID') { %>
+                                                    <span class="badge bg-success">Paid</span>
+                                                <% } else { %>
+                                                    <span class="badge bg-warning">Pending</span>
+                                                <% } %>
+                                            </td>
+
+                                            <td>
+                                                <% if (data?.history?.id === item.id) { %>
+                                                    <span class="badge bg-primary">Current</span>
+                                                <% } else { %>
+                                                    <a href="/vendor-referral-details/<%= item.id %>" class="btn btn-sm btn-outline-primary">
+                                                        View
+                                                    </a>
+                                                <% } %>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            No referral history found for this referrer.
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        <% } else { %>
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-3">
+                            <i class="ti ti-users text-muted" style="font-size: 48px;"></i>
+                        </div>
+                        <h5>No referral details found</h5>
+                        <p class="text-muted mb-0">No referrer/referee data available right now.</p>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+
+    </div>
+</div>
+
+<style>
+    .dash-widget-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 22px;
+    }
+
+    .bg-primary {
+        background: #0d6efd !important;
+    }
+
+    .bg-success {
+        background: #198754 !important;
+    }
+
+    .bg-warning {
+        background: #f59e0b !important;
+        color: #fff !important;
+    }
+
+    .bg-info {
+        background: #0dcaf0 !important;
+    }
+
+    .bg-primary-subtle {
+        background: rgba(13, 110, 253, 0.08) !important;
+    }
+
+    .bg-info-subtle {
+        background: rgba(13, 202, 240, 0.08) !important;
+    }
+
+    .bg-primary-light {
+        background: rgba(13, 110, 253, 0.10) !important;
+    }
+
+    .card {
+        border-radius: 14px;
+    }
+
+    .page-title {
+        font-weight: 700;
+    }
+
+    .profile-lg {
+        width: 72px;
+        height: 72px;
+        object-fit: cover;
+        border: 3px solid #f1f5f9;
+    }
+
+    .info-box {
+        border: 1px solid #eef1f6;
+        border-radius: 12px;
+        padding: 14px 16px;
+        height: 100%;
+        background: #fff;
+    }
+
+    .info-label {
+        display: block;
+        font-size: 12px;
+        color: #6c757d;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .info-value {
+        display: block;
+        font-size: 14px;
+        color: #111827;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    .table-avatar {
+        display: flex;
+        align-items: center;
+    }
+
+    .table-avatar .avatar img,
+    .avatar-img {
+        object-fit: cover;
+    }
+
+    .table-primary-row {
+        background: rgba(13, 110, 253, 0.05) !important;
+    }
+
+    @media (max-width: 991px) {
+        .page-header .text-sm-end {
+            text-align: left !important;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .dash-widget-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .dash-widget-info h3 {
+            font-size: 20px;
+        }
+
+        .card-header .row > div {
+            text-align: left !important;
+        }
+
+        .profile-lg {
+            width: 60px;
+            height: 60px;
+        }
+
+        .info-box {
+            padding: 12px;
+        }
+    }
+</style>
+
+<%- include('../shared/partials/footer') %>

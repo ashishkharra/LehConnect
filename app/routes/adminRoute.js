@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { asyncHandler } = require('../shared/utils/helper.js')
-const adminController = require('../controller/adminController.js');
+const {adminController} = require('../controller/adminController.js');
 const { authMiddleware } = require('../middleware/auth.js');
 const validationRule = require('../validation/admin.auth.js')
 const { uploadProfileImage, siteSlider, updateSliderMulter, aboutImage } = require('../middleware/multer.js')
@@ -307,7 +307,6 @@ router.get('/vendor-referral', [authMiddleware], asyncHandler(async (req, res) =
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
     const data = await adminController.getReferralPage(page, limit)
-    console.log('daa ->>>> ', data.results.settings)
     req.setFlash(!data?.success ? 'error' : 'success', data?.message)
     res.render('referral/vendor', {
         title: 'LehConnect | Vendor-referral',
@@ -316,6 +315,30 @@ router.get('/vendor-referral', [authMiddleware], asyncHandler(async (req, res) =
         data: data.results
     });
 }))
+router.get('/vendor-referral-details/:id', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 12;
+    const { id } = req.params
+
+    const filters = {
+        search: req.query.search || '',
+        status: req.query.status || '',
+        sort: req.query.sort || 'latest'
+    };
+
+    const data = await adminController.getReferralDetailsPage(id, page, limit, filters);
+
+    req.setFlash(!data?.success ? 'error' : 'success', data?.message);
+
+    res.render('referral/show', {
+        title: 'LehConnect | Vendor Referral Details',
+        admin: admin || null,
+        currentPage: 'vendor-referral-details',
+        data: data.results,
+        filters
+    });
+}));
 router.post('/update-referral', [authMiddleware, validationRule.validate('set-referral')], adminController.updateReferralSettings)
 
 // payment

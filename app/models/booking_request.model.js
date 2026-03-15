@@ -49,9 +49,25 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
       },
 
+      bid_attempt_count: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+      },
+
       status: {
-        type: Sequelize.ENUM("PENDING", "ACCEPTED", "REJECTED", "CANCELLED"),
-        defaultValue: "PENDING",
+        type: Sequelize.ENUM(
+          'OPEN',
+          'ACCEPTED',
+          'IN_PROGRESS',
+          'COMPLETION_REQUESTED',
+          'COMPLETION_DISPUTED',
+          'COMPLETED',
+          'CANCELLED',
+          'EXPIRED',
+          'REJECTED'
+        ),
+        defaultValue: 'OPEN'
       },
 
       responded_at: {

@@ -1,75 +1,95 @@
 const { Worker } = require('bullmq');
 const bullConnection = require('../../../config/bullMq');
 const db = require('../../../models');
-const { Op, Sequelize } = require('sequelize');
 const admin = require('../../../config/firebase');
 
-const Vendor = db.vendor;
 const Notification = db.notification;
 
 new Worker(
   'post-free-vehicle-notification',
-  async job => {
-    if (job.name !== 'FREE_VEHICLE_POSTED') return;
+  async (job) => {
+    const {
+      free_vehicle_token,
+      owner_token,
+      requester_token,
+      vehicle_type,
+      city,
+      state
+    } = job.data;
 
-    const { freeVehicleToken, city, state, vehicle_type, vendorToken } = job.data;
-
-    const vendors = await Vendor.findAll({
-      where: {
-        flag: 0,
-        booking_notification_enabled: true,
-        token: { [Op.ne]: vendorToken },
-        [Op.and]: Sequelize.literal(
-          `JSON_CONTAINS(
-            LOWER(JSON_EXTRACT(preferred_cities, '$')),
-            LOWER('"${city}"')
-          )`
-        )
-        // [Op.and]: Sequelize.literal(`JSON_CONTAINS(preferred_cities, '"${city}"')`)
-      },
-      attributes: ['first_name', 'last_name', 'token'],
-      raw: true
-    });
-
-    if (!vendors.length) return;
-
-    // 🔥 DB Notification
-    await Notification.bulkCreate(
-      vendors.map(v => ({
-        receiver_token: v.token,
+    if (job.name === 'FREE_VEHICLE_REQUESTED') {
+      await Notification.create({
+        receiver_token: owner_token,
         receiver_role: 'vendor',
         booking_token: null,
-        free_vehicle_token: freeVehicleToken,
-        type: 'FREE_VEHICLE_POSTED',
-        title: 'New Free Vehicle Available',
-        message: `A ${vehicle_type} is available in ${city}.`,
+        free_vehicle_token: free_vehicle_token,
+        type: 'FREE_VEHICLE_REQUESTED',
+        title: 'New Vehicle Request',
+        message: `A vendor requested your ${vehicle_type} in ${city}.`,
         city,
         state,
         is_read: false
-      }))
-    );
+      });
 
-    // 🔥 PUSH Notification (FCM Topic)
-    const topic = `city_${city.toLowerCase().replace(/\s+/g, '_')}`;
-
-    await admin.messaging().send({
-      topic,
-      notification: {
-        title: 'New Free Vehicle Available 🚗',
-        body: `A ${vehicle_type} is available in ${city}.`
-      },
-      android: {
-        priority: 'high',
+      await admin.messaging().send({
+        topic: `vendor_${owner_token}`,
         notification: {
-          channelId: 'duty-alerts',
-          sound: 'villian'
+          title: 'New Vehicle Request',
+          body: `A vendor requested your ${vehicle_type} in ${city}.`
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'duty-alerts',
+            sound: 'villian'
+          }
+        },
+        data: {
+          free_vehicle_token,
+          requester_token,
+          type: 'FREE_VEHICLE_REQUESTED'
         }
-      },
-      data: {
-        free_vehicle_token: freeVehicleToken,
-        type: 'FREE_VEHICLE_POSTED'
-      }
-    });
+      });
+
+      return;
+    }
+
+    if (job.name === 'FREE_VEHICLE_BOOKED') {
+      await Notification.create({
+        receiver_token: owner_token,
+        receiver_role: 'vendor',
+        booking_token: null,
+        free_vehicle_token: free_vehicle_token,
+        type: 'FREE_VEHICLE_BOOKED',
+        title: 'Vehicle Booked',
+        message: `Your ${vehicle_type} in ${city} has been booked.`,
+        city,
+        state,
+        is_read: false
+      });
+
+      await admin.messaging().send({
+        topic: `vendor_${owner_token}`,
+        notification: {
+          title: 'Vehicle Booked',
+          body: `Your ${vehicle_type} in ${city} has been booked.`
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'duty-alerts',
+            sound: 'villian'
+          }
+        },
+        data: {
+          free_vehicle_token,
+          requester_token,
+          type: 'FREE_VEHICLE_BOOKED'
+        }
+      });
+
+      return;
+    }
   },
   {
     connection: bullConnection,

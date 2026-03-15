@@ -6,13 +6,19 @@ module.exports = (sequelize, Sequelize) => {
             autoIncrement: true
         },
 
+        token: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            onDelete: 'CASCADE'
+        },
+
         vendor_token: {
             type: Sequelize.STRING,
             allowNull: true,
             onDelete: 'CASCADE'
         },
 
-        customer_token: {
+        rater_token: {
             type: Sequelize.STRING,
             allowNull: true
         },

@@ -22,6 +22,11 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        from_web: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
+
         car_number: {
             type: Sequelize.STRING,
             allowNull: true,

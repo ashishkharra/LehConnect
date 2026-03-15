@@ -6,15 +6,12 @@ async function initializeDatabase() {
     await db.sequelize.authenticate();
     console.log('Database connection established successfully.');
 
-    // if (ENV !== 'production') {
-    //   console.log('Database synced with model changes (ALTER MODE).');
-    // } else {
-    //   console.log('Production mode: schema sync skipped.');
-    // }
-
-      await db.sequelize.sync({
-        alter: false
-      });
+    if (ENV === 'development') {
+      console.log('Database synced with model changes (ALTER MODE).');
+      await db.sequelize.sync();
+    } else {
+      console.log('Production mode: schema sync skipped.');
+    }
 
     console.log('Database ready.');
   } catch (error) {

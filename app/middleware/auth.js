@@ -19,10 +19,12 @@ const vendorMiddleware = async (req, res, next) => {
     const refreshToken = req.headers["x-refresh-token"];
 
     if (!authHeader || !refreshToken) {
-      return res.status(401).json(responseData("Unauthorized", {}, req, false));
+      return res.status(401).json(responseData("Unauthorized", {code: 'FORCE_LOGOUT'}, req, false));
     }
 
     const token = authHeader.split(" ")[1];
+
+    // console.log('token middleware ->>> ', token)
     const deviceHash = getDeviceHash(req);
 
     const session = await Session.findOne({
@@ -34,7 +36,7 @@ const vendorMiddleware = async (req, res, next) => {
     });
 
     if (!session) {
-      return res.status(401).json(responseData("Session expired", {}, req, false));
+      return res.status(401).json(responseData("Session expired", {code: 'FORCE_LOGOUT'}, req, false));
     }
 
     if (new Date() > new Date(session.expires_at)) {
@@ -42,13 +44,13 @@ const vendorMiddleware = async (req, res, next) => {
         { revoked_at: new Date() },
         { where: { id: session.id } }
       );
-      return res.status(401).json(responseData("Session expired", {}, req, false));
+      return res.status(401).json(responseData("Session expired", {code: 'FORCE_LOGOUT'}, req, false));
     }
 
     const decryptedRefresh = decryptRefreshToken(JSON.parse(session.session_token));
 
     if (decryptedRefresh !== refreshToken) {
-      return res.status(401).json(responseData("Invalid session", {}, req, false));
+      return res.status(401).json(responseData("Invalid session", {code: 'FORCE_LOGOUT'}, req, false));
     }
 
     const user = await Vendor.findOne({

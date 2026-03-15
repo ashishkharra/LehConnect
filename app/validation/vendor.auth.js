@@ -43,6 +43,12 @@ module.exports.validate = (method) => {
                     .isInt({ min: 1, max: 6 })
                     .withMessage("Rooms must be between 1 and 6"),
 
+                body('contact')
+                    .optional(),
+
+                body('from_web')
+                    .isIn([true, false, 1, 0]),
+
                 validatorMiddleware
             ]
         }
@@ -54,6 +60,7 @@ module.exports.validate = (method) => {
                     .withMessage("Invalid action type"),
 
                 body('reason')
+                    .optional()
                     .isLength({ min: 20, max: 100 })
                     .withMessage('Reason must be between 20 to 100 words'),
 
@@ -63,7 +70,6 @@ module.exports.validate = (method) => {
 
         case 'bid-booking': {
             return [
-                // 🔹 Booking token (URL param)
                 param('token')
                     .notEmpty()
                     .withMessage('Booking token is required')
@@ -518,6 +524,8 @@ module.exports.validate = (method) => {
                 body('whatsapp')
                     .optional()
                     .isBoolean().withMessage('whatsapp must be true/false'),
+                body('from_web')
+                    .isIn([true, false, 1, 0]),
                 validatorMiddleware
             ];
         }
@@ -557,6 +565,12 @@ module.exports.validate = (method) => {
                 body('rooms')
                     .optional()
                     .isInt({ min: 1, max: 10 }).withMessage('Rooms must be between 1 and 10'),
+
+                body('contact')
+                    .optional(),
+
+                body('from_web')
+                    .isIn([true, false, 1, 0]),
 
                 validatorMiddleware
             ];
@@ -613,6 +627,12 @@ module.exports.validate = (method) => {
                 body('class_type')
                     .notEmpty().withMessage('Class type is required')
                     .isIn(['economy', 'business', 'first']).withMessage('Class type must be economy, business, or first'),
+
+                body('contact')
+                    .optional(),
+
+                body('from_web')
+                    .isIn([true, false, 1, 0]),
 
                 validatorMiddleware
             ];
