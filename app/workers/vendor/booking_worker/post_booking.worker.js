@@ -1,139 +1,114 @@
-const { Worker } = require('bullmq');
-const bullConnection = require('../../../config/bullMq');
-const db = require('../../../models/index');
-const { Op, Sequelize } = require('sequelize');
-const admin = require('../../../config/firebase');
+const { Worker } = require("bullmq");
+const bullConnection = require("../../../config/bullMq");
+const db = require("../../../models/index");
+const admin = require("../../../config/firebase");
 
-const Booking = db.booking;
-const Vendor = db.vendor;
+const { buildAlertMulticast } = require("../../../shared/utils/fcmMessage");
+const { cleanupInvalidTokens } = require("../../../shared/utils/fcmCleanup");
+const { sendOneSignalPush } = require("../../../shared/utils/onsignal.push.js");
+
 const Notification = db.notification;
-const SiteSetting = db.siteSettings
+const VendorDevice = db.vendor_device_fcm;
 
-const normalizeCity = (city) =>
-  `city_${String(city || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')}`;
+console.log("post_booking.worker loaded");
 
 new Worker(
-  'booking',
-  async job => {
-    if (job.name !== 'BOOKING_CREATED') return;
-
-    const { bookingToken } = job.data;
-
-    const booking = await Booking.findOne({
-      where: { token: bookingToken }
-    });
-
-    const formattedPickupDate = booking.pickupDate.toLocaleString('en-IN');
-
-    if (!booking) return;
-
-    const notificationAccess = await SiteSetting.findOne({
-      attributes: [
-        'send_to_all_cities',
-        'city_filter_enabled'
-      ],
-      raw: true
-    });
-
-    if (!notificationAccess) return;
-
-    const {
-      send_to_all_cities,
-      city_filter_enabled,
-    } = notificationAccess;
-
-    if (!send_to_all_cities && !city_filter_enabled) {
-      console.log('[BOOKING_WORKER] Notifications disabled.');
-      return;
-    }
-
-    let whereCondition = {
-      flag: 0,
-      token: { [Op.ne]: booking.vendor_token },
-      booking_notification_enabled: true
-    };
-
-
-    const vendors = await Vendor.findAll({
-      where: whereCondition,
-      attributes: ['token'],
-      raw: true
-    });
-
-    if (!vendors.length) {
-      console.log('[BOOKING_WORKER] No vendors matched.');
-      return;
-    }
-
-    await Notification.bulkCreate(
-      vendors.map(v => ({
-        receiver_token: v.token,
-        receiver_role: 'vendor',
-        booking_token: booking.token,
-        type: 'BOOKING_CREATED',
-        title: 'LehConnect Required',
-        message: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`,
-        city: booking.city,
-        state: booking.state,
-        is_read: false
-      }))
-    );
-
+  "booking_v2",
+  async (job) => {
     try {
+      if (job.name !== "BOOKING_CREATED") return true;
 
-      if (city_filter_enabled) {
-        const topic = normalizeCity(booking.city);
+      const {
+        booking_token,
+        sender_token,
+        owner_token,
+        title,
+        message,
+        type,
+      } = job.data;
 
-        await admin.messaging().send({
-          topic,
-          notification: {
-            title: 'LehConnect Required',
-            body: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`
-          },
-          android: {
-            priority: 'high',
-            notification: {
-              channelId: 'duty-alerts',
-              sound: 'villian'
-            }
-          },
-          data: {
-            booking_token: booking.token,
-            type: 'BOOKING_CREATED'
-          }
-        });
 
-      } else if (send_to_all_cities) {
-        await admin.messaging().send({
-          topic: 'all_vendors',
-          notification: {
-            title: 'New Duty Alert! 🚗',
-            body: `${booking.city} में ${formattedPickupDate} पर ${booking.drop_location} के लिए नई ${booking.vehicle_type} ट्रिप उपलब्ध है`
-          },
-          android: {
-            priority: 'high',
-            notification: {
-              channelId: 'duty-alerts',
-              sound: 'villian'
-            }
-          },
-          data: {
-            booking_token: booking.token,
-            type: 'BOOKING_CREATED'
-          }
-        });
+      if (!owner_token) {
+        console.error("BOOKING_CREATED worker: owner_token missing", job.data);
+        return false;
       }
 
-    } catch (err) {
-      console.error('[BOOKING_WORKER] FCM ERROR:', err);
-    }
+      const finalTitle = title || "New Booking";
+      const finalMessage = message || "A new booking has been created";
+      const finalType = type || "NEW_BOOKING";
 
+      await Notification.create({
+        sender_token: sender_token || null,
+        receiver_token: owner_token,
+        receiver_role: "vendor",
+        booking_token,
+        type: finalType,
+        title: finalTitle,
+        message: finalMessage,
+        visibility: "private",
+      });
+
+      // const ons = await sendOneSignalPush({
+      //   externalIds: [String(owner_token)],
+      //   title: finalTitle,
+      //   message: finalMessage,
+      //   data: {
+      //     booking_token: booking_token || "",
+      //     sender_token: sender_token || "",
+      //     owner_token: owner_token || "",
+      //     type: finalType,
+      //   },
+      // });
+
+      // console.log("one signal response ->>> ", ons);
+
+      const devices = await VendorDevice.findAll({
+        where: { vendor_token: owner_token, flag: 0 || false },
+        attributes: ["fcm_token"],
+        raw: true,
+      });
+
+      const tokens = [
+        ...new Set(
+          devices.map((d) => String(d.fcm_token || "").trim()).filter(Boolean)
+        ),
+      ];
+
+      if (!tokens.length) return true;
+
+      const response = await admin.messaging().sendEachForMulticast(
+        buildAlertMulticast({
+          tokens,
+          title: finalTitle,
+          body: finalMessage,
+          channelId: "duty-alerts",
+          sound: "default",
+          data: {
+            booking_token: booking_token || "",
+            sender_token: sender_token || "",
+            owner_token: owner_token || "",
+            type: finalType,
+          },
+          collapseKey: `post_booking_${booking_token}`,
+        })
+      );
+
+      await cleanupInvalidTokens({
+        response,
+        tokens,
+        DeviceModel: VendorDevice,
+        ownerField: "vendor_token",
+        ownerValue: owner_token,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("post_booking worker error:", error);
+      throw error;
+    }
   },
   {
     connection: bullConnection,
-    concurrency: 3
+    concurrency: 5,
   }
 );

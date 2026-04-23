@@ -58,7 +58,13 @@ const siteSlider = multerConfig.array('slider[]', 10);
 const updateSliderMulter = multerConfig.single('slider');
 const aboutImage = multerConfig.single('image')
 
+const vehicleImage = multerConfig.fields([
+    { name: "image1", maxCount: 1 },
+    { name: "image2", maxCount: 1 },
+]);
+
 module.exports = {
+    vehicleImage,
     uploadProfileImage,
     uploadIdentityImages,
     siteSlider,

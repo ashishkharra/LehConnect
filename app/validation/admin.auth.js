@@ -24,6 +24,32 @@ module.exports.validate = (method) => {
             ]
         }
 
+        case 'add-vehicle': {
+            return [
+                body('make')
+                    .notEmpty().withMessage('Make is required')
+                    .trim()
+                    .isString().withMessage('Make must be a string'),
+
+                body('model')
+                    .notEmpty().withMessage('Model is required')
+                    .trim()
+                    .isString().withMessage('Model must be a string'),
+
+                body('year')
+                    .notEmpty().withMessage('Year is required')
+                    .isInt({ min: 1900, max: new Date().getFullYear() })
+                    .withMessage(`Year must be between 1900 and ${new Date().getFullYear()}`),
+
+                body('type')
+                    .notEmpty().withMessage('Type is required')
+                    .trim()
+                    .isString().withMessage('Type must be a string'),
+
+                validatorMiddlewareAdmin
+            ]
+        }
+
         case 'edit-profile': {
             return [
                 body('username')

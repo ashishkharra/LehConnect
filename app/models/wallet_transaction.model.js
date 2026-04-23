@@ -39,6 +39,26 @@ module.exports = (sequelize, Sequelize) => {
                 allowNull: false
             },
 
+            wallet_balance: {
+                type: Sequelize.DECIMAL(14, 2),
+                allowNull: false,
+                defaultValue: 0.00,
+                comment: 'Wallet balance after transaction'
+            },
+
+            referral_balance: {
+                type: Sequelize.DECIMAL(14, 2),
+                allowNull: false,
+                defaultValue: 0.00,
+                comment: 'Referral balance after transaction'
+            },
+
+            failure_reason: {
+                type: Sequelize.STRING(255),
+                allowNull: true,
+                defaultValue: null
+            },
+
             reason: {
                 type: Sequelize.STRING(255),
                 allowNull: true,

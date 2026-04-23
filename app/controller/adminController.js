@@ -3,9 +3,11 @@ const path = require('path');
 const axios = require('axios');
 const { admin_url } = require('../config/globals.js')
 const { Op, Sequelize } = require('sequelize');
-const { getSequelizePagination, responseData_, getIconForCounter, getSuffixForCounter, getCategoryForCounter, getPositionForCounter, codeGenerator, verifyPassword, hashPassword, randomstring } = require('../shared/utils/helper.js')
+const { getSequelizePagination, responseData_, getIconForCounter, getSuffixForCounter, getCategoryForCounter, getPositionForCounter, codeGenerator, verifyPassword, hashPassword, randomstring, buildPaymentLedgerWhere, getLedgerBaseSubquery, buildOrderClause, getTypeName, getMethodName, getStatusColor, getTypeColor, getMethodIcon, safeJsonParse, toArray, responseData, getDateRangeFromQuickRange } = require('../shared/utils/helper.js')
 const { validateEmail, validatePhone } = require('../shared/utils/validation')
-const vendorReminderQueue = require('../queues/vendor/vendor_reminder.queue.js')
+const { queuePartialVendorReminder, asyncHandler } = require('../shared/utils/helper.js')
+const { QueryTypes } = require('sequelize');
+const admin = require('../config/firebase.js')
 
 const db = require('../models/index');
 const sequelize = db.sequelize
@@ -32,9 +34,15 @@ const ReferralSetting = db.referral_setting
 const ReferralHistory = db.referral_history
 const SiteSetting = db.siteSettings
 const HotelEnquiry = db.hotelEnquiry
+const VendorDeviceFcm = db.vendor_device_fcm
+const VendorPayout = db.vendorPayout
+const BookingRefund = db.bookingRefund
+const BookingPayment = db.bookingPayment
+const Vehicle = db.AddVehicle
 
 
 const vendorDeleteQueue = require('../queues/vendor/vendor_delete.queue.js');
+const message = require('../sockets/message.js');
 
 
 const adminController = {
@@ -2971,6 +2979,8 @@ const adminController = {
                 ]
             });
 
+            // console.log('result ->>>> ', result.docs)
+
             return responseData_(
                 'Help fetched successfully',
                 result,
@@ -2986,16 +2996,22 @@ const adminController = {
 
     getHelpByToken: async (token) => {
         try {
+            console.log('token _>>>> ', token);
+
             const help = await VendorHelp.findOne({
                 where: { token },
                 include: [{
                     model: VendorHelpAnswer,
                     as: 'help_answers',
                     required: false,
+                    separate: true,
+                    limit: 10,
                     order: [['id', 'DESC']],
-                    limit: 10
+                    attributes: ['id', 'token', 'help_token', 'message', 'create_date']
                 }]
             });
+
+            console.log('help >>>> ', JSON.stringify(help, null, 2));
 
             return responseData_('Help fetched', help, true);
 
@@ -3007,9 +3023,11 @@ const adminController = {
 
     replyToHelp: async (req, res) => {
         try {
-            const vendorToken = req.user.token;
+            console.log('parmas ->>>> ', req.params)
             const helpToken = req.params.token;
             const { message } = req.body;
+
+
 
             if (!message || message.trim() === '') {
                 req.setFlash('error', 'Message is required')
@@ -3018,8 +3036,7 @@ const adminController = {
 
             const help = await VendorHelp.findOne({
                 where: {
-                    token: helpToken,
-                    vendor_token: vendorToken
+                    token: helpToken
                 }
             });
 
@@ -3029,8 +3046,9 @@ const adminController = {
             }
 
             await VendorHelpAnswer.create({
+                token: randomstring(32),
                 help_token: help.token,
-                vendor_token: vendorToken,
+                vendor_token: help.vendor_token,
                 message: message
             });
 
@@ -3049,24 +3067,28 @@ const adminController = {
 
     deleteHelp: async (req, res) => {
         try {
-            const token = req.params.token
-            const help = await VendorHelp.findOne({ where: { token } });
-
-            if (!help) {
-                req.setFlash('error', 'Help not found')
-                return res.redirect('/vendor/help')
+            const { token } = req.params;
+            if (!token) {
+                req.setFlash('Invalid help token', 'error')
+                res.redirect(`/vendor/help/${token}`)
             }
-
-            await VendorHelpAnswer.destroy({ where: { help_token: token } });
-            await help.destroy();
-
-            req.setFlash('success', 'Help deleted successfully')
-            return res.redirect('/vendor/help')
-
+            const help = await VendorHelp.findOne({ where: { token } });
+            if (!help) {
+                req.setFlash('Invalid help token', 'error')
+                res.redirect(`/vendor/help/${token}`)
+            }
+            await VendorHelpAnswer.destroy({
+                where: { help_token: token }
+            });
+            await VendorHelp.destroy({
+                where: { token }
+            });
+            req.setFlash('Help deleted successfully', 'success')
+            res.redirect('/vendor/help', 'success')
         } catch (error) {
-            console.log('Delete help error ', error);
-            req.setFlash('error', 'Internal server error')
-            return res.redirect('/vendor/help')
+            console.error('Delete help error:', error);
+            req.setFlash('Internal server error', 'error')
+            res.redirect(`/vendor/help/${req.params.token}`)
         }
     },
 
@@ -3437,15 +3459,1245 @@ const adminController = {
             console.error('Error fetching hotel enquiries:', error);
             return responseData_('Internal server error', { error: error.message }, false);
         }
+    },
+
+    getAllPaymentsPage: async (req) => {
+        try {
+            const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+            const pageSize = Math.max(parseInt(req.query.size, 10) || 10, 1);
+            const offset = (page - 1) * pageSize;
+            const sort = req.query.sort || 'newest';
+
+            const { whereClause, replacements, resolvedFrom, resolvedTo } = buildPaymentLedgerWhere(req.query);
+            const baseSubquery = getLedgerBaseSubquery();
+            const orderClause = buildOrderClause(sort);
+
+            const ledgerSql = `
+                SELECT ledger.*
+                FROM ${baseSubquery}
+                ${whereClause}
+                ${orderClause}
+                LIMIT :limit OFFSET :offset
+            `;
+
+            const totalCountSql = `
+                SELECT COUNT(*) AS totalCount
+                FROM ${baseSubquery}
+                ${whereClause}
+            `;
+
+            const summarySql = `
+                SELECT
+                    COUNT(*) AS totalCount,
+                    COALESCE(SUM(ABS(ledger.amount)), 0) AS totalAmount,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN MONTH(ledger.created_at) = MONTH(CURDATE())
+                             AND YEAR(ledger.created_at) = YEAR(CURDATE())
+                            THEN ABS(ledger.amount)
+                            ELSE 0
+                        END
+                    ), 0) AS monthlyAmount,
+                    COALESCE(SUM(CASE WHEN ledger.status = 'pending' THEN ABS(ledger.amount) ELSE 0 END), 0) AS pendingAmount,
+                    COALESCE(SUM(CASE WHEN ledger.status = 'refunded' THEN ABS(ledger.amount) ELSE 0 END), 0) AS refundAmount,
+                    COALESCE(SUM(
+                        CASE
+                            WHEN MONTH(ledger.created_at) = MONTH(CURDATE())
+                             AND YEAR(ledger.created_at) = YEAR(CURDATE())
+                            THEN 1 ELSE 0
+                        END
+                    ), 0) AS monthlyCount,
+                    COALESCE(SUM(CASE WHEN ledger.status = 'pending' THEN 1 ELSE 0 END), 0) AS pendingCount,
+                    COALESCE(SUM(CASE WHEN ledger.status = 'refunded' THEN 1 ELSE 0 END), 0) AS refundCount
+                FROM ${baseSubquery}
+                ${whereClause}
+            `;
+
+            const analyticsSql = `
+                SELECT
+                    COALESCE(SUM(CASE WHEN ledger.amount > 0 THEN ledger.amount ELSE 0 END), 0) AS income,
+                    COALESCE(SUM(CASE WHEN ledger.amount < 0 THEN ABS(ledger.amount) ELSE 0 END), 0) AS expense
+                FROM ${baseSubquery}
+                ${whereClause}
+            `;
+
+            const statusOverviewSql = `
+                SELECT
+                    ledger.status,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(ABS(ledger.amount)), 0) AS amount
+                FROM ${baseSubquery}
+                ${whereClause}
+                GROUP BY ledger.status
+                ORDER BY count DESC
+            `;
+
+            const methodOverviewSql = `
+                SELECT
+                    ledger.payment_method,
+                    COUNT(*) AS count,
+                    COALESCE(SUM(ABS(ledger.amount)), 0) AS amount
+                FROM ${baseSubquery}
+                ${whereClause}
+                GROUP BY ledger.payment_method
+                ORDER BY amount DESC, count DESC
+            `;
+
+            const monthlyTrendSql = `
+                SELECT
+                    DATE_FORMAT(ledger.created_at, '%Y-%m') AS month_key,
+                    DATE_FORMAT(ledger.created_at, '%b %Y') AS month_label,
+                    COALESCE(SUM(CASE WHEN ledger.amount > 0 THEN ledger.amount ELSE 0 END), 0) AS income,
+                    COALESCE(SUM(CASE WHEN ledger.amount < 0 THEN ABS(ledger.amount) ELSE 0 END), 0) AS expense
+                FROM ${baseSubquery}
+                WHERE ledger.created_at >= DATE_SUB(CURDATE(), INTERVAL 11 MONTH)
+                ${whereClause ? `AND ${whereClause.replace(/^WHERE\s+/i, '')}` : ''}
+                GROUP BY DATE_FORMAT(ledger.created_at, '%Y-%m'), DATE_FORMAT(ledger.created_at, '%b %Y')
+                ORDER BY month_key ASC
+            `;
+
+            const [
+                transactions,
+                totalCountRows,
+                summaryRows,
+                analyticsRows,
+                statusRows,
+                methodRows,
+                monthRows
+            ] = await Promise.all([
+                sequelize.query(ledgerSql, {
+                    type: QueryTypes.SELECT,
+                    replacements: {
+                        ...replacements,
+                        limit: pageSize,
+                        offset
+                    }
+                }),
+                sequelize.query(totalCountSql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                }),
+                sequelize.query(summarySql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                }),
+                sequelize.query(analyticsSql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                }),
+                sequelize.query(statusOverviewSql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                }),
+                sequelize.query(methodOverviewSql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                }),
+                sequelize.query(monthlyTrendSql, {
+                    type: QueryTypes.SELECT,
+                    replacements
+                })
+            ]);
+
+            const totalCount = Number(totalCountRows?.[0]?.totalCount || 0);
+            const totalPages = Math.max(Math.ceil(totalCount / pageSize), 1);
+            const startIndex = totalCount === 0 ? 0 : offset + 1;
+            const endIndex = Math.min(offset + pageSize, totalCount);
+
+            const summaryRow = summaryRows?.[0] || {};
+            const analyticsRow = analyticsRows?.[0] || {};
+
+            const formattedTransactions = transactions.map((txn) => ({
+                id: txn.id,
+                transaction_id: txn.transaction_id,
+                gateway_transaction_id: txn.gateway_transaction_id,
+                booking_id: txn.booking_id,
+                booking_token: txn.booking_token,
+                user_token: txn.user_token,
+                user_name: txn.user_name || 'Unknown User',
+                user_email: txn.user_email || null,
+                user_phone: txn.user_phone || null,
+                user_avatar: txn.user_avatar || null,
+                user_type: txn.user_type || 'vendor',
+                transaction_type: txn.transaction_type,
+                transaction_type_label: getTypeName(txn.transaction_type),
+                amount: Number(txn.amount || 0),
+                currency: txn.currency || 'INR',
+                payment_method: txn.payment_method || 'wallet',
+                payment_method_label: getMethodName(txn.payment_method),
+                status: txn.status || 'pending',
+                status_color: getStatusColor(txn.status),
+                type_color: getTypeColor(txn.transaction_type),
+                method_icon: getMethodIcon(txn.payment_method),
+                settled_at: txn.settled_at || null,
+                paid_at: txn.paid_at || null,
+                refunded_at: txn.refunded_at || null,
+                created_at: txn.created_at,
+                updated_at: txn.updated_at,
+                extra_meta: typeof txn.extra_meta === 'string'
+                    ? safeJsonParse(txn.extra_meta)
+                    : (txn.extra_meta || {})
+            }));
+
+            const totalAmountForPercentage = statusRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+
+            const statusOverview = statusRows.map((row) => {
+                const amount = Number(row.amount || 0);
+                return {
+                    status: row.status,
+                    count: Number(row.count || 0),
+                    amount,
+                    percentage: totalAmountForPercentage > 0
+                        ? Number(((amount / totalAmountForPercentage) * 100).toFixed(2))
+                        : 0
+                };
+            });
+
+            const methodLabels = methodRows.map((row) => getMethodName(row.payment_method));
+            const methodData = methodRows.map((row) => Number(row.amount || 0));
+
+            const monthMap = new Map();
+            const now = new Date();
+
+            for (let i = 11; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const label = d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+
+                monthMap.set(key, {
+                    label,
+                    income: 0,
+                    expense: 0
+                });
+            }
+
+            for (const row of monthRows) {
+                if (monthMap.has(row.month_key)) {
+                    monthMap.set(row.month_key, {
+                        label: row.month_label,
+                        income: Number(row.income || 0),
+                        expense: Number(row.expense || 0)
+                    });
+                }
+            }
+
+            const monthlyLabels = [];
+            const monthlyIncome = [];
+            const monthlyExpense = [];
+
+            for (const [, value] of monthMap) {
+                monthlyLabels.push(value.label);
+                monthlyIncome.push(value.income);
+                monthlyExpense.push(value.expense);
+            }
+
+            return {
+                title: 'LehConnect | All Payments',
+                transactions: formattedTransactions,
+                summary: {
+                    totalAmount: Number(summaryRow.totalAmount || 0),
+                    totalCount: Number(summaryRow.totalCount || 0),
+                    monthlyAmount: Number(summaryRow.monthlyAmount || 0),
+                    monthlyCount: Number(summaryRow.monthlyCount || 0),
+                    pendingAmount: Number(summaryRow.pendingAmount || 0),
+                    pendingCount: Number(summaryRow.pendingCount || 0),
+                    refundAmount: Number(summaryRow.refundAmount || 0),
+                    refundCount: Number(summaryRow.refundCount || 0)
+                },
+                analytics: {
+                    income: Number(analyticsRow.income || 0),
+                    expense: Number(analyticsRow.expense || 0),
+                    net: Number(analyticsRow.income || 0) - Number(analyticsRow.expense || 0)
+                },
+                statusOverview,
+                methodLabels,
+                methodData,
+                monthlyLabels,
+                monthlyIncome,
+                monthlyExpense,
+                currentPage: page,
+                pageSize,
+                totalCount,
+                totalPages,
+                startIndex,
+                endIndex,
+                defaultFromDate: resolvedFrom,
+                defaultToDate: resolvedTo,
+                currentRoute: 'payment-all',
+                getStatusColor,
+                getMethodIcon,
+                getMethodName,
+                getTypeColor,
+                getTypeName,
+                appliedFilters: {
+                    from: resolvedFrom,
+                    to: resolvedTo,
+                    quickRange: req.query.quickRange || '',
+                    types: toArray(req.query.types),
+                    methods: toArray(req.query.methods),
+                    statuses: toArray(req.query.statuses),
+                    min_amount: req.query.min_amount || '',
+                    max_amount: req.query.max_amount || '',
+                    user: req.query.user || '',
+                    transaction_id: req.query.transaction_id || '',
+                    unsettled: req.query.unsettled || '',
+                    sort
+                }
+            };
+        } catch (error) {
+            console.error('Error fetching payment page data:', error);
+            throw error;
+        }
+    },
+
+    adminProcessBookingRefund: async (req, res) => {
+        const t = await db.sequelize.transaction();
+
+        try {
+            const adminUser = req.user;
+            const { bookingToken } = req.params;
+            const { refund_token, reason } = req.body;
+
+            if (!bookingToken) {
+                await t.rollback();
+                req.setFlash('Invalid booking', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            const booking = await Booking.findOne({
+                where: { token: bookingToken },
+                attributes: [
+                    'token',
+                    'vendor_token',
+                    'assigned_vendor_token',
+                    'secure_booking',
+                    'payment_status',
+                    'status'
+                ],
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+
+            if (!booking) {
+                await t.rollback();
+                req.setFlash('Booking not found', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            if (!booking.secure_booking) {
+                await t.rollback();
+                req.setFlash('This is not secure booking', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            const paymentRow = await BookingPayment.findOne({
+                where: {
+                    booking_token: booking.token,
+                    order_status: 'PAID',
+                    flag: false
+                },
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+
+            if (!paymentRow) {
+                await t.rollback();
+                req.setFlash('Paid booking payment not found', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            const refundWhere = {
+                booking_token: booking.token,
+                payment_token: paymentRow.token,
+                refund_status: 'PENDING',
+                flag: false
+            };
+
+            if (refund_token) {
+                refundWhere.token = refund_token;
+            }
+
+            const refundRow = await BookingRefund.findOne({
+                where: refundWhere,
+                transaction: t,
+                lock: t.LOCK.UPDATE
+            });
+
+            if (!refundRow) {
+                await t.rollback();
+                req.setFlash('Pending refund request not found', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            if (paymentRow.refund_status === 'REFUNDED') {
+                await t.rollback();
+                req.setFlash('Refund already processed', 'error')
+                return res.redirect('/payment-all')
+            }
+
+            // manual refund processed by admin
+            await refundRow.update(
+                {
+                    refund_status: 'PROCESSED',
+                    reason: reason || refundRow.reason || 'Manual refund processed by admin',
+                    meta: {
+                        ...(refundRow.meta || {}),
+                        processed_by_token: adminUser.token || null,
+                        processed_by_id: adminUser.id || null,
+                        processed_at: new Date().toISOString(),
+                        processed_mode: 'MANUAL_ADMIN'
+                    }
+                },
+                { transaction: t }
+            );
+
+            await paymentRow.update(
+                {
+                    refund_status: 'REFUNDED',
+                    refunded_at: new Date(),
+                    meta: {
+                        ...(paymentRow.meta || {}),
+                        manual_refund_processed: true,
+                        manual_refund_ref: refundRow.token
+                    }
+                },
+                { transaction: t }
+            );
+
+            await booking.update(
+                {
+                    payment_status: 'REFUNDED'
+                },
+                { transaction: t }
+            );
+
+            await VendorPayout.update(
+                {
+                    payout_status: 'CANCELLED',
+                    remarks: 'Cancelled because manual refund processed by admin'
+                },
+                {
+                    where: {
+                        payment_token: paymentRow.token,
+                        flag: false
+                    },
+                    transaction: t
+                }
+            );
+
+            const payerVendor = await Vendor.findOne({
+                where: { token: paymentRow.payer_token },
+                attributes: ['token', 'first_name', 'last_name'],
+                transaction: t
+            });
+
+            const refundReceiverToken = paymentRow.payer_token;
+
+            const refundReceiverName =
+                [payerVendor?.first_name, payerVendor?.last_name].filter(Boolean).join(' ').trim() || 'Vendor';
+
+            await Notification.create(
+                {
+                    token: randomstring(64),
+                    sender_token: adminUser.token || null,
+                    receiver_token: refundReceiverToken,
+                    receiver_role: 'vendor',
+                    booking_token: booking.token,
+                    type: 'BOOKING_REFUND_PROCESSED',
+                    title: 'Refund Processed',
+                    message: `Your refund for booking ${booking.token} has been processed successfully.`,
+                    visibility: 'private',
+                    payload: {
+                        booking_token: booking.token,
+                        payment_token: paymentRow.token,
+                        refund_token: refundRow.token,
+                        refund_amount: refundRow.refund_amount,
+                        refund_status: 'PROCESSED'
+                    }
+                },
+                { transaction: t }
+            );
+
+            const fcmDevices = await VendorDeviceFcm.findAll({
+                where: {
+                    vendor_token: refundReceiverToken,
+                    flag: false
+                },
+                attributes: ['fcm_token'],
+                transaction: t
+            });
+
+            await t.commit();
+
+            try {
+                const io = getIO();
+                io?.to(`vendor:${refundReceiverToken}`).emit('booking:refund-processed', {
+                    booking_token: booking.token,
+                    payment_token: paymentRow.token,
+                    refund_token: refundRow.token,
+                    refund_amount: refundRow.refund_amount,
+                    refund_status: 'PROCESSED',
+                    title: 'Refund Processed',
+                    message: `Your refund for booking ${booking.token} has been processed successfully.`
+                });
+            } catch (socketError) {
+                console.error('[REFUND SOCKET ERROR]', socketError);
+            }
+
+            try {
+                const tokens = (fcmDevices || [])
+                    .map(item => item.fcm_token)
+                    .filter(Boolean);
+
+                if (tokens.length) {
+                    await admin.messaging().sendEachForMulticast({
+                        tokens,
+                        notification: {
+                            title: 'Refund Processed',
+                            body: `Your refund for booking ${booking.token} has been processed successfully.`
+                        },
+                        data: {
+                            type: 'BOOKING_REFUND_PROCESSED',
+                            booking_token: String(booking.token),
+                            payment_token: String(paymentRow.token),
+                            refund_token: String(refundRow.token),
+                            refund_status: 'PROCESSED',
+                            refund_amount: String(refundRow.refund_amount)
+                        },
+                        android: {
+                            priority: 'high',
+                            notification: {
+                                channelId: 'refunds'
+                            }
+                        }
+                    });
+                }
+            } catch (firebaseError) {
+                console.error('[REFUND FIREBASE ERROR]', firebaseError);
+            }
+
+            return res.status(200).json(
+                responseData(
+                    'Refund processed successfully',
+                    {
+                        booking_token: booking.token,
+                        payment_token: paymentRow.token,
+                        refund_token: refundRow.token,
+                        refund_amount: refundRow.refund_amount,
+                        refund_status: 'PROCESSED',
+                        refunded_to_token: refundReceiverToken,
+                        refunded_to_name: refundReceiverName
+                    },
+                    req,
+                    true
+                )
+            );
+        } catch (error) {
+            if (!t.finished) {
+                await t.rollback();
+            }
+
+            console.error('[ADMIN BOOKING REFUND ERROR]', error);
+
+            return res.status(500).json(
+                responseData(error.message || 'Something went wrong', {}, req, false)
+            );
+        }
+    },
+
+    getAdminLedgerDashboardData: async (query = {}) => {
+        let {
+            page = 1,
+            limit = 10,
+            from = null,
+            to = null,
+            quickRange = null,
+            booking_token = null,
+            payment_status = null,
+            refund_status = null,
+            ledger_type = null,
+            search = null,
+            sort = 'newest'
+        } = query;
+
+        page = parseInt(page, 10) || 1;
+        limit = parseInt(limit, 10) || 10;
+
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 10;
+
+        const offset = (page - 1) * limit;
+
+        if ((!from || !to) && quickRange) {
+            const range = getDateRangeFromQuickRange(quickRange);
+            from = from || range.from;
+            to = to || range.to;
+        }
+
+        const replacements = { limit, offset };
+        const whereParts = [];
+
+        if (from) {
+            whereParts.push(`DATE(ledger.created_at) >= :from`);
+            replacements.from = from;
+        }
+
+        if (to) {
+            whereParts.push(`DATE(ledger.created_at) <= :to`);
+            replacements.to = to;
+        }
+
+        if (booking_token) {
+            whereParts.push(`ledger.booking_token = :booking_token`);
+            replacements.booking_token = booking_token;
+        }
+
+        if (ledger_type && ['PAYMENT', 'REFUND', 'PAYOUT'].includes(ledger_type)) {
+            whereParts.push(`ledger.ledger_type = :ledger_type`);
+            replacements.ledger_type = ledger_type;
+        }
+
+        if (payment_status) {
+            whereParts.push(`ledger.payment_status = :payment_status`);
+            replacements.payment_status = payment_status;
+        }
+
+        if (refund_status) {
+            whereParts.push(`ledger.refund_status = :refund_status`);
+            replacements.refund_status = refund_status;
+        }
+
+        if (search) {
+            whereParts.push(`
+            (
+                ledger.booking_token LIKE :search
+                OR ledger.transaction_token LIKE :search
+                OR ledger.gateway_transaction_id LIKE :search
+                OR ledger.user_name LIKE :search
+                OR ledger.user_email LIKE :search
+                OR ledger.user_phone LIKE :search
+                OR ledger.vehicle_type LIKE :search
+                OR ledger.vehicle_name LIKE :search
+                OR ledger.pickup_location LIKE :search
+                OR ledger.drop_location LIKE :search
+                OR ledger.city LIKE :search
+                OR ledger.state LIKE :search
+            )
+        `);
+            replacements.search = `%${search}%`;
+        }
+
+        const whereClause = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+        const ledgerBaseSql = `
+        (
+            SELECT
+                bp.id,
+                'PAYMENT' AS ledger_type,
+                'DEBIT' AS direction,
+                CASE
+                    WHEN bp.order_status = 'PAID' THEN 'PAID'
+                    WHEN bp.order_status = 'FAILED' THEN 'FAILED'
+                    ELSE 'PENDING'
+                END AS display_status,
+                bp.token AS transaction_token,
+                bp.razorpay_payment_id AS gateway_transaction_id,
+                bp.razorpay_order_id,
+                bp.booking_token,
+                bp.payer_token AS user_token,
+                bp.payee_vendor_token,
+                CAST(bp.amount AS DECIMAL(14,2)) AS amount,
+                bp.currency,
+                bp.payment_status,
+                bp.order_status,
+                bp.refund_status,
+                bp.paid_at,
+                bp.refunded_at,
+                bp.created_at,
+                bp.updated_at,
+
+                b.id AS booking_id,
+                b.status AS booking_status,
+                b.trip_type,
+                b.vehicle_type,
+                b.vehicle_name,
+                b.pickup_location,
+                b.drop_location,
+                b.pickup_datetime,
+                b.return_datetime,
+                b.city,
+                b.state,
+                b.secure_booking,
+                b.accept_type,
+
+                CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')) AS user_name,
+                v.email AS user_email,
+                v.contact AS user_phone,
+                v.image AS user_avatar,
+                'vendor' AS user_type,
+
+                NULL AS refund_reason,
+                NULL AS refunded_by_token,
+                NULL AS refunded_by_name,
+
+                CASE
+                    WHEN bp.payment_status = 'PAID' THEN CAST(bp.amount * 0.03 AS DECIMAL(14,2))
+                    ELSE 0
+                END AS deduction_amount,
+
+                CASE
+                    WHEN bp.payment_status = 'PAID' THEN CAST(bp.amount - (bp.amount * 0.03) AS DECIMAL(14,2))
+                    ELSE 0
+                END AS net_refundable_amount
+            FROM tbl_booking_payments bp
+            LEFT JOIN tbl_booking b ON b.token = bp.booking_token
+            LEFT JOIN tbl_vendor v ON v.token = bp.payer_token
+            WHERE COALESCE(bp.flag, 0) = 0
+
+            UNION ALL
+
+            SELECT
+                br.id,
+                'REFUND' AS ledger_type,
+                'CREDIT' AS direction,
+                CASE
+                    WHEN br.refund_status = 'PROCESSED' THEN 'REFUNDED'
+                    WHEN br.refund_status = 'FAILED' THEN 'REFUND_FAILED'
+                    ELSE 'REFUND_PENDING'
+                END AS display_status,
+                br.token AS transaction_token,
+                br.razorpay_refund_id AS gateway_transaction_id,
+                NULL AS razorpay_order_id,
+                br.booking_token,
+                br.refund_to_token AS user_token,
+                NULL AS payee_vendor_token,
+                CAST(br.refund_amount AS DECIMAL(14,2)) AS amount,
+                br.currency,
+                NULL AS payment_status,
+                NULL AS order_status,
+                br.refund_status,
+                NULL AS paid_at,
+                br.updated_at AS refunded_at,
+                br.created_at,
+                br.updated_at,
+
+                b.id AS booking_id,
+                b.status AS booking_status,
+                b.trip_type,
+                b.vehicle_type,
+                b.vehicle_name,
+                b.pickup_location,
+                b.drop_location,
+                b.pickup_datetime,
+                b.return_datetime,
+                b.city,
+                b.state,
+                b.secure_booking,
+                b.accept_type,
+
+                CONCAT(COALESCE(v_ref.first_name, ''), ' ', COALESCE(v_ref.last_name, '')) AS user_name,
+                v_ref.email AS user_email,
+                v_ref.contact AS user_phone,
+                v_ref.image AS user_avatar,
+                'vendor' AS user_type,
+
+                br.reason AS refund_reason,
+                br.refunded_by_token,
+                CONCAT(COALESCE(v_by.first_name, ''), ' ', COALESCE(v_by.last_name, '')) AS refunded_by_name,
+
+                0 AS deduction_amount,
+                0 AS net_refundable_amount
+            FROM tbl_booking_refunds br
+            LEFT JOIN tbl_booking b ON b.token = br.booking_token
+            LEFT JOIN tbl_vendor v_ref ON v_ref.token = br.refund_to_token
+            LEFT JOIN tbl_vendor v_by ON v_by.token = br.refunded_by_token
+            WHERE COALESCE(br.flag, 0) = 0
+        ) ledger
+    `;
+
+        const orderClause = (() => {
+            switch (sort) {
+                case 'oldest':
+                    return `ORDER BY ledger.created_at ASC`;
+                case 'amount_high':
+                    return `ORDER BY ledger.amount DESC`;
+                case 'amount_low':
+                    return `ORDER BY ledger.amount ASC`;
+                default:
+                    return `ORDER BY ledger.created_at DESC`;
+            }
+        })();
+
+        const listSql = `
+        SELECT ledger.*
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+        ${orderClause}
+        LIMIT :limit OFFSET :offset
+    `;
+
+        const countSql = `
+        SELECT COUNT(*) AS totalCount
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+    `;
+
+        const summarySql = `
+        SELECT
+            COUNT(*) AS total_entries,
+            COUNT(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN 1 END) AS total_payments,
+            COUNT(CASE WHEN ledger.ledger_type = 'REFUND' THEN 1 END) AS total_refunds,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+    `;
+
+        const todaySql = `
+        SELECT
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        WHERE DATE(ledger.created_at) = CURDATE()
+    `;
+
+        const currentWeekSql = `
+        SELECT
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        WHERE YEARWEEK(ledger.created_at, 1) = YEARWEEK(CURDATE(), 1)
+    `;
+
+        const currentMonthSql = `
+        SELECT
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        WHERE MONTH(ledger.created_at) = MONTH(CURDATE())
+          AND YEAR(ledger.created_at) = YEAR(CURDATE())
+    `;
+
+        const dailySql = `
+        SELECT
+            DATE(ledger.created_at) AS date,
+            DATE_FORMAT(ledger.created_at, '%d %b %Y') AS label,
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+        GROUP BY DATE(ledger.created_at), DATE_FORMAT(ledger.created_at, '%d %b %Y')
+        ORDER BY DATE(ledger.created_at) DESC
+        LIMIT 15
+    `;
+
+        const weeklySql = `
+        SELECT
+            YEAR(ledger.created_at) AS year,
+            WEEK(ledger.created_at, 1) AS week_number,
+            MIN(DATE(ledger.created_at)) AS week_start_date,
+            MAX(DATE(ledger.created_at)) AS week_end_date,
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+        GROUP BY YEAR(ledger.created_at), WEEK(ledger.created_at, 1)
+        ORDER BY year DESC, week_number DESC
+        LIMIT 12
+    `;
+
+        const monthlySql = `
+        SELECT
+            DATE_FORMAT(ledger.created_at, '%Y-%m') AS month_key,
+            DATE_FORMAT(ledger.created_at, '%b %Y') AS month_label,
+            COUNT(*) AS total_entries,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+            COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+            COALESCE(
+                SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+            0) AS net_amount
+        FROM ${ledgerBaseSql}
+        ${whereClause}
+        GROUP BY DATE_FORMAT(ledger.created_at, '%Y-%m'), DATE_FORMAT(ledger.created_at, '%b %Y')
+        ORDER BY month_key DESC
+        LIMIT 12
+    `;
+
+        const [
+            ledgerRows,
+            countRows,
+            summaryRows,
+            todayRows,
+            currentWeekRows,
+            currentMonthRows,
+            dailyRows,
+            weeklyRows,
+            monthlyRows
+        ] = await Promise.all([
+            sequelize.query(listSql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(countSql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(summarySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(todaySql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(currentWeekSql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(currentMonthSql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(dailySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(weeklySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(monthlySql, { type: sequelize.QueryTypes.SELECT, replacements })
+        ]);
+
+        const totalCount = toNumber(countRows?.[0]?.totalCount, 0);
+        const totalPages = Math.max(1, Math.ceil(totalCount / limit));
+
+        return {
+            summary: {
+                overall: {
+                    total_entries: toNumber(summaryRows?.[0]?.total_entries),
+                    total_paid_amount: toNumber(summaryRows?.[0]?.total_paid_amount),
+                    total_refund_amount: toNumber(summaryRows?.[0]?.total_refund_amount),
+                    total_deduction_amount: toNumber(summaryRows?.[0]?.total_deduction_amount),
+                    net_amount: toNumber(summaryRows?.[0]?.net_amount)
+                },
+                today: {
+                    total_entries: toNumber(todayRows?.[0]?.total_entries),
+                    total_paid_amount: toNumber(todayRows?.[0]?.total_paid_amount),
+                    total_refund_amount: toNumber(todayRows?.[0]?.total_refund_amount),
+                    total_deduction_amount: toNumber(todayRows?.[0]?.total_deduction_amount),
+                    net_amount: toNumber(todayRows?.[0]?.net_amount)
+                },
+                current_week: {
+                    total_entries: toNumber(currentWeekRows?.[0]?.total_entries),
+                    total_paid_amount: toNumber(currentWeekRows?.[0]?.total_paid_amount),
+                    total_refund_amount: toNumber(currentWeekRows?.[0]?.total_refund_amount),
+                    total_deduction_amount: toNumber(currentWeekRows?.[0]?.total_deduction_amount),
+                    net_amount: toNumber(currentWeekRows?.[0]?.net_amount)
+                },
+                current_month: {
+                    total_entries: toNumber(currentMonthRows?.[0]?.total_entries),
+                    total_paid_amount: toNumber(currentMonthRows?.[0]?.total_paid_amount),
+                    total_refund_amount: toNumber(currentMonthRows?.[0]?.total_refund_amount),
+                    total_deduction_amount: toNumber(currentMonthRows?.[0]?.total_deduction_amount),
+                    net_amount: toNumber(currentMonthRows?.[0]?.net_amount)
+                }
+            },
+            analytics: {
+                daily: (dailyRows || []).map((row) => ({
+                    date: row.date,
+                    label: row.label,
+                    total_entries: toNumber(row.total_entries),
+                    total_paid_amount: toNumber(row.total_paid_amount),
+                    total_refund_amount: toNumber(row.total_refund_amount),
+                    total_deduction_amount: toNumber(row.total_deduction_amount),
+                    net_amount: toNumber(row.net_amount)
+                })),
+                weekly: (weeklyRows || []).map((row) => ({
+                    year: toNumber(row.year),
+                    week_number: toNumber(row.week_number),
+                    week_start_date: row.week_start_date,
+                    week_end_date: row.week_end_date,
+                    total_entries: toNumber(row.total_entries),
+                    total_paid_amount: toNumber(row.total_paid_amount),
+                    total_refund_amount: toNumber(row.total_refund_amount),
+                    total_deduction_amount: toNumber(row.total_deduction_amount),
+                    net_amount: toNumber(row.net_amount)
+                })),
+                monthly: (monthlyRows || []).map((row) => ({
+                    month_key: row.month_key,
+                    month_label: row.month_label,
+                    total_entries: toNumber(row.total_entries),
+                    total_paid_amount: toNumber(row.total_paid_amount),
+                    total_refund_amount: toNumber(row.total_refund_amount),
+                    total_deduction_amount: toNumber(row.total_deduction_amount),
+                    net_amount: toNumber(row.net_amount)
+                }))
+            },
+            transactions: (ledgerRows || []).map((row) => ({
+                ...row,
+                amount: toNumber(row.amount),
+                deduction_amount: toNumber(row.deduction_amount),
+                net_refundable_amount: toNumber(row.net_refundable_amount)
+            })),
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            },
+            filters: {
+                from: from || '',
+                to: to || '',
+                quickRange: quickRange || '',
+                booking_token: booking_token || '',
+                payment_status: payment_status || '',
+                refund_status: refund_status || '',
+                ledger_type: ledger_type || '',
+                search: search || '',
+                sort: sort || 'newest'
+            }
+        };
+    },
+
+    getVehiclesWithFilters: async (page, limit, status, search, type = null, availability = null) => {
+        try {
+            let whereClause = {};
+
+            // Status filter
+            if (status !== 'all') {
+                whereClause.status = status;
+            }
+
+            // Type filter
+            if (type && type !== 'all') {
+                whereClause.type = type;
+            }
+
+            // Availability filter
+            if (availability && availability !== 'all') {
+                whereClause.availability = availability;
+            }
+
+            // Search filter
+            if (search && search.trim() !== '') {
+                whereClause[Op.or] = [
+                    { name: { [Op.like]: `%${search}%` } },
+                    { type: { [Op.like]: `%${search}%` } },
+                    { token: { [Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const offset = (page - 1) * limit;
+
+            const { count, rows } = await Vehicle.findAndCountAll({
+                where: whereClause,
+                limit: limit,
+                offset: offset,
+                order: [['created_at', 'DESC']],
+                attributes: [
+                    'id',
+                    'token',
+                    'name',
+                    'type',
+                    'seater',
+                    'avg_per_km',
+                    'ac',
+                    'gps',
+                    'availability',
+                    'status',
+                    'created_at',
+                    'updated_at',
+                    [Sequelize.literal(`CONCAT('${admin_url}', image1)`), 'image1'],
+                    [Sequelize.literal(`CONCAT('${admin_url}', image2)`), 'image2']
+                ],
+                raw: true
+            });
+
+            return {
+                message: 'Vehicles fetched successfully',
+                success: true,
+                data: rows,
+                currentPage: page,
+                totalPages: Math.ceil(count / limit),
+                totalRecords: count,
+                recordsPerPage: limit,
+                filters: { status, search, type, availability }
+            };
+
+        } catch (error) {
+            console.error('Error in getVehiclesWithFilters:', error);
+            return {
+                success: false,
+                error: error.message,
+                message: 'Error fetching vehicles',
+                data: []
+            };
+        }
+    },
+
+    addVehicle: async (req, res) => {
+        try {
+            const vehicleData = {
+                name: req.body.name,
+                type: req.body.type,
+                seater: parseInt(req.body.seater),
+                avg_per_km: parseFloat(req.body.avg_per_km),
+                availability: req.body.availability,
+                ac: req.body.ac === 'true' || req.body.ac === true || req.body.ac === '1',
+                gps: req.body.gps === 'true' || req.body.gps === true || req.body.gps === '1',
+                status: req.body.status || 'active',
+                token: randomstring(64)
+            };
+
+            if (req.files && req.files['image1'] && req.files['image1'][0]) {
+                vehicleData.image1 = '/uploads/' + req.files['image1'][0].filename;
+            }
+
+            if (req.files && req.files['image2'] && req.files['image2'][0]) {
+                vehicleData.image2 = '/uploads/' + req.files['image2'][0].filename;
+            }
+
+            if (!vehicleData.image1 || !vehicleData.image2) {
+                req.setFlash('Please upload both image1 and image2 for the vehicle', 'error');
+                return res.redirect('/manage-vehicles');
+            }
+
+            const newVehicle = await Vehicle.create(vehicleData);
+
+            if (!newVehicle) {
+                req.setFlash('error', 'Failed to add vehicle');
+                return res.redirect('/manage-vehicles');
+            }
+
+            req.setFlash('success', 'Vehicle added successfully');
+            return res.redirect('/manage-vehicles');
+
+        } catch (error) {
+            console.error('Error in addVehicle:', error);
+            req.setFlash('error', 'Error adding vehicle: ' + error.message);
+            return res.redirect('/manage-vehicles');
+        }
+    },
+
+    updateVehicle: async (req, res) => {
+        try {
+            const { token } = req.params;
+
+            const vehicle = await Vehicle.findOne({ where: { token: token } });
+
+            if (!vehicle) {
+                req.setFlash('error', 'Vehicle not found');
+                return res.redirect('/manage-vehicles');
+            }
+
+            const updateData = {};
+
+            if (req.body.name) updateData.name = req.body.name;
+            if (req.body.type) updateData.type = req.body.type;
+            if (req.body.seater) updateData.seater = parseInt(req.body.seater);
+            if (req.body.avg_per_km) updateData.avg_per_km = parseFloat(req.body.avg_per_km);
+            if (req.body.availability) updateData.availability = req.body.availability;
+            if (req.body.status) updateData.status = req.body.status;
+
+            if (req.body.ac !== undefined) {
+                updateData.ac = req.body.ac === 'true' || req.body.ac === true || req.body.ac === '1';
+            }
+            if (req.body.gps !== undefined) {
+                updateData.gps = req.body.gps === 'true' || req.body.gps === true || req.body.gps === '1';
+            }
+
+            if (req.files && req.files['image1'] && req.files['image1'][0]) {
+                if (vehicle.image1 && vehicle.image1 !== '/images/default-car.jpg') {
+                    const oldImagePath = path.join(__dirname, '../public', vehicle.image1);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlinkSync(oldImagePath);
+                    }
+                }
+                updateData.image1 = '/uploads/vehicles/' + req.files['image1'][0].filename;
+            }
+
+            if (req.files && req.files['image2'] && req.files['image2'][0]) {
+                // Delete old image if exists (optional)
+                if (vehicle.image2 && vehicle.image2 !== '/images/default-car.jpg') {
+                    const oldImagePath = path.join(__dirname, '../public', vehicle.image2);
+                    if (fs.existsSync(oldImagePath)) {
+                        fs.unlinkSync(oldImagePath);
+                    }
+                }
+                updateData.image2 = '/uploads/vehicles/' + req.files['image2'][0].filename;
+            }
+
+            if (!updateData.image1 && req.body.existingImage1) {
+                updateData.image1 = req.body.existingImage1;
+            }
+            if (!updateData.image2 && req.body.existingImage2) {
+                updateData.image2 = req.body.existingImage2;
+            }
+
+            await vehicle.update(updateData);
+
+            req.setFlash('success', 'Vehicle updated successfully');
+            return res.redirect('/manage-vehicles');
+
+        } catch (error) {
+            console.error('Error in updateVehicle:', error);
+            req.setFlash('error', 'Error updating vehicle: ' + error.message);
+            return res.redirect('/manage-vehicles');
+        }
+    },
+
+    deleteVehicle: async (req, res) => {
+        try {
+            const { token } = req.params;
+            const deleted = await Vehicle.destroy({ where: { token } });
+            if (deleted === 0) {
+                req.setFlash('Vehicle not found', 'error');
+                return res.redirect('/manage-vehicles');
+            }
+            req.setFlash('Vehicle deleted successfully', 'success');
+            return res.redirect('/manage-vehicles');
+        } catch (error) {
+            console.error('Error in deleteVehicle:', error);
+            req.setFlash('Error deleting vehicle', 'error');
+            return res.redirect('/manage-vehicles');
+        }
+    },
+
+    toggleVehicleStatus: async (req, res) => {
+        try {
+            const { token } = req.params;
+            const vehicle = await Vehicle.findOne({ where: { token } });
+            if (!vehicle) {
+                req.setFlash('Vehicle not found', 'error');
+                return res.redirect('/manage-vehicles');
+            }
+            const newStatus = vehicle.status === 'active' ? 'inactive' : 'active';
+            await vehicle.update({ status: newStatus });
+            req.setFlash(`Vehicle ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`, 'success');
+            return res.redirect('/manage-vehicles');
+        } catch (error) {
+            console.error('Error in toggleVehicleStatus:', error);
+            req.setFlash('Error toggling vehicle status', 'error');
+            return res.redirect('/manage-vehicles');
+        }
     }
+}
 
-};
 
-const queuePartialVendorReminder = async ({ triggeredBy, requestedBy = 'SYSTEM' }) => {
-    await vendorReminderQueue.add('REMIND_PARTIAL_VENDORS', {
-        triggeredBy,
-        requestedBy
-    });
-};
-
-module.exports = { adminController, queuePartialVendorReminder };
+module.exports = adminController

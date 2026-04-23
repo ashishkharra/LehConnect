@@ -358,7 +358,7 @@
                                         <li class="<%= currentPage === 'vendor-requests' ? 'active' : '' %>">
                                             <a href="/vendor-requests">
                                                 <i class="ti ti-list-details fs-14 me-2"></i>
-                                                Vendor Requests
+                                                <span>Vendor Requests</span>
                                                 <% if (currentPage==='vendor-requests' ) { %>
                                                     <span class="menu-dot"></span>
                                                     <% } %>
@@ -367,7 +367,7 @@
                                         <li class="<%= currentPage === 'vendor' ? 'active' : '' %>">
                                             <a href="/vendor">
                                                 <i class="ti ti-list-details fs-14 me-2"></i>
-                                                Vendor List
+                                                <span>Vendor List</span>
                                                 <% if (currentPage==='vendor' ) { %>
                                                     <span class="menu-dot"></span>
                                                     <% } %>
@@ -376,7 +376,7 @@
                                         <li class="<%= currentPage === 'vendor-duties' ? 'active' : '' %>">
                                             <a href="/vendor-duties">
                                                 <i class="ti ti-clipboard-check fs-14 me-2"></i>
-                                                Vendor Duties
+                                                <span>Vendor Duties</span>
                                                 <% if (currentPage==='vendor-duties' ) { %>
                                                     <span class="menu-dot"></span>
                                                     <% } %>
@@ -384,7 +384,8 @@
                                         </li>
                                         <li class="<%= currentPage === 'vendor-del-request' ? 'active' : '' %>">
                                             <a href="/vendor-delete/request">
-                                                <i class="ti ti-trash fs-14 me-2"></i> Delete Requests
+                                                <i class="ti ti-trash fs-14 me-2"></i>
+                                                <span>Delete Requests</span>
                                                 <% if (currentPage==='vendor-del-request' ) { %>
                                                     <span class="menu-dot"></span>
                                                     <% } %>
@@ -393,7 +394,8 @@
 
                                         <li class="<%= currentPage === 'vendor-help' ? 'active' : '' %>">
                                             <a href="/vendor/help">
-                                                <i class="ti ti-headset fs-14 me-2"></i> Vendor Help
+                                                <i class="ti ti-headset fs-14 me-2"></i>
+                                                <span>Vendor Help</span>
                                                 <% if (currentPage==='vendor-help' ) { %>
                                                     <span class="menu-dot"></span>
                                                     <% } %>
@@ -517,14 +519,24 @@
                                 </li>
 
                                 <!-- Payment Ledger -->
-                                <li class="submenu 
-                        <%= (currentPage === 'payment-today' || currentPage === 'payment-all') ? 'active' : '' %>">
+                                <li
+                                    class="submenu 
+                        <%= (currentPage === 'payment-today' || currentPage === 'payment-all' || currentPage === 'admin-refund-ledger') ? 'active' : '' %>">
                                     <a href="javascript:void(0);">
                                         <i class="ti ti-wallet fs-16 me-2"></i>
                                         <span>Payment Ledger</span>
                                         <span class="menu-arrow"></span>
                                     </a>
                                     <ul>
+                                        <li class="<%= currentPage === 'admin-refund-ledger' ? 'active' : '' %>">
+                                            <a href="/admin-refund-ledger">
+                                                <i class="ti ti-clock fs-14 me-2"></i>
+                                                Refund ledger
+                                                <% if (currentPage==='admin-refund-ledger' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
+                                            </a>
+                                        </li>
                                         <li class="<%= currentPage === 'payment-today' ? 'active' : '' %>">
                                             <a href="/payment-today">
                                                 <i class="ti ti-clock fs-14 me-2"></i>
@@ -560,7 +572,7 @@
                                 <!-- App Management -->
                                 <li
                                     class="submenu 
-                        <%= (currentPage === 'counter' || currentPage === 'slider' || currentPage === 'booking-slider' || currentPage === 'videos' || currentPage === 'feedback' || currentPage === 'setting-content' || currentPage === 'faqs' || currentPage === 'about' || currentPage === 'service' || currentPage === 'manage-notifications') ? 'active' : '' %>">
+                        <%= (currentPage === 'counter' || currentPage === 'slider' || currentPage === 'booking-slider' || currentPage === 'videos' || currentPage === 'feedback' || currentPage === 'setting-content' || currentPage === 'faqs' || currentPage === 'about' || currentPage === 'service' || currentPage === 'manage-notifications' || currentPage === 'manage-vehicles' ) ? 'active' : '' %>">
                                     <a href="javascript:void(0);">
                                         <i class="ti ti-apps fs-16 me-2"></i>
                                         <span>App Management</span>
@@ -630,7 +642,6 @@
                                                     <% } %>
                                             </a>
                                         </li>
-
                                         <li class="<%= currentPage === 'about' ? 'active' : '' %>">
                                             <a href="/about">
                                                 <i class="ti ti-info-circle fs-14 me-2"></i>
@@ -640,15 +651,23 @@
                                                     <% } %>
                                             </a>
                                         </li>
-
-
                                         <li class="<%= currentPage === 'manage-notifications' ? 'active' : '' %>">
                                             <a href="/manage-notifications">
                                                 <i class="ti ti-settings fs-14 me-2"></i>
                                                 Notification settings
                                                 <% if (currentPage==='manage-notifications' ) { %>
                                                     <span class="menu-dot"></span>
-                                                <% } %>
+                                                    <% } %>
+                                            </a>
+                                        </li>
+
+                                        <li class="<%= currentPage === 'manage-vehicles' ? 'active' : '' %>">
+                                            <a href="/manage-vehicles">
+                                                <i class="ti ti-car fs-14 me-2"></i>
+                                                Manage Vehicles
+                                                <% if (currentPage==='manage-vehicles' ) { %>
+                                                    <span class="menu-dot"></span>
+                                                    <% } %>
                                             </a>
                                         </li>
                                     </ul>

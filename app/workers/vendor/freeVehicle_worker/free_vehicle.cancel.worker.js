@@ -1,57 +1,84 @@
-const { Worker } = require('bullmq');
-const bullConnection = require('../../../config/bullMq');
-const db = require('../../../models');
-const admin = require('../../../config/firebase');
+const { Worker } = require("bullmq");
+const bullConnection = require("../../../config/bullMq");
+const db = require("../../../models/index");
+const admin = require("../../../config/firebase");
+
+const { buildAlertMulticast } = require("../../../shared/utils/fcmMessage");
+const { cleanupInvalidTokens } = require("../../../shared/utils/fcmCleanup");
 
 const Notification = db.notification;
 const VendorDevice = db.vendor_device_fcm;
 
 new Worker(
-  'free-vehicle-cancel-notification',
-  async job => {
-    const {
-      free_vehicle_token,
-      cancelled_by_vendor_token,
-      owner_token,
-      reason
-    } = job.data;
+  "free-vehicle-cancel-notification",
+  async (job) => {
+    try {
+      const {
+        free_vehicle_token,
+        sender_token,
+        owner_token,
+        title,
+        message,
+        type,
+      } = job.data;
 
-    const title = 'Request Cancelled';
-    const message =
-      reason || 'A free vehicle request has been cancelled';
-
-    // 🗂 DB
-    await Notification.create({
-      sender_token: cancelled_by_vendor_token,
-      receiver_token: owner_token,
-      receiver_role: 'vendor',
-      free_vehicle_token,
-      type: 'FREE_VEHICLE_REQUEST_CANCELLED',
-      title,
-      message,
-      visibility: 'private'
-    });
-
-    // 🔔 PUSH
-    const devices = await VendorDevice.findAll({
-      where: { vendor_token: owner_token },
-      attributes: ['fcm_token'],
-      raw: true
-    });
-
-    if (devices.length) {
-      await admin.messaging().sendEachForMulticast({
-        tokens: devices.map(d => d.fcm_token),
-        notification: { title, body: message },
-        data: {
-          free_vehicle_token,
-          type: 'FREE_VEHICLE_REQUEST_CANCELLED'
-        }
+      await Notification.create({
+        sender_token: sender_token || null,
+        receiver_token: owner_token,
+        receiver_role: "vendor",
+        type: type || "FREE_VEHICLE_CANCELLED",
+        title: title || "Vehicle Request Cancelled",
+        message: message || "A vehicle request has been cancelled",
+        visibility: "private",
       });
+
+      const devices = await VendorDevice.findAll({
+        where: { vendor_token: owner_token, flag: 0 || false },
+        attributes: ["fcm_token"],
+        raw: true,
+      });
+
+      const tokens = [
+        ...new Set(
+          devices.map((d) => String(d.fcm_token || "").trim()).filter(Boolean)
+        ),
+      ];
+
+      if (!tokens.length) return true;
+
+      const response = await admin.messaging().sendEachForMulticast(
+        buildAlertMulticast({
+          tokens,
+          title: title || "Vehicle Request Cancelled",
+          body: message || "A vehicle request has been cancelled",
+          channelId: "duty-alerts",
+          sound: "default",
+          data: {
+            free_vehicle_token: free_vehicle_token || "",
+            sender_token: sender_token || "",
+            owner_token: owner_token || "",
+            type: type || "FREE_VEHICLE_CANCELLED",
+          },
+          collapseKey: `free_vehicle_cancel_${free_vehicle_token}`,
+        })
+      );
+
+      await cleanupInvalidTokens({
+        response,
+        tokens,
+        DeviceModel: VendorDevice,
+        ownerField: "vendor_token",
+        ownerValue: owner_token,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("free_vehicle.cancel worker error:", error);
+      throw error;
     }
   },
   {
     connection: bullConnection,
-    concurrency: 5
+    concurrency: 5,
   }
 );

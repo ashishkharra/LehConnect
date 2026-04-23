@@ -34,7 +34,7 @@ new Worker(
 
     // PUSH notification
     const devices = await VendorDevice.findAll({
-      where: { vendor_token },
+      where: { vendor_token, flag: 0 || false },
       attributes: ['fcm_token'],
       raw: true
     });

@@ -9,14 +9,14 @@ module.exports = (sequelize, Sequelize) => {
 
         token: {
             type: Sequelize.STRING(100),
-            allowNull: false,
+            allowNull: true,
             unique: true,
             comment: "Public enquiry identifier"
         },
 
         name: {
             type: Sequelize.STRING(100),
-            allowNull: false
+            allowNull: true
         },
 
         email: {
@@ -26,7 +26,7 @@ module.exports = (sequelize, Sequelize) => {
 
         mobile: {
             type: Sequelize.STRING(20),
-            allowNull: false
+            allowNull: true
         },
 
         requirement_type: {
@@ -40,23 +40,23 @@ module.exports = (sequelize, Sequelize) => {
                 "event",
                 "other"
             ),
-            allowNull: false,
+            allowNull: true,
             defaultValue: "hotel"
         },
 
         enquiry_date: {
             type: Sequelize.DATEONLY,
-            allowNull: false
+            allowNull: true
         },
 
         enquiry_time: {
             type: Sequelize.TIME,
-            allowNull: false
+            allowNull: true
         },
 
         location: {
             type: Sequelize.STRING(255),
-            allowNull: false
+            allowNull: true
         },
 
         adults: {

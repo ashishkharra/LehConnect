@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const vendorRoutes = require("./vendor.api.js");
+const customerRoutes = require('./customer.api.js')
 const { Op } = require("sequelize");
 const db = require("../models/index.js");
 const {
@@ -29,6 +30,10 @@ router.post("/refresh-token", async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     const clientRefreshToken = req.headers["x-refresh-token"];
+    const { fcmToken, device_id, platformName = "android" } = req.body;
+
+    const deviceId = device_id || null
+    const platform = platformName || null
 
     if (!authHeader || !clientRefreshToken) {
       return res.status(401).json(responseData("Unauthorized", {}, req, false));
@@ -70,7 +75,6 @@ router.post("/refresh-token", async (req, res) => {
 
     const newRefreshToken = randomstring(128);
     const encryptedNewRefresh = encryptRefreshToken(newRefreshToken);
-
     const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     await session.update({
@@ -85,6 +89,45 @@ router.post("/refresh-token", async (req, res) => {
 
     if (!user) {
       return res.status(401).json(responseData("Unauthorized", {}, req, false));
+    }
+
+    // ✅ FCM token sync for same device
+    if (fcmToken && deviceId) {
+      console.log("[FCM_REFRESH] incoming token:", fcmToken);
+      console.log("[FCM_REFRESH] deviceId:", deviceId);
+      console.log("[FCM_REFRESH] vendor token:", token);
+
+      const existingDevice = await db.vendor_device_fcm.findOne({
+        where: {
+          vendor_token: token,
+          device_id: deviceId,
+        },
+      });
+
+      if (existingDevice) {
+        console.log("[FCM_REFRESH] old DB token:", existingDevice.fcm_token);
+
+        await existingDevice.update({
+          fcm_token: fcmToken,
+          platform,
+          contact: user.contact || existingDevice.contact || null,
+        });
+
+        console.log("[FCM_REFRESH] existing device token updated");
+      } else {
+        await db.vendor_device_fcm.create({
+          token: randomstring(64),
+          vendor_token: token,
+          contact: user.contact || null,
+          fcm_token: fcmToken,
+          device_id: deviceId,
+          platform,
+        });
+
+        console.log("[FCM_REFRESH] new device token created");
+      }
+    } else {
+      console.log("[FCM_REFRESH] fcmToken or deviceId missing");
     }
 
     return res.status(200).json(
@@ -108,37 +151,30 @@ router.post("/refresh-token", async (req, res) => {
 router.post("/logout", [vendorMiddleware], async (req, res) => {
   try {
     const session = req.dbSession;
+    const fcmToken = String(req.body.fcmToken || "").trim();
 
     await session.update({ revoked_at: new Date() });
+
     await req.user.update({
       access_token_revoked: true,
       refresh_token_revoked: true,
     });
 
-    const fcmToken = req.body.fcmToken;
-    // let preferredCities = req.user.preferred_cities;
-    // if (typeof preferredCities === "string") {
-    //     try {
-    //         preferredCities = JSON.parse(
-    //             preferredCities.replace(/'/g, '"')
-    //         );
-    //     } catch {
-    //         preferredCities = [];
-    //     }
-    // }
-    // if (!Array.isArray(preferredCities)) {
-    //     preferredCities = [];
-    // }
-    // preferredCities = preferredCities
-    //     .map(c => String(c).trim())
-    //     .filter(c => c.length > 0);
+    // Logout current device token only
+    if (fcmToken) {
+      await db.vendor_device_fcm.update(
+        {
+          flag: 1,
+        },
+        {
+          where: {
+            vendor_token: req.user.token,
+            fcm_token: fcmToken,
+          },
+        }
+      );
+    }
 
-    // const topics = preferredCities.map(c =>
-    //     `city_${c.toLowerCase().replace(/\s+/g, "_")}`
-    // );
-    // if (fcmToken && topics.length) {
-    //     await admin.messaging().unsubscribeFromTopic(fcmToken, topics);
-    // }
     return res
       .status(200)
       .json(responseData("Logged out successfully", {}, req, true));
@@ -153,13 +189,15 @@ router.post("/verifyOtp", async (req, res) => {
 
   try {
     const otp = req.body.otp?.trim();
-    const role = req.body.identity?.trim();
+    const role = req.body.identity?.trim()?.toLowerCase();
     const phone = req.body.phone?.trim();
     const refCode = req.body.referralCode?.trim();
 
     const fcmToken = req.body.fcmToken || null;
     const deviceId = req.body.device_id || null;
     const platform = req.body.platformName || "android";
+
+    console.log('body ->>>> ', req.body)
 
     if (!["customer", "vendor"].includes(role)) {
       return res.status(401).json(responseData("Invalid role", {}, req, false));
@@ -170,6 +208,24 @@ router.post("/verifyOtp", async (req, res) => {
         .status(401)
         .json(responseData("Phone number invalid", {}, req, false));
     }
+
+    const roleUpper = role.toUpperCase();
+
+    const roleConfig = {
+      vendor: {
+        model: db.vendor,
+        deviceModel: db.vendor_device_fcm,
+        deviceTokenField: "vendor_token",
+      },
+      customer: {
+        model: db.customer,
+        deviceModel: db.customer_device_fcm,
+        deviceTokenField: "customer_token",
+      },
+    };
+
+    const { model: Model, deviceModel: DeviceModel, deviceTokenField } =
+      roleConfig[role];
 
     transaction = await db.sequelize.transaction();
 
@@ -185,7 +241,7 @@ router.post("/verifyOtp", async (req, res) => {
       return res.status(403).json(responseData("OTP expired", {}, req, false));
     }
 
-    const expireTime = Number(otpData.server_time) + 3 * 60 * 1000;
+    const expireTime = Number(otpData.server_time) + 10 * 60 * 1000;
 
     if (Date.now() > expireTime) {
       await db.otp.update(
@@ -209,8 +265,6 @@ router.post("/verifyOtp", async (req, res) => {
       { where: { id: otpData.id }, transaction }
     );
 
-    const Model = role === "customer" ? db.customer : db.vendor;
-
     let user = await Model.findOne({
       where: { contact: phone, flag: 0 },
       transaction,
@@ -223,7 +277,7 @@ router.post("/verifyOtp", async (req, res) => {
       user = await Model.create(
         {
           contact: phone,
-          role: role.toUpperCase(),
+          role: roleUpper,
           token: userToken,
           ip: req.ip,
           user_agent: req.get("User-Agent"),
@@ -237,10 +291,11 @@ router.post("/verifyOtp", async (req, res) => {
     let userWallet = await db.wallet.findOne({
       where: {
         user_token: userToken,
-        role: role.toUpperCase(),
+        role: roleUpper,
         status: "ACTIVE",
       },
       transaction,
+      lock: transaction.LOCK.UPDATE,
     });
 
     if (!userWallet) {
@@ -248,8 +303,10 @@ router.post("/verifyOtp", async (req, res) => {
         {
           token: randomstring(64),
           user_token: userToken,
-          role: role.toUpperCase(),
-          balance: 0,
+          role: roleUpper,
+          referral_balance: 0,
+          wallet_balance: 0,
+          total_balance: 0,
           currency: "INR",
           status: "ACTIVE",
         },
@@ -257,14 +314,80 @@ router.post("/verifyOtp", async (req, res) => {
       );
     }
 
-    if (refCode && refCode !== "null" && refCode !== "undefined") {
-      if (role !== "vendor") {
-        await transaction.rollback();
-        return res.status(403).json(
-          responseData("Only vendors can use referral codes", {}, req, false)
+    const creditReferralWallet = async ({
+      userToken,
+      userRole,
+      referenceId,
+      amount,
+      reason = "REFERRAL_BONUS",
+    }) => {
+      amount = Number(amount) || 0;
+      if (amount <= 0) return;
+
+      let wallet = await db.wallet.findOne({
+        where: {
+          user_token: userToken,
+          role: userRole,
+          status: "ACTIVE",
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!wallet) {
+        wallet = await db.wallet.create(
+          {
+            token: randomstring(64),
+            user_token: userToken,
+            role: userRole,
+            wallet_balance: 0,
+            referral_balance: 0,
+            total_balance: 0,
+            currency: "INR",
+            status: "ACTIVE",
+          },
+          { transaction }
         );
       }
 
+      const openingWalletBalance = Number(wallet.wallet_balance) || 0;
+      const openingReferralBalance = Number(wallet.referral_balance) || 0;
+      const openingTotalBalance = Number(wallet.total_balance) || 0;
+
+      const closingWalletBalance = openingWalletBalance;
+      const closingReferralBalance = openingReferralBalance + amount;
+      const closingTotalBalance =
+        closingWalletBalance + closingReferralBalance;
+
+      await wallet.update(
+        {
+          referral_balance: closingReferralBalance,
+          total_balance: closingTotalBalance,
+          last_transaction_at: new Date(),
+        },
+        { transaction }
+      );
+
+      await db.wallet_transaction.create(
+        {
+          token: randomstring(64),
+          wallet_id: wallet.id,
+          transaction_type: "CREDIT",
+          amount,
+          opening_balance: openingTotalBalance,
+          closing_balance: closingTotalBalance,
+          wallet_balance: closingWalletBalance,
+          referral_balance: closingReferralBalance,
+          reason,
+          reference_type: userRole,
+          reference_id: referenceId,
+          status: "SUCCESS",
+        },
+        { transaction }
+      );
+    };
+
+    if (refCode && refCode !== "null" && refCode !== "undefined") {
       if (!isNew) {
         await transaction.rollback();
         return res.status(400).json(
@@ -277,27 +400,27 @@ router.post("/verifyOtp", async (req, res) => {
         );
       }
 
-      const referringVendor = await db.vendor.findOne({
+      const referringUser = await Model.findOne({
         where: { ref_code: refCode, flag: 0 },
         transaction,
       });
 
-      if (!referringVendor) {
+      if (!referringUser) {
         await transaction.rollback();
         return res.status(400).json(
           responseData("Invalid referral code", {}, req, false)
         );
       }
 
-      if (referringVendor.token === userToken) {
+      if (referringUser.token === userToken) {
         await transaction.rollback();
         return res.status(400).json(
           responseData("You cannot use your own referral code", {}, req, false)
         );
       }
 
-      await db.vendor.update(
-        { referer_code_used: referringVendor.id },
+      await Model.update(
+        { referer_code_used: referringUser.id },
         { where: { id: user.id }, transaction }
       );
 
@@ -309,69 +432,32 @@ router.post("/verifyOtp", async (req, res) => {
       const refereeBonus = Number(referralCodeInfo?.referee_bonus) || 0;
       const referrerBonus = Number(referralCodeInfo?.referrer_bonus) || 0;
 
-      const creditWallet = async (walletToken, referenceId, amount) => {
-        amount = Number(amount) || 0;
+      // ULTA BONUS APPLY KIYA GYA HAI
+      // referring user ko refereeBonus
+      await creditReferralWallet({
+        userToken: referringUser.token,
+        userRole: roleUpper,
+        referenceId: user.id,
+        amount: refereeBonus,
+        reason: "REFERRAL_BONUS_REFERRER",
+      });
 
-        let wallet = await db.wallet.findOne({
-          where: {
-            user_token: walletToken,
-            role: "VENDOR",
-            status: "ACTIVE",
-          },
-          transaction,
-        });
-
-        if (!wallet) {
-          wallet = await db.wallet.create(
-            {
-              token: randomstring(64),
-              user_token: walletToken,
-              role: "VENDOR",
-              balance: 0,
-              currency: "INR",
-              status: "ACTIVE",
-            },
-            { transaction }
-          );
-        }
-
-        const opening = Number(wallet.balance) || 0;
-        const closing = opening + amount;
-
-        await wallet.update(
-          {
-            balance: closing,
-            last_transaction_at: new Date(),
-          },
-          { transaction }
-        );
-
-        await db.wallet_transaction.create(
-          {
-            token: randomstring(64),
-            wallet_id: wallet.id,
-            transaction_type: "CREDIT",
-            amount,
-            opening_balance: opening,
-            closing_balance: closing,
-            reason: "REFERRAL_BONUS",
-            reference_type: "VENDOR",
-            reference_id: referenceId,
-            status: "SUCCESS",
-          },
-          { transaction }
-        );
-      };
-
-      await creditWallet(referringVendor.token, user.id, referrerBonus);
-      await creditWallet(userToken, referringVendor.id, refereeBonus);
+      // new registered user ko referrerBonus
+      await creditReferralWallet({
+        userToken: userToken,
+        userRole: roleUpper,
+        referenceId: referringUser.id,
+        amount: referrerBonus,
+        reason: "REFERRAL_BONUS_REFEREE",
+      });
 
       await db.referral_history.create(
         {
-          referrer_id: referringVendor.id,
+          referrer_id: referringUser.id,
           referee_id: user.id,
-          referrer_amount: referrerBonus,
-          referee_amount: refereeBonus,
+          // history me bhi ulta save kiya
+          referrer_amount: refereeBonus,
+          referee_amount: referrerBonus,
           status: "PAID",
         },
         { transaction }
@@ -398,7 +484,7 @@ router.post("/verifyOtp", async (req, res) => {
 
     await db.session.create({
       user_token: userToken,
-      role: role.toUpperCase(),
+      role: roleUpper,
       session_token: JSON.stringify(encryptedRefreshToken),
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       device_hash: deviceHash,
@@ -407,9 +493,14 @@ router.post("/verifyOtp", async (req, res) => {
       last_used_at: new Date(),
     });
 
-    if (role === "vendor" && fcmToken && deviceId) {
-      const existingDevice = await db.vendor_device_fcm.findOne({
-        where: { vendor_token: userToken, device_id: deviceId },
+    if (fcmToken && deviceId && DeviceModel) {
+      const whereObj = {
+        [deviceTokenField]: userToken,
+        device_id: deviceId,
+      };
+
+      const existingDevice = await DeviceModel.findOne({
+        where: whereObj,
       });
 
       if (existingDevice) {
@@ -417,11 +508,12 @@ router.post("/verifyOtp", async (req, res) => {
           fcm_token: fcmToken,
           contact: phone,
           platform,
+          flag: 0
         });
       } else {
-        await db.vendor_device_fcm.create({
+        await DeviceModel.create({
           token: randomstring(64),
-          vendor_token: userToken,
+          [deviceTokenField]: userToken,
           contact: phone,
           fcm_token: fcmToken,
           device_id: deviceId,
@@ -456,7 +548,6 @@ router.post("/verifyOtp", async (req, res) => {
 
 router.post("/getOtp", async (req, res) => {
   try {
-    console.log(req.body);
     const phone = req.body.phone;
     const role = req.body.identity;
 
@@ -514,20 +605,6 @@ router.post("/getOtp", async (req, res) => {
       });
     }
 
-    // if (ENV === 'production' && recaptchaToken) {
-    //     const captchaVerification = await verifyRecaptcha(recaptchaToken);
-
-    //     if (
-    //         !captchaVerification.success ||
-    //         (captchaVerification.score && captchaVerification.score < 0.5)
-    //     ) {
-    //         return res.status(400).json({
-    //             status: 400,
-    //             message: 'reCAPTCHA verification failed'
-    //         });
-    //     }
-    // }
-
     let otp;
 
     if (testNumbers.includes(phone)) {
@@ -558,7 +635,7 @@ router.post("/getOtp", async (req, res) => {
       contact: phone,
       role: role.toUpperCase(),
       otp,
-      valid_time: 18000,
+      valid_time: 600000,
       server_time: Date.now(),
       browser_address: req.useragent?.browser || "unknown",
       user_ip: ipAddress,
@@ -582,5 +659,6 @@ router.post("/getOtp", async (req, res) => {
 });
 
 router.use("/vendor", vendorRoutes);
+router.use("/customer", customerRoutes)
 
 module.exports = router;

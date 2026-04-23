@@ -19,6 +19,11 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true
       },
 
+      assigned_vendor_token: {
+        type: Sequelize.STRING(64),
+        allowNull: true
+      },
+
       trip_type: {
         type: Sequelize.ENUM('ONE_WAY', 'ROUND_TRIP'),
         allowNull: true
@@ -99,6 +104,11 @@ module.exports = (sequelize, Sequelize) => {
         defaultValue: false
       },
 
+      payment_status: {
+        type: Sequelize.ENUM('PAID', 'UNPAID'),
+        allowNull: true
+      },
+
       completion_requested_by: {
         type: Sequelize.STRING(64),
         allowNull: true
@@ -175,6 +185,7 @@ module.exports = (sequelize, Sequelize) => {
       indexes: [
         { fields: ['token'] },
         { fields: ['vendor_token'] },
+        { fields: ['assigned_vendor_token'] },
         { fields: ['status'] },
         { fields: ['trip_type'] },
         { fields: ['pickup_datetime'] }

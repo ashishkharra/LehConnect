@@ -1,5 +1,5 @@
 module.exports = (sequelize, Sequelize) => {
-    const VendorDevice = sequelize.define("tbl_vendor_device_fcm", {
+    const VendorDevice = sequelize.define("tbl_vendor_device_fcms", {
         token: {
             type: Sequelize.STRING(64),
             allowNull: true
@@ -24,6 +24,11 @@ module.exports = (sequelize, Sequelize) => {
         platform: {
             type: Sequelize.ENUM('android', 'ios'),
             defaultValue: 'android'
+        },
+        flag: {
+            type: Sequelize.BOOLEAN,
+            defaultValue: false,
+            allowNull: true
         }
     }, {
         indexes: [

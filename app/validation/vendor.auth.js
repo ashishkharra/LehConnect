@@ -27,27 +27,184 @@ module.exports.validate = (method) => {
 
 
                 body("adults")
-                    .optional()
-                    .isInt({ min: 1, max: 12 })
-                    .withMessage("Adults must be between 1 and 12"),
-
+                    .optional(),
 
                 body("children")
-                    .optional()
-                    .isInt({ min: 0, max: 6 })
-                    .withMessage("Children must be between 0 and 6"),
-
+                    .optional(),
 
                 body("rooms")
-                    .optional()
-                    .isInt({ min: 1, max: 6 })
-                    .withMessage("Rooms must be between 1 and 6"),
+                    .optional(),
 
                 body('contact')
                     .optional(),
 
                 body('from_web')
-                    .isIn([true, false, 1, 0]),
+                    .optional()
+                    .isBoolean().withMessage('from_web must be boolean')
+                    .toBoolean(),
+
+                validatorMiddleware
+            ]
+        }
+
+        case 'post-call-enquiry': {
+            return [
+
+                body("enquiry_token")
+                    .notEmpty()
+                    .withMessage("Enquiry token is required")
+                    .isLength({ min: 5, max: 100 })
+                    .withMessage("Enquiry token must be valid"),
+
+                body("enquiry_type")
+                    .notEmpty()
+                    .withMessage("Enquiry type is required")
+                    .isIn(["cab", "hotel", "flight", "holiday_package", "insurance"])
+                    .withMessage("Invalid enquiry type"),
+
+                body("customer_token")
+                    .notEmpty()
+                    .withMessage("Customer token is required")
+                    .isLength({ min: 5, max: 100 })
+                    .withMessage("Customer token must be valid"),
+
+                body("call_type")
+                    .optional()
+                    .isIn(["incoming", "outgoing"])
+                    .withMessage("Call type must be incoming or outgoing"),
+
+                body("status")
+                    .optional()
+                    .isIn(["success", "missed", "failed"])
+                    .withMessage("Invalid call status"),
+
+                body("call_time")
+                    .optional()
+                    .isISO8601()
+                    .withMessage("Call time must be valid date")
+                    .toDate(),
+
+                body("notes")
+                    .optional()
+                    .isLength({ max: 1000 })
+                    .withMessage("Notes must be less than 1000 characters"),
+
+                validatorMiddleware
+            ];
+        }
+
+        case "get-call-enquiry-list": {
+            return [
+                query("page")
+                    .optional()
+                    .isInt({ min: 1 })
+                    .withMessage("Page must be a positive integer")
+                    .toInt(),
+
+                query("limit")
+                    .optional()
+                    .isInt({ min: 1, max: 100 })
+                    .withMessage("Limit must be between 1 and 100")
+                    .toInt(),
+
+                query("search")
+                    .optional()
+                    .isLength({ max: 200 })
+                    .withMessage("Search must be less than 200 characters"),
+
+                query("enquiry_token")
+                    .optional()
+                    .isLength({ min: 1, max: 100 })
+                    .withMessage("Enquiry token must be valid"),
+
+                query("enquiry_type")
+                    .optional()
+                    .isIn(["cab", "hotel", "flight", "holiday_package", "insurance"])
+                    .withMessage("Invalid enquiry type"),
+
+                query("customer_token")
+                    .optional()
+                    .isLength({ min: 1, max: 100 })
+                    .withMessage("Customer token must be valid"),
+
+                query("status")
+                    .optional()
+                    .isIn(["success", "missed", "failed"])
+                    .withMessage("Invalid status"),
+
+                query("call_type")
+                    .optional()
+                    .isIn(["incoming", "outgoing"])
+                    .withMessage("Invalid call type"),
+
+                query("from_date")
+                    .optional()
+                    .isISO8601()
+                    .withMessage("From date must be valid date")
+                    .toDate(),
+
+                query("to_date")
+                    .optional()
+                    .isISO8601()
+                    .withMessage("To date must be valid date")
+                    .toDate(),
+
+                validatorMiddleware,
+            ];
+        }
+
+        case 'post-cab-enquiry': {
+            return [
+                body('trip_type')
+                    .notEmpty().withMessage('Trip type is required')
+                    .isIn(['oneway', 'round_trip', 'local'])
+                    .withMessage('Trip type must be oneway, round_trip, or local'),
+
+                body('from_location')
+                    .notEmpty().withMessage('From location is required')
+                    .isString().withMessage('Invalid from location')
+                    .trim()
+                    .isLength({ min: 2, max: 255 })
+                    .withMessage('From location must be between 2 and 255 characters'),
+
+                body('to_location')
+                    .if(body('trip_type').isIn(['oneway', 'round_trip']))
+                    .notEmpty().withMessage('To location is required for oneway and round trip')
+                    .isString().withMessage('Invalid to location')
+                    .trim()
+                    .isLength({ min: 2, max: 255 })
+                    .withMessage('To location must be between 2 and 255 characters'),
+
+                body('departure_date')
+                    .notEmpty().withMessage('Departure date is required')
+                    .isISO8601().withMessage('Invalid departure date format')
+                    .toDate(),
+
+                body('return_date')
+                    .if(body('trip_type').equals('round_trip'))
+                    .notEmpty().withMessage('Return date is required for round trip')
+                    .isISO8601().withMessage('Invalid return date format')
+                    .toDate()
+                    .custom((value, { req }) => {
+                        if (value && new Date(value) <= new Date(req.body.departure_date)) {
+                            throw new Error('Return date must be after departure date');
+                        }
+                        return true;
+                    }),
+
+                body('car_type')
+                    .optional()
+                    .isString().withMessage('Invalid car type')
+                    .isIn(['Sedan', 'SUV', 'hatchback', 'tempo traveller', 'bus'])
+                    .withMessage('Invalid car type selected'),
+
+                body('contact')
+                    .optional(),
+
+                body('from_web')
+                    .optional()
+                    .isBoolean().withMessage('from_web must be boolean')
+                    .toBoolean(),
 
                 validatorMiddleware
             ]
@@ -159,7 +316,7 @@ module.exports.validate = (method) => {
                     .isString().withMessage('Invalid last_name type'),
 
                 body('email')
-                    .notEmpty().withMessage('Email is required')
+                    .optional()
                     .isEmail().withMessage("Invalid email type")
                     .trim(),
 
@@ -434,6 +591,129 @@ module.exports.validate = (method) => {
             ]
         }
 
+        case 'booking-update': {
+            return [
+
+                body('trip_type')
+                    .optional()
+                    .isIn(['one_way', 'round_trip'])
+                    .withMessage('trip_type must be one_way or round_trip'),
+
+                body('vehicle_type')
+                    .optional()
+                    .trim()
+                    .notEmpty()
+                    .withMessage('vehicle_type cannot be empty'),
+
+                body('vehicle_name')
+                    .optional()
+                    .trim(),
+
+                body('pickup_datetime')
+                    .optional()
+                    .isISO8601()
+                    .withMessage('pickup_datetime must be a valid datetime'),
+
+                body('return_datetime')
+                    .optional()
+                    .isISO8601()
+                    .withMessage('return_datetime must be a valid datetime')
+                    .custom((value, { req }) => {
+                        if (
+                            req.body.trip_type === 'round_trip' &&
+                            (!value || !req.body.pickup_datetime)
+                        ) {
+                            throw new Error('return_datetime is required for round_trip');
+                        }
+
+                        if (value && req.body.pickup_datetime) {
+                            if (new Date(value) <= new Date(req.body.pickup_datetime)) {
+                                throw new Error('return_datetime must be after pickup_datetime');
+                            }
+                        }
+
+                        return true;
+                    }),
+
+                body('pickup_location')
+                    .optional()
+                    .trim()
+                    .notEmpty()
+                    .withMessage('pickup_location cannot be empty'),
+
+                body('drop_location')
+                    .optional()
+                    .trim()
+                    .notEmpty()
+                    .withMessage('drop_location cannot be empty'),
+
+                body('city')
+                    .optional()
+                    .trim()
+                    .notEmpty()
+                    .withMessage('city cannot be empty'),
+
+                body('state')
+                    .optional()
+                    .trim()
+                    .notEmpty()
+                    .withMessage('state cannot be empty'),
+
+                body('booking_amount')
+                    .optional()
+                    .isFloat({ min: 0 })
+                    .withMessage('booking_amount must be a positive number'),
+
+                body('commission')
+                    .optional()
+                    .isFloat({ min: 0 })
+                    .withMessage('commission must be a positive number'),
+
+                body('total_amount')
+                    .optional()
+                    .isFloat({ min: 0 })
+                    .withMessage('total_amount must be a positive number')
+                    .custom((value) => {
+                        if (!/^\d+(\.\d{1,2})?$/.test(value)) {
+                            throw new Error('Total amount can have up to 2 decimal places');
+                        }
+                        return true;
+                    }),
+
+                body('is_negotiable')
+                    .optional()
+                    .isBoolean()
+                    .withMessage('is_negotiable must be boolean'),
+
+                body('secure_booking')
+                    .optional()
+                    .isBoolean()
+                    .withMessage('secure_booking must be boolean'),
+
+                body('accept_type')
+                    .optional()
+                    .isIn(['instant', 'approval', 'bidding'])
+                    .withMessage('accept_type must be INSTANT, APPROVAL or BID'),
+
+                body('visibility')
+                    .optional()
+                    .isIn(['PUBLIC', 'MY_NETWORK'])
+                    .withMessage('visibility must be PUBLIC or MY_NETWORK'),
+
+                body('payment_status')
+                    .optional()
+                    .isIn(['PAID', 'UNPAID'])
+                    .withMessage('payment_status must be PAID or UNPAID'),
+
+                body('extra_requirements')
+                    .optional()
+                    .isObject()
+                    .withMessage('extra_requirements must be a JSON object'),
+
+                validatorMiddleware
+            ];
+        }
+
         case 'get-booking': {
             return [
                 param('token')
@@ -525,7 +805,9 @@ module.exports.validate = (method) => {
                     .optional()
                     .isBoolean().withMessage('whatsapp must be true/false'),
                 body('from_web')
-                    .isIn([true, false, 1, 0]),
+                    .optional()
+                    .isBoolean().withMessage('from_web must be boolean')
+                    .toBoolean(),
                 validatorMiddleware
             ];
         }
@@ -570,7 +852,10 @@ module.exports.validate = (method) => {
                     .optional(),
 
                 body('from_web')
-                    .isIn([true, false, 1, 0]),
+                    .optional()
+                    .isBoolean().withMessage('from_web must be boolean')
+                    .toBoolean(),
+
 
                 validatorMiddleware
             ];
@@ -581,40 +866,84 @@ module.exports.validate = (method) => {
             return [
                 body('trip_type')
                     .notEmpty().withMessage('Trip type is required')
-                    .isIn(['one_way', 'round_trip']).withMessage('Trip type must be one_way or round_trip'),
+                    .isIn(['one_way', 'round_trip', 'multi_city']).withMessage('Trip type must be oneway, round, or multi'),
 
                 body('from_location')
-                    .notEmpty().withMessage('From location is required')
+                    .optional({ nullable: true })
                     .isString().withMessage('Invalid from location')
                     .trim()
                     .isLength({ min: 2, max: 100 }).withMessage('From location must be between 2 and 100 characters'),
 
                 body('to_location')
-                    .notEmpty().withMessage('To location is required')
+                    .optional({ nullable: true })
                     .isString().withMessage('Invalid to location')
                     .trim()
                     .isLength({ min: 2, max: 100 }).withMessage('To location must be between 2 and 100 characters'),
 
                 body('departure_date')
-                    .notEmpty().withMessage('Departure date is required')
-                    .isISO8601().withMessage('Invalid departure date format')
-                    .toDate(),
+                    .optional({ nullable: true })
+                    .isISO8601().withMessage('Invalid departure date format'),
 
                 body('return_date')
-                    .optional()
+                    .optional({ nullable: true })
                     .isISO8601().withMessage('Invalid return date format')
-                    .toDate()
                     .custom((value, { req }) => {
-                        // If trip is round_trip, return_date is mandatory
-                        if (req.body.trip_type === 'round_trip' && !value) {
-                            throw new Error('Return date is required for round trip');
-                        }
-                        // If provided, ensure it's after departure
-                        if (value && new Date(value) <= new Date(req.body.departure_date)) {
-                            throw new Error('Return date must be after departure date');
+                        if (req.body.trip_type === 'round') {
+                            if (!value) {
+                                throw new Error('Return date is required for round trip');
+                            }
+                            if (new Date(value) <= new Date(req.body.departure_date)) {
+                                throw new Error('Return date must be after departure date');
+                            }
                         }
                         return true;
                     }),
+
+                body('segments')
+                    .optional()
+                    .isArray({ min: 1 }).withMessage('Segments must be a non-empty array')
+                    .custom((segments, { req }) => {
+                        if (req.body.trip_type === 'multi') {
+                            if (!Array.isArray(segments) || segments.length < 2) {
+                                throw new Error('At least 2 segments are required for multi trip');
+                            }
+
+                            for (let i = 0; i < segments.length; i++) {
+                                const seg = segments[i];
+
+                                if (!seg.from_location || typeof seg.from_location !== 'string') {
+                                    throw new Error(`from_location is required in segment ${i + 1}`);
+                                }
+
+                                if (!seg.to_location || typeof seg.to_location !== 'string') {
+                                    throw new Error(`to_location is required in segment ${i + 1}`);
+                                }
+
+                                if (!seg.departure_date || isNaN(Date.parse(seg.departure_date))) {
+                                    throw new Error(`Valid departure_date is required in segment ${i + 1}`);
+                                }
+                            }
+                        }
+                        return true;
+                    }),
+
+                body().custom((value, { req }) => {
+                    const { trip_type, from_location, to_location, departure_date, segments } = req.body;
+
+                    if (trip_type === 'oneway' || trip_type === 'round') {
+                        if (!from_location) throw new Error('From location is required');
+                        if (!to_location) throw new Error('To location is required');
+                        if (!departure_date) throw new Error('Departure date is required');
+                    }
+
+                    if (trip_type === 'multi') {
+                        if (!segments || !Array.isArray(segments) || segments.length === 0) {
+                            throw new Error('Segments are required for multi trip');
+                        }
+                    }
+
+                    return true;
+                }),
 
                 body('adults')
                     .optional()
@@ -632,7 +961,9 @@ module.exports.validate = (method) => {
                     .optional(),
 
                 body('from_web')
-                    .isIn([true, false, 1, 0]),
+                    .optional()
+                    .isBoolean().withMessage('from_web must be boolean')
+                    .toBoolean(),
 
                 validatorMiddleware
             ];

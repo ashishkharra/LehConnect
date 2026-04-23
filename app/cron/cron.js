@@ -1,17 +1,11 @@
 const cron = require('node-cron');
 const { Op } = require('sequelize');
 const db = require('../models');
-// const { getIO } = require('../sockets/index');
-const { remindPartialVendors } = require('../controller/adminController.js')
-const { freeVehicleExpiredQueue, freeVehicleRequestExpiredQueue } = require('../queues/vendor/freeVehicle_queue/free_vehicle_cron.queue.js')
-const bookingExpiredQueue = require('../queues/vendor/booking_queue/booking_cron.queue.js')
-const {queuePartialVendorReminder} = require('../controller/adminController.js')
+const {queuePartialVendorReminder} = require('../shared/utils/helper.js')
 
 
 const FreeVehicle = db.freeVehicle;
 const FreeVehicleRequest = db.requestFreeVehicle;
-const Vendor = db.vendor;
-const Notification = db.notification;
 const Booking = db.booking
 
 module.exports = {

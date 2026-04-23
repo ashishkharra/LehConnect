@@ -19,7 +19,7 @@ const vendorMiddleware = async (req, res, next) => {
     const refreshToken = req.headers["x-refresh-token"];
 
     if (!authHeader || !refreshToken) {
-      return res.status(401).json(responseData("Unauthorized", {code: 'FORCE_LOGOUT'}, req, false));
+      return res.status(401).json(responseData("Unauthorized", { code: 'FORCE_LOGOUT' }, req, false));
     }
 
     const token = authHeader.split(" ")[1];
@@ -36,7 +36,7 @@ const vendorMiddleware = async (req, res, next) => {
     });
 
     if (!session) {
-      return res.status(401).json(responseData("Session expired", {code: 'FORCE_LOGOUT'}, req, false));
+      return res.status(401).json(responseData("Session expired", { code: 'FORCE_LOGOUT' }, req, false));
     }
 
     if (new Date() > new Date(session.expires_at)) {
@@ -44,13 +44,13 @@ const vendorMiddleware = async (req, res, next) => {
         { revoked_at: new Date() },
         { where: { id: session.id } }
       );
-      return res.status(401).json(responseData("Session expired", {code: 'FORCE_LOGOUT'}, req, false));
+      return res.status(401).json(responseData("Session expired", { code: 'FORCE_LOGOUT' }, req, false));
     }
 
     const decryptedRefresh = decryptRefreshToken(JSON.parse(session.session_token));
 
     if (decryptedRefresh !== refreshToken) {
-      return res.status(401).json(responseData("Invalid session", {code: 'FORCE_LOGOUT'}, req, false));
+      return res.status(401).json(responseData("Invalid session", { code: 'FORCE_LOGOUT' }, req, false));
     }
 
     const user = await Vendor.findOne({
@@ -78,49 +78,79 @@ const vendorMiddleware = async (req, res, next) => {
 
 const customerMiddleware = async (req, res, next) => {
   try {
-    const auth = req.headers.authorization;
+    const authHeader = req.headers.authorization;
     const refreshToken = req.headers["x-refresh-token"];
 
-    if (!auth || !refreshToken) {
+    // console.log('xxxxxxxxxxxxxxx ', authHeader)
+    // console.log('yyyyyyyyyyyyy  ', refreshToken)
+
+    if (!authHeader || !refreshToken) {
       return res
         .status(401)
-        .json(responseData("Unauthorized", {}, req, false));
+        .json(responseData("Unauthorized", { code: "FORCE_LOGOUT" }, req, false));
     }
 
-    const token = auth.split(" ")[1];
+    // console.log('yyyyyyyyyyyyy')
+
+    const token = authHeader.split(" ")[1];
+    const deviceHash = getDeviceHash(req);
+
+    const session = await Session.findOne({
+      where: {
+        user_token: token,
+        revoked_at: null,
+        device_hash: deviceHash,
+      },
+    });
+
+    if (!session) {
+      return res
+        .status(401)
+        .json(responseData("Session expired", { code: "FORCE_LOGOUT" }, req, false));
+    }
+
+    if (new Date() > new Date(session.expires_at)) {
+      await Session.update(
+        { revoked_at: new Date() },
+        { where: { id: session.id } }
+      );
+
+      return res
+        .status(401)
+        .json(responseData("Session expired", { code: "FORCE_LOGOUT" }, req, false));
+    }
+
+    const decryptedRefresh = decryptRefreshToken(
+      JSON.parse(session.session_token)
+    );
+
+    if (decryptedRefresh !== refreshToken) {
+      return res
+        .status(401)
+        .json(responseData("Invalid session", { code: "FORCE_LOGOUT" }, req, false));
+    }
 
     const user = await Customer.findOne({
-      where: {
-        token,
-        refresh_token_revoked: false
-      }
+      where: { token, flag: 0 },
     });
 
     if (!user) {
       return res
         .status(401)
-        .json(responseData("Session expired", {}, req, false));
+        .json(responseData("Unauthorized", {}, req, false));
     }
 
-    if (new Date() > user.refresh_token_expires_at) {
-      return res
-        .status(401)
-        .json(responseData("Session expired", {}, req, false));
-    }
-
-    const encrypted = JSON.parse(user.refresh_token);
-    const dbRefreshToken = decryptRefreshToken(encrypted);
-
-    if (dbRefreshToken !== refreshToken) {
-      return res
-        .status(401)
-        .json(responseData("Invalid session", {}, req, false));
-    }
+    await Session.update(
+      { last_used_at: new Date() },
+      { where: { id: session.id } }
+    );
 
     req.user = user;
+    req.dbSession = session;
+
     next();
-  } catch (error) {
-    console.error("Customer middleware error:", error);
+  } catch (err) {
+    console.error("Customer middleware error:", err);
     return res
       .status(401)
       .json(responseData("Unauthorized", {}, req, false));
@@ -135,7 +165,6 @@ const verifiedOnly = (req, res, next) => {
   }
   next();
 };
-
 
 
 module.exports = { authMiddleware, vendorMiddleware, customerMiddleware, verifiedOnly };

@@ -1,69 +1,84 @@
-const { Worker } = require('bullmq');
-const bullConnection = require('../../../config/bullMq');
-const db = require('../../../models');
-const admin = require('../../../config/firebase');
+const { Worker } = require("bullmq");
+const bullConnection = require("../../../config/bullMq");
+const db = require("../../../models/index");
+const admin = require("../../../config/firebase");
+
+const { buildAlertMulticast } = require("../../../shared/utils/fcmMessage");
+const { cleanupInvalidTokens } = require("../../../shared/utils/fcmCleanup");
 
 const Notification = db.notification;
 const VendorDevice = db.vendor_device_fcm;
 
 new Worker(
-  'free-vehicle-notification',
-  async job => {
+  "free-vehicle-request-notification",
+  async (job) => {
+    try {
+      const {
+        free_vehicle_token,
+        sender_token,
+        owner_token,
+        title,
+        message,
+        type,
+      } = job.data;
 
-    const {
-      free_vehicle_token,
-      owner_token,
-      requester_token,
-      vehicle_type,
-      city
-    } = job.data;
-
-    let title, message, type;
-
-    if (job.name === 'FREE_VEHICLE_BOOKED') {
-      type = 'FREE_VEHICLE_BOOKED';
-      title = 'Vehicle Booked';
-      message = `${vehicle_type} has been booked in ${city}`;
-    }
-
-    if (job.name === 'FREE_VEHICLE_REQUESTED') {
-      type = 'FREE_VEHICLE_REQUEST_RECEIVED';
-      title = 'New Vehicle Request';
-      message = `New request for your ${vehicle_type} in ${city}`;
-    }
-
-    // 🗂 DB notification
-    await Notification.create({
-      sender_token: requester_token,
-      receiver_token: owner_token,
-      receiver_role: 'vendor',
-      free_vehicle_token,
-      type,
-      title,
-      message,
-      visibility: 'private'
-    });
-
-    // 🔔 PUSH
-    const devices = await VendorDevice.findAll({
-      where: { vendor_token: owner_token },
-      attributes: ['fcm_token'],
-      raw: true
-    });
-
-    if (devices.length) {
-      await admin.messaging().sendEachForMulticast({
-        tokens: devices.map(d => d.fcm_token),
-        notification: { title, body: message },
-        data: {
-          free_vehicle_token,
-          type
-        }
+      await Notification.create({
+        sender_token: sender_token || null,
+        receiver_token: owner_token,
+        receiver_role: "vendor",
+        type: type || "FREE_VEHICLE_REQUEST",
+        title: title || "New Vehicle Request",
+        message: message || "You received a new vehicle request",
+        visibility: "private",
       });
+
+      const devices = await VendorDevice.findAll({
+        where: { vendor_token: owner_token, flag: 0 || false },
+        attributes: ["fcm_token"],
+        raw: true,
+      });
+
+      const tokens = [
+        ...new Set(
+          devices.map((d) => String(d.fcm_token || "").trim()).filter(Boolean)
+        ),
+      ];
+
+      if (!tokens.length) return true;
+
+      const response = await admin.messaging().sendEachForMulticast(
+        buildAlertMulticast({
+          tokens,
+          title: title || "New Vehicle Request",
+          body: message || "You received a new vehicle request",
+          channelId: "duty-alerts",
+          sound: "default",
+          data: {
+            free_vehicle_token: free_vehicle_token || "",
+            sender_token: sender_token || "",
+            owner_token: owner_token || "",
+            type: type || "FREE_VEHICLE_REQUEST",
+          },
+          collapseKey: `free_vehicle_request_${free_vehicle_token}`,
+        })
+      );
+
+      await cleanupInvalidTokens({
+        response,
+        tokens,
+        DeviceModel: VendorDevice,
+        ownerField: "vendor_token",
+        ownerValue: owner_token,
+      });
+
+      return true;
+    } catch (error) {
+      console.error("free_vehicle_request worker error:", error);
+      throw error;
     }
   },
   {
     connection: bullConnection,
-    concurrency: 5
+    concurrency: 5,
   }
 );

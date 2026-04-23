@@ -13,6 +13,12 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        customer_token: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
         vendor_token: {
             type: Sequelize.STRING,
             defaultValue: null
@@ -54,9 +60,9 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: 0
         },
 
-        rooms: {
-            type: Sequelize.INTEGER,
-            defaultValue: 1
+        room_type: {
+            type: Sequelize.STRING,
+            defaultValue: null
         },
 
         status: {

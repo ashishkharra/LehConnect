@@ -48,6 +48,7 @@ db.vendor_acc_delete_req = require('./vendor_acc_delete_req.model.js')(sequelize
 db.faqs = require('./faqs.model.js')(sequelize, Sequelize)
 db.about = require('./about.model.js')(sequelize, Sequelize)
 db.vendor_device_fcm = require('./vendor_device_fcm.js')(sequelize, Sequelize)
+db.customer_device_fcm = require('./customer_device_fcm.js')(sequelize, Sequelize)
 db.booking_cancel = require('./booking_cancle.model.js')(sequelize, Sequelize)
 db.freeVehicle_cancel = require('./freeVehicle_cancel.model.js')(sequelize, Sequelize)
 db.vendor_help = require('./vendor_help.model.js')(sequelize, Sequelize)
@@ -61,12 +62,502 @@ db.holydaypackageEnquiry = require('./holidaypackageEnquiry.model.js')(sequelize
 db.insuranceEnquiry = require('./insuranceEnquiry.model.js')(sequelize, Sequelize)
 db.hotelEnquiry = require('./hotelEnquiry.model.js')(sequelize, Sequelize)
 db.flightEnquiry = require('./flightEnquiry.model.js')(sequelize, Sequelize)
+db.CabEnquiry = require('./cabEnquiry.model.js')(sequelize,Sequelize)
 db.siteSettings = require('./settings.model.js')(sequelize, Sequelize)
 db.conversation = require('./conversation.js')(sequelize, Sequelize)
+db.enquiryRequest = require('./enquiryRequests.model.js')(sequelize, Sequelize)
+db.bookingPayment = require('./booking_payment.model.js')(sequelize, Sequelize)
+db.bookingRefund = require('./booking_refunds.model.js')(sequelize, Sequelize);
+db.vendorPayout = require('./vendor_payouts.model.js')(sequelize, Sequelize);
+db.bookingAdvanceRequest = require('./booking_advance_request.js')(sequelize, Sequelize)
+db.bookingAdvanceRequestHistory = require('./booking_advance_request_history.js')(sequelize, Sequelize)
+db.customerReferralHistory = require('./customerReferralHistory.js')(sequelize, Sequelize)
+db.EnquiryCalls = require('./enquiryCalls.model.js')(sequelize, Sequelize)
+db.AddVehicle = require('./Add_vehicle.model.js')(sequelize, Sequelize)
 
 
-// db.freeVehicle.belongsTo(db.vendor, { as: 'vendor', constraints: false });
-// db.vendor.hasMany(db.freeVehicle, { as: 'freeVehicles', constraints: false });
+// BookingPayment <-> Booking
+db.bookingPayment.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.bookingPayment, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "booking_payments",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> Booking
+db.bookingAdvanceRequest.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> BookingRequest
+db.bookingAdvanceRequest.belongsTo(db.bookingRequest, {
+  foreignKey: "booking_request_token",
+  targetKey: "token",
+  as: "booking_request",
+  constraints: false
+});
+
+db.bookingRequest.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "booking_request_token",
+  sourceKey: "token",
+  as: "advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> Vendor (Owner)
+db.bookingAdvanceRequest.belongsTo(db.vendor, {
+  foreignKey: "owner_vendor_token",
+  targetKey: "token",
+  as: "owner_vendor",
+  constraints: false
+});
+
+db.vendor.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "owner_vendor_token",
+  sourceKey: "token",
+  as: "owned_advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> Vendor (Bidder)
+db.bookingAdvanceRequest.belongsTo(db.vendor, {
+  foreignKey: "bidder_vendor_token",
+  targetKey: "token",
+  as: "bidder_vendor",
+  constraints: false
+});
+
+db.vendor.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "bidder_vendor_token",
+  sourceKey: "token",
+  as: "bidder_advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> BookingPayment
+db.bookingAdvanceRequest.belongsTo(db.bookingPayment, {
+  foreignKey: "payment_token",
+  targetKey: "token",
+  as: "payment",
+  constraints: false
+});
+
+db.bookingPayment.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "payment_token",
+  sourceKey: "token",
+  as: "advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequest <-> WalletHold
+db.bookingAdvanceRequest.belongsTo(db.wallet_hold, {
+  foreignKey: "wallet_hold_token",
+  targetKey: "token",
+  as: "wallet_hold",
+  constraints: false
+});
+
+db.wallet_hold.hasMany(db.bookingAdvanceRequest, {
+  foreignKey: "wallet_hold_token",
+  sourceKey: "token",
+  as: "advance_requests",
+  constraints: false
+});
+
+// BookingAdvanceRequestHistory <-> BookingAdvanceRequest
+db.bookingAdvanceRequestHistory.belongsTo(db.bookingAdvanceRequest, {
+  foreignKey: "advance_request_token",
+  targetKey: "token",
+  as: "advance_request",
+  constraints: false
+});
+
+db.bookingAdvanceRequest.hasMany(db.bookingAdvanceRequestHistory, {
+  foreignKey: "advance_request_token",
+  sourceKey: "token",
+  as: "history",
+  constraints: false
+});
+
+// BookingAdvanceRequestHistory <-> Booking
+db.bookingAdvanceRequestHistory.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.bookingAdvanceRequestHistory, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "advance_request_history",
+  constraints: false
+});
+
+// BookingAdvanceRequestHistory <-> BookingRequest
+db.bookingAdvanceRequestHistory.belongsTo(db.bookingRequest, {
+  foreignKey: "booking_request_token",
+  targetKey: "token",
+  as: "booking_request",
+  constraints: false
+});
+
+db.bookingRequest.hasMany(db.bookingAdvanceRequestHistory, {
+  foreignKey: "booking_request_token",
+  sourceKey: "token",
+  as: "advance_request_history",
+  constraints: false
+});
+
+// BookingAdvanceRequestHistory <-> Vendor (Actor)
+db.bookingAdvanceRequestHistory.belongsTo(db.vendor, {
+  foreignKey: "actor_token",
+  targetKey: "token",
+  as: "actor",
+  constraints: false
+});
+
+db.vendor.hasMany(db.bookingAdvanceRequestHistory, {
+  foreignKey: "actor_token",
+  sourceKey: "token",
+  as: "advance_request_actions",
+  constraints: false
+});
+
+// BookingPayment <-> Vendor (payer)
+db.bookingPayment.belongsTo(db.vendor, {
+  foreignKey: "payer_token",
+  targetKey: "token",
+  as: "payer_vendor",
+  constraints: false
+});
+
+db.vendor.hasMany(db.bookingPayment, {
+  foreignKey: "payer_token",
+  sourceKey: "token",
+  as: "paid_booking_payments",
+  constraints: false
+});
+
+// BookingPayment <-> Vendor (payee)
+db.bookingPayment.belongsTo(db.vendor, {
+  foreignKey: "payee_vendor_token",
+  targetKey: "token",
+  as: "payee_vendor",
+  constraints: false
+});
+
+db.CabEnquiry.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor_details",
+  constraints: false
+});
+
+db.vendor.hasMany(db.CabEnquiry, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "cab_enquiries",
+  constraints: false
+});
+
+db.flightEnquiry.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor_details",
+  constraints: false
+});
+
+db.vendor.hasMany(db.flightEnquiry, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "flight_enquiries",
+  constraints: false
+});
+
+db.hotelEnquiry.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor_details",
+  constraints: false
+});
+
+db.vendor.hasMany(db.hotelEnquiry, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "hotel_enquiries",
+  constraints: false
+});
+
+db.holydaypackageEnquiry.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor_details",
+  constraints: false
+});
+
+db.vendor.hasMany(db.holydaypackageEnquiry, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "holiday_enquiries",
+  constraints: false
+});
+
+db.insuranceEnquiry.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor_details",
+  constraints: false
+});
+
+db.vendor.hasMany(db.insuranceEnquiry, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "insurance_enquiries",
+  constraints: false
+});
+
+db.vendor.hasMany(db.bookingPayment, {
+  foreignKey: "payee_vendor_token",
+  sourceKey: "token",
+  as: "receivable_booking_payments",
+  constraints: false
+});
+
+// BookingRefund <-> Booking
+db.bookingRefund.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.bookingRefund, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "booking_refunds",
+  constraints: false
+});
+
+// BookingRefund <-> BookingPayment
+db.bookingRefund.belongsTo(db.bookingPayment, {
+  foreignKey: "payment_token",
+  targetKey: "token",
+  as: "payment",
+  constraints: false
+});
+
+db.bookingPayment.hasMany(db.bookingRefund, {
+  foreignKey: "payment_token",
+  sourceKey: "token",
+  as: "refunds",
+  constraints: false
+});
+
+// VendorPayout <-> Booking
+db.vendorPayout.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.vendorPayout, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "vendor_payouts",
+  constraints: false
+});
+
+// VendorPayout <-> BookingPayment
+db.vendorPayout.belongsTo(db.bookingPayment, {
+  foreignKey: "payment_token",
+  targetKey: "token",
+  as: "payment",
+  constraints: false
+});
+
+db.bookingPayment.hasMany(db.vendorPayout, {
+  foreignKey: "payment_token",
+  sourceKey: "token",
+  as: "payouts",
+  constraints: false
+});
+
+// VendorPayout <-> Vendor
+db.vendorPayout.belongsTo(db.vendor, {
+  foreignKey: "vendor_token",
+  targetKey: "token",
+  as: "vendor",
+  constraints: false
+});
+
+db.vendor.hasMany(db.vendorPayout, {
+  foreignKey: "vendor_token",
+  sourceKey: "token",
+  as: "vendor_payouts",
+  constraints: false
+});
+
+db.enquiryRequest.belongsTo(db.CabEnquiry, {
+  foreignKey: "enquiry_token",
+  targetKey: "token",
+  as: "cab_enquiry",
+  constraints: false,
+  scope: {
+    enquiry_type: "cab"
+  }
+});
+
+db.CabEnquiry.hasMany(db.enquiryRequest, {
+  foreignKey: "enquiry_token",
+  sourceKey: "token",
+  as: "cab_requests",
+  constraints: false
+});
+
+db.enquiryRequest.belongsTo(db.flightEnquiry, {
+  foreignKey: "enquiry_token",
+  targetKey: "token",
+  as: "flight_enquiry",
+  constraints: false,
+  scope: {
+    enquiry_type: "flight"
+  }
+});
+
+db.flightEnquiry.hasMany(db.enquiryRequest, {
+  foreignKey: "enquiry_token",
+  sourceKey: "token",
+  as: "flight_requests",
+  constraints: false
+});
+
+
+db.enquiryRequest.belongsTo(db.hotelEnquiry, {
+  foreignKey: "enquiry_token",
+  targetKey: "token",
+  as: "hotel_enquiry",
+  constraints: false,
+  scope: {
+    enquiry_type: "hotel"
+  }
+});
+
+db.hotelEnquiry.hasMany(db.enquiryRequest, {
+  foreignKey: "enquiry_token",
+  sourceKey: "token",
+  as: "hotel_requests",
+  constraints: false
+});
+
+db.enquiryRequest.belongsTo(db.holydaypackageEnquiry, {
+  foreignKey: "enquiry_token",
+  targetKey: "token",
+  as: "holiday_enquiry",
+  constraints: false,
+  scope: {
+    enquiry_type: "holiday_package"
+  }
+});
+
+db.holydaypackageEnquiry.hasMany(db.enquiryRequest, {
+  foreignKey: "enquiry_token",
+  sourceKey: "token",
+  as: "holiday_requests",
+  constraints: false
+});
+
+db.enquiryRequest.belongsTo(db.insuranceEnquiry, {
+  foreignKey: "enquiry_token",
+  targetKey: "token",
+  as: "insurance_enquiry",
+  constraints: false,
+  scope: {
+    enquiry_type: "insurance"
+  }
+});
+
+db.insuranceEnquiry.hasMany(db.enquiryRequest, {
+  foreignKey: "enquiry_token",
+  sourceKey: "token",
+  as: "insurance_requests",
+  constraints: false
+});
+
+db.enquiryRequest.belongsTo(db.vendor, {
+  foreignKey: "requester_token",
+  targetKey: "token",
+  as: "requester",
+  constraints: false
+});
+
+db.vendor.hasMany(db.enquiryRequest, {
+  foreignKey: "requester_token",
+  sourceKey: "token",
+  as: "enquiry_requests",
+  constraints: false
+});
+
+
+db.conversation.belongsTo(db.booking, {
+  foreignKey: "booking_token",
+  targetKey: "token",
+  as: "booking",
+  constraints: false
+});
+
+db.booking.hasMany(db.conversation, {
+  foreignKey: "booking_token",
+  sourceKey: "token",
+  as: "conversations",
+  constraints: false
+});
+
+db.conversation.belongsTo(db.vendor, {
+  foreignKey: "owner_token",
+  targetKey: "token",
+  as: "owner",
+  constraints: false
+});
+
+db.vendor.hasMany(db.conversation, {
+  foreignKey: "owner_token",
+  sourceKey: "token",
+  as: "owner_conversations",
+  constraints: false
+});
+
+db.conversation.belongsTo(db.vendor, {
+  foreignKey: "requester_token",
+  targetKey: "token",
+  as: "requester",
+  constraints: false
+});
+
+db.vendor.hasMany(db.conversation, {
+  foreignKey: "requester_token",
+  sourceKey: "token",
+  as: "requester_conversations",
+  constraints: false
+});
 
 db.requestFreeVehicle.belongsTo(db.freeVehicle, {
   as: 'freeVehicle',
@@ -181,8 +672,19 @@ db.service.belongsToMany(db.vendor, { through: db.vendor_service, as: 'vendors',
 db.vendor_acc_delete_req.belongsTo(db.vendor, { constraints: false });
 db.vendor.hasMany(db.vendor_acc_delete_req, { constraints: false });
 
-db.vendor_help.hasMany(db.vendor_help_answer, { as: 'help_answers', constraints: false });
-db.vendor_help_answer.belongsTo(db.vendor_help, { as: 'help', constraints: false });
+db.vendor_help.hasMany(db.vendor_help_answer, {
+  as: 'help_answers',
+  foreignKey: 'help_token',
+  sourceKey: 'token',
+  constraints: false
+});
+
+db.vendor_help_answer.belongsTo(db.vendor_help, {
+  as: 'help',
+  foreignKey: 'help_token',
+  targetKey: 'token',
+  constraints: false
+});
 
 db.referral_history.belongsTo(db.vendor, {
   as: 'Referrer',
@@ -212,8 +714,33 @@ db.vendor.hasMany(db.referral_history, {
   constraints: false
 });
 
-db.review.belongsTo(db.vendor, { as: 'reviewer', constraints: false });
-db.vendor.hasMany(db.review, { as: 'reviews', constraints: false });
+db.review.belongsTo(db.customer, {
+  as: 'customer_reviewer',
+  foreignKey: 'reviewer_token',
+  targetKey: 'token',
+  constraints: false
+});
+
+db.customer.hasMany(db.review, {
+  as: 'customer_reviews',
+  foreignKey: 'reviewer_token',
+  sourceKey: 'token',
+  constraints: false
+});
+
+db.review.belongsTo(db.vendor, {
+  as: 'vendor_reviewer',
+  foreignKey: 'reviewer_token',
+  targetKey: 'token',
+  constraints: false
+});
+
+db.vendor.hasMany(db.review, {
+  as: 'vendor_reviews',
+  foreignKey: 'reviewer_token',
+  sourceKey: 'token',
+  constraints: false
+});
 
 db.freeVehicle.belongsTo(db.vendor, {
   as: 'vendor',

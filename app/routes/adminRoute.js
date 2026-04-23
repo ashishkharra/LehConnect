@@ -1,10 +1,12 @@
 const express = require('express');
 const router = express.Router();
+const sequelize = require('sequelize')
+
 const { asyncHandler } = require('../shared/utils/helper.js')
-const {adminController} = require('../controller/adminController.js');
+const adminController = require('../controller/adminController.js');
 const { authMiddleware } = require('../middleware/auth.js');
 const validationRule = require('../validation/admin.auth.js')
-const { uploadProfileImage, siteSlider, updateSliderMulter, aboutImage } = require('../middleware/multer.js')
+const { uploadProfileImage, siteSlider, updateSliderMulter, aboutImage, vehicleImage } = require('../middleware/multer.js')
 const uploadVideo = require('../middleware/videoMulter.js')
 const sessMiddleware = require('../middleware/sessionMiddleware.js');
 
@@ -199,7 +201,7 @@ router.get('/vendor/help/:token', [authMiddleware], asyncHandler(async (req, res
     });
 }));
 router.post('/vendor/help/reply/:token', [authMiddleware], adminController.replyToHelp);
-router.get('/vendor/help/delete/:token', [authMiddleware], adminController.deleteHelp);
+router.post('/vendor/help/delete/:token', [authMiddleware], adminController.deleteHelp);
 
 router.post('/remind/vendor', [authMiddleware], adminController.remindVendor)
 
@@ -362,29 +364,548 @@ router.get('/payment-today', [authMiddleware], asyncHandler(async (req, res) => 
 router.get('/payment-all', [authMiddleware], asyncHandler(async (req, res) => {
     const admin = req?.session?.user
 
+    const paymentPageData = await adminController.getAllPaymentsPage(req);
+
     res.render('payment/all', {
         admin: admin || null,
         title: "LehConnect | All Payments",
-        transactions: [],
-        summary: {},
-        analytics: {},
-        statusOverview: null,
-        methodLabels: null,
-        methodData: null,
-        monthlyLabels: null,
-        monthlyIncome: 20000,
-        monthlyExpense: 1000,
-        currentPage: 1,
-        pageSize: 2,
-        totalCount: 3,
-        totalPages: 5,
-        startIndex: 1,
-        endIndex: 0,
-        defaultFromDate: null,
-        defaultToDate: null,
+        ...paymentPageData,
         currentPage: 'payment-all'
     });
 }))
+
+router.get('/admin-refund-ledger', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+
+    res.render('payment/admin-refund-ledger', {
+        admin: admin || null,
+        title: 'LehConnect | Admin Refund Ledger',
+        currentPage: 'admin-refund-ledger'
+    });
+}));
+
+router.get('/admin/payments/ledger-dashboard', [authMiddleware], asyncHandler(async (req, res) => {
+    try {
+        let {
+            page = 1,
+            limit = 10,
+            from = null,
+            to = null,
+            quickRange = null,
+            booking_token = null,
+            payment_status = null,
+            refund_status = null,
+            ledger_type = null,
+            search = null,
+            sort = 'newest'
+        } = req.query;
+
+        page = parseInt(page) || 1;
+        limit = parseInt(limit) || 10;
+
+        if (page < 1) page = 1;
+        if (limit < 1) limit = 10;
+
+        const offset = (page - 1) * limit;
+
+        if ((!from || !to) && quickRange) {
+            const range = getDateRangeFromQuickRange(quickRange);
+            from = from || range.from;
+            to = to || range.to;
+        }
+
+        const replacements = { limit, offset };
+        const whereParts = [];
+
+        if (from) {
+            whereParts.push(`DATE(ledger.created_at) >= :from`);
+            replacements.from = from;
+        }
+
+        if (to) {
+            whereParts.push(`DATE(ledger.created_at) <= :to`);
+            replacements.to = to;
+        }
+
+        if (booking_token) {
+            whereParts.push(`ledger.booking_token = :booking_token`);
+            replacements.booking_token = booking_token;
+        }
+
+        if (ledger_type && ['PAYMENT', 'REFUND', 'PAYOUT'].includes(ledger_type)) {
+            whereParts.push(`ledger.ledger_type = :ledger_type`);
+            replacements.ledger_type = ledger_type;
+        }
+
+        if (payment_status) {
+            whereParts.push(`ledger.payment_status = :payment_status`);
+            replacements.payment_status = payment_status;
+        }
+
+        if (refund_status) {
+            whereParts.push(`ledger.refund_status = :refund_status`);
+            replacements.refund_status = refund_status;
+        }
+
+        if (search) {
+            whereParts.push(`
+                (
+                    ledger.booking_token LIKE :search
+                    OR ledger.transaction_token LIKE :search
+                    OR ledger.gateway_transaction_id LIKE :search
+                    OR ledger.user_name LIKE :search
+                    OR ledger.user_email LIKE :search
+                    OR ledger.user_phone LIKE :search
+                    OR ledger.vehicle_type LIKE :search
+                    OR ledger.vehicle_name LIKE :search
+                    OR ledger.pickup_location LIKE :search
+                    OR ledger.drop_location LIKE :search
+                    OR ledger.city LIKE :search
+                    OR ledger.state LIKE :search
+                )
+            `);
+            replacements.search = `%${search}%`;
+        }
+
+        const whereClause = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+        const ledgerBaseSql = `
+            (
+                SELECT
+                    bp.id,
+                    'PAYMENT' AS ledger_type,
+                    'DEBIT' AS direction,
+                    CASE
+                        WHEN bp.order_status = 'PAID' THEN 'PAID'
+                        WHEN bp.order_status = 'FAILED' THEN 'FAILED'
+                        ELSE 'PENDING'
+                    END AS display_status,
+                    bp.token AS transaction_token,
+                    bp.razorpay_payment_id AS gateway_transaction_id,
+                    bp.razorpay_order_id,
+                    bp.booking_token,
+                    bp.payer_token AS user_token,
+                    bp.payee_vendor_token,
+                    CAST(bp.amount AS DECIMAL(14,2)) AS amount,
+                    bp.currency,
+                    bp.payment_status,
+                    bp.order_status,
+                    bp.refund_status,
+                    bp.paid_at,
+                    bp.refunded_at,
+                    bp.created_at,
+                    bp.updated_at,
+
+                    b.id AS booking_id,
+                    b.status AS booking_status,
+                    b.trip_type,
+                    b.vehicle_type,
+                    b.vehicle_name,
+                    b.pickup_location,
+                    b.drop_location,
+                    b.pickup_datetime,
+                    b.return_datetime,
+                    b.city,
+                    b.state,
+                    b.secure_booking,
+                    b.accept_type,
+
+                    CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')) AS user_name,
+                    v.email AS user_email,
+                    v.contact AS user_phone,
+                    v.image AS user_avatar,
+                    'vendor' AS user_type,
+
+                    NULL AS refund_reason,
+                    NULL AS refunded_by_token,
+                    NULL AS refunded_by_name,
+
+                    CASE
+                        WHEN bp.payment_status = 'PAID' THEN CAST(bp.amount * 0.03 AS DECIMAL(14,2))
+                        ELSE 0
+                    END AS deduction_amount,
+
+                    CASE
+                        WHEN bp.payment_status = 'PAID' THEN CAST(bp.amount - (bp.amount * 0.03) AS DECIMAL(14,2))
+                        ELSE 0
+                    END AS net_refundable_amount
+                FROM tbl_booking_payments bp
+                LEFT JOIN tbl_booking b ON b.token = bp.booking_token
+                LEFT JOIN tbl_vendor v ON v.token = bp.payer_token
+                WHERE COALESCE(bp.flag, 0) = 0
+
+                UNION ALL
+
+                SELECT
+                    br.id,
+                    'REFUND' AS ledger_type,
+                    'CREDIT' AS direction,
+                    CASE
+                        WHEN br.refund_status = 'PROCESSED' THEN 'REFUNDED'
+                        WHEN br.refund_status = 'FAILED' THEN 'REFUND_FAILED'
+                        ELSE 'REFUND_PENDING'
+                    END AS display_status,
+                    br.token AS transaction_token,
+                    br.razorpay_refund_id AS gateway_transaction_id,
+                    NULL AS razorpay_order_id,
+                    br.booking_token,
+                    br.refund_to_token AS user_token,
+                    NULL AS payee_vendor_token,
+                    CAST(br.refund_amount AS DECIMAL(14,2)) AS amount,
+                    br.currency,
+                    NULL AS payment_status,
+                    NULL AS order_status,
+                    br.refund_status,
+                    NULL AS paid_at,
+                    br.updated_at AS refunded_at,
+                    br.created_at,
+                    br.updated_at,
+
+                    b.id AS booking_id,
+                    b.status AS booking_status,
+                    b.trip_type,
+                    b.vehicle_type,
+                    b.vehicle_name,
+                    b.pickup_location,
+                    b.drop_location,
+                    b.pickup_datetime,
+                    b.return_datetime,
+                    b.city,
+                    b.state,
+                    b.secure_booking,
+                    b.accept_type,
+
+                    CONCAT(COALESCE(v_ref.first_name, ''), ' ', COALESCE(v_ref.last_name, '')) AS user_name,
+                    v_ref.email AS user_email,
+                    v_ref.contact AS user_phone,
+                    v_ref.image AS user_avatar,
+                    'vendor' AS user_type,
+
+                    br.reason AS refund_reason,
+                    br.refunded_by_token,
+                    CONCAT(COALESCE(v_by.first_name, ''), ' ', COALESCE(v_by.last_name, '')) AS refunded_by_name,
+
+                    0 AS deduction_amount,
+                    0 AS net_refundable_amount
+                FROM tbl_booking_refunds br
+                LEFT JOIN tbl_booking b ON b.token = br.booking_token
+                LEFT JOIN tbl_vendor v_ref ON v_ref.token = br.refund_to_token
+                LEFT JOIN tbl_vendor v_by ON v_by.token = br.refunded_by_token
+                WHERE COALESCE(br.flag, 0) = 0
+            ) ledger
+        `;
+
+        const orderClause = (() => {
+            switch (sort) {
+                case 'oldest':
+                    return `ORDER BY ledger.created_at ASC`;
+                case 'amount_high':
+                    return `ORDER BY ledger.amount DESC`;
+                case 'amount_low':
+                    return `ORDER BY ledger.amount ASC`;
+                default:
+                    return `ORDER BY ledger.created_at DESC`;
+            }
+        })();
+
+        const listSql = `
+            SELECT ledger.*
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+            ${orderClause}
+            LIMIT :limit OFFSET :offset
+        `;
+
+        const countSql = `
+            SELECT COUNT(*) AS totalCount
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+        `;
+
+        const summarySql = `
+            SELECT
+                COUNT(*) AS total_entries,
+                COUNT(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN 1 END) AS total_payments,
+                COUNT(CASE WHEN ledger.ledger_type = 'REFUND' THEN 1 END) AS total_refunds,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+        `;
+
+        const todaySql = `
+            SELECT
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            WHERE DATE(ledger.created_at) = CURDATE()
+        `;
+
+        const currentWeekSql = `
+            SELECT
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            WHERE YEARWEEK(ledger.created_at, 1) = YEARWEEK(CURDATE(), 1)
+        `;
+
+        const currentMonthSql = `
+            SELECT
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            WHERE MONTH(ledger.created_at) = MONTH(CURDATE())
+              AND YEAR(ledger.created_at) = YEAR(CURDATE())
+        `;
+
+        const dailySql = `
+            SELECT
+                DATE(ledger.created_at) AS date,
+                DATE_FORMAT(ledger.created_at, '%d %b %Y') AS label,
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+            GROUP BY DATE(ledger.created_at), DATE_FORMAT(ledger.created_at, '%d %b %Y')
+            ORDER BY DATE(ledger.created_at) DESC
+            LIMIT 15
+        `;
+
+        const weeklySql = `
+            SELECT
+                YEAR(ledger.created_at) AS year,
+                WEEK(ledger.created_at, 1) AS week_number,
+                MIN(DATE(ledger.created_at)) AS week_start_date,
+                MAX(DATE(ledger.created_at)) AS week_end_date,
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+            GROUP BY YEAR(ledger.created_at), WEEK(ledger.created_at, 1)
+            ORDER BY year DESC, week_number DESC
+            LIMIT 12
+        `;
+
+        const monthlySql = `
+            SELECT
+                DATE_FORMAT(ledger.created_at, '%Y-%m') AS month_key,
+                DATE_FORMAT(ledger.created_at, '%b %Y') AS month_label,
+                COUNT(*) AS total_entries,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END), 0) AS total_paid_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END), 0) AS total_refund_amount,
+                COALESCE(SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.deduction_amount ELSE 0 END), 0) AS total_deduction_amount,
+                COALESCE(
+                    SUM(CASE WHEN ledger.ledger_type = 'PAYMENT' THEN ledger.amount ELSE 0 END)
+                    - SUM(CASE WHEN ledger.ledger_type = 'REFUND' THEN ledger.amount ELSE 0 END),
+                0) AS net_amount
+            FROM ${ledgerBaseSql}
+            ${whereClause}
+            GROUP BY DATE_FORMAT(ledger.created_at, '%Y-%m'), DATE_FORMAT(ledger.created_at, '%b %Y')
+            ORDER BY month_key DESC
+            LIMIT 12
+        `;
+
+        const [
+            ledgerRows,
+            countRows,
+            summaryRows,
+            todayRows,
+            currentWeekRows,
+            currentMonthRows,
+            dailyRows,
+            weeklyRows,
+            monthlyRows
+        ] = await Promise.all([
+            sequelize.query(listSql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(countSql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(summarySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(todaySql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(currentWeekSql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(currentMonthSql, { type: sequelize.QueryTypes.SELECT }),
+            sequelize.query(dailySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(weeklySql, { type: sequelize.QueryTypes.SELECT, replacements }),
+            sequelize.query(monthlySql, { type: sequelize.QueryTypes.SELECT, replacements })
+        ]);
+
+        const totalCount = Number(countRows?.[0]?.totalCount || 0);
+        const totalPages = Math.ceil(totalCount / limit) || 1;
+
+        return res.status(200).json({
+            success: true,
+            message: 'Admin payments ledger dashboard fetched successfully',
+            data: {
+                summary: {
+                    overall: {
+                        total_entries: Number(summaryRows?.[0]?.total_entries || 0),
+                        total_paid_amount: Number(summaryRows?.[0]?.total_paid_amount || 0),
+                        total_refund_amount: Number(summaryRows?.[0]?.total_refund_amount || 0),
+                        total_deduction_amount: Number(summaryRows?.[0]?.total_deduction_amount || 0),
+                        net_amount: Number(summaryRows?.[0]?.net_amount || 0)
+                    },
+                    today: {
+                        total_entries: Number(todayRows?.[0]?.total_entries || 0),
+                        total_paid_amount: Number(todayRows?.[0]?.total_paid_amount || 0),
+                        total_refund_amount: Number(todayRows?.[0]?.total_refund_amount || 0),
+                        total_deduction_amount: Number(todayRows?.[0]?.total_deduction_amount || 0),
+                        net_amount: Number(todayRows?.[0]?.net_amount || 0)
+                    },
+                    current_week: {
+                        total_entries: Number(currentWeekRows?.[0]?.total_entries || 0),
+                        total_paid_amount: Number(currentWeekRows?.[0]?.total_paid_amount || 0),
+                        total_refund_amount: Number(currentWeekRows?.[0]?.total_refund_amount || 0),
+                        total_deduction_amount: Number(currentWeekRows?.[0]?.total_deduction_amount || 0),
+                        net_amount: Number(currentWeekRows?.[0]?.net_amount || 0)
+                    },
+                    current_month: {
+                        total_entries: Number(currentMonthRows?.[0]?.total_entries || 0),
+                        total_paid_amount: Number(currentMonthRows?.[0]?.total_paid_amount || 0),
+                        total_refund_amount: Number(currentMonthRows?.[0]?.total_refund_amount || 0),
+                        total_deduction_amount: Number(currentMonthRows?.[0]?.total_deduction_amount || 0),
+                        net_amount: Number(currentMonthRows?.[0]?.net_amount || 0)
+                    }
+                },
+                analytics: {
+                    daily_ledger: dailyRows.map((row) => ({
+                        date: row.date,
+                        label: row.label,
+                        total_entries: Number(row.total_entries || 0),
+                        total_paid_amount: Number(row.total_paid_amount || 0),
+                        total_refund_amount: Number(row.total_refund_amount || 0),
+                        total_deduction_amount: Number(row.total_deduction_amount || 0),
+                        net_amount: Number(row.net_amount || 0)
+                    })),
+                    weekly_ledger: weeklyRows.map((row) => ({
+                        year: Number(row.year || 0),
+                        week_number: Number(row.week_number || 0),
+                        week_start_date: row.week_start_date,
+                        week_end_date: row.week_end_date,
+                        total_entries: Number(row.total_entries || 0),
+                        total_paid_amount: Number(row.total_paid_amount || 0),
+                        total_refund_amount: Number(row.total_refund_amount || 0),
+                        total_deduction_amount: Number(row.total_deduction_amount || 0),
+                        net_amount: Number(row.net_amount || 0)
+                    })),
+                    monthly_ledger: monthlyRows.map((row) => ({
+                        month_key: row.month_key,
+                        month_label: row.month_label,
+                        total_entries: Number(row.total_entries || 0),
+                        total_paid_amount: Number(row.total_paid_amount || 0),
+                        total_refund_amount: Number(row.total_refund_amount || 0),
+                        total_deduction_amount: Number(row.total_deduction_amount || 0),
+                        net_amount: Number(row.net_amount || 0)
+                    }))
+                },
+                pagination: {
+                    current_page: page,
+                    per_page: limit,
+                    total_count: totalCount,
+                    total_pages: totalPages,
+                    has_next_page: page < totalPages,
+                    has_prev_page: page > 1
+                },
+                filters: {
+                    from,
+                    to,
+                    quickRange,
+                    booking_token,
+                    payment_status,
+                    refund_status,
+                    ledger_type,
+                    search,
+                    sort
+                },
+                transactions: ledgerRows.map((row) => ({
+                    id: row.id,
+                    ledger_type: row.ledger_type,
+                    direction: row.direction,
+                    display_status: row.display_status,
+                    transaction_token: row.transaction_token,
+                    gateway_transaction_id: row.gateway_transaction_id,
+                    razorpay_order_id: row.razorpay_order_id,
+                    booking_token: row.booking_token,
+                    booking_id: row.booking_id,
+                    user_token: row.user_token,
+                    user_name: row.user_name,
+                    user_email: row.user_email,
+                    user_phone: row.user_phone,
+                    user_avatar: row.user_avatar,
+                    user_type: row.user_type,
+                    amount: Number(row.amount || 0),
+                    deduction_amount: Number(row.deduction_amount || 0),
+                    net_refundable_amount: Number(row.net_refundable_amount || 0),
+                    currency: row.currency || 'INR',
+                    payment_status: row.payment_status,
+                    order_status: row.order_status,
+                    refund_status: row.refund_status,
+                    paid_at: row.paid_at,
+                    refunded_at: row.refunded_at,
+                    created_at: row.created_at,
+                    updated_at: row.updated_at,
+                    refund_reason: row.refund_reason || null,
+                    refunded_by_token: row.refunded_by_token || null,
+                    refunded_by_name: row.refunded_by_name || null,
+                    booking: {
+                        status: row.booking_status,
+                        trip_type: row.trip_type,
+                        vehicle_type: row.vehicle_type,
+                        vehicle_name: row.vehicle_name,
+                        pickup_location: row.pickup_location,
+                        drop_location: row.drop_location,
+                        pickup_datetime: row.pickup_datetime,
+                        return_datetime: row.return_datetime,
+                        city: row.city,
+                        state: row.state,
+                        secure_booking: row.secure_booking,
+                        accept_type: row.accept_type
+                    }
+                }))
+            }
+        });
+    } catch (error) {
+        console.error('admin payments ledger dashboard error:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Something went wrong'
+        });
+    }
+}));
+
+router.post('/booking/:bookingToken/refund', [authMiddleware], adminController.adminProcessBookingRefund);
 
 // report page
 router.get('/report', [authMiddleware], asyncHandler(async (req, res) => {
@@ -803,5 +1324,42 @@ router.get('/manage-notifications', [authMiddleware], asyncHandler(async (req, r
 }));
 
 router.post('/toggle-booking-notification-preferences', [authMiddleware], adminController?.toggleBookingNotification);
+
+router.get('/manage-vehicles', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 12;
+    const search = req.query.search || '';
+    const status = req.query.status || 'all';
+    const type = req.query.type || 'all';
+
+    // Get vehicles data using the function
+    const vehicleData = await adminController.getVehiclesWithFilters(page, limit, status, search, type);
+
+    req.setFlash(vehicleData.success ? 'success' : 'error', vehicleData.message || (vehicleData.success ? 'Vehicles fetched successfully' : 'Error fetching vehicles'));
+    res.render('customer_app_management/manage_vehicles', {
+        title: 'LehConnect | Manage Vehicles',
+        admin: admin || null,
+        vehicles: vehicleData.data || [],
+        pagination: {
+            currentPage: vehicleData.currentPage || 1,
+            totalPages: vehicleData.totalPages || 1,
+            totalItems: vehicleData.totalRecords || 0,
+            limit: vehicleData.recordsPerPage || 12,
+            hasNextPage: vehicleData.currentPage < vehicleData.totalPages,
+            hasPrevPage: vehicleData.currentPage > 1,
+            nextPage: vehicleData.currentPage < vehicleData.totalPages ? vehicleData.currentPage + 1 : null,
+            prevPage: vehicleData.currentPage > 1 ? vehicleData.currentPage - 1 : null
+        },
+        filters: vehicleData.filters || {},
+        query: req.query || {},
+        currentPage: 'manage-vehicles'
+    });
+}));
+
+router.post('/add-vehicle', [authMiddleware, vehicleImage], adminController.addVehicle);
+router.post('/edit-vehicle/:token', [authMiddleware, vehicleImage, validationRule.validate('add-vehicle')], adminController.updateVehicle);
+router.post('/toggle-vehicle-status/:token', [authMiddleware], adminController.toggleVehicleStatus);
+router.post('/delete-vehicle/:token', [authMiddleware], adminController.deleteVehicle);
 
 module.exports = router;

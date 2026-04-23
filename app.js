@@ -3,6 +3,7 @@ require('./app/config/redis.config.js');
 
 require('./app/workers/vendor/vendor_reminder.worker.js');
 require('./app/workers/vendor/chat.worker.js')
+require('./app/workers/vendor/chat.notification.worker.js')
 
 require('./app/workers/vendor/booking_worker/post_booking.worker.js');
 require('./app/workers/vendor/booking_worker/booking_request_action.worker.js');
@@ -15,6 +16,8 @@ require('./app/workers/vendor/freeVehicle_worker/post_free_vehicle.worker.js')
 require('./app/workers/vendor/freeVehicle_worker/free_vehicle_request.worker.js')
 require('./app/workers/vendor/freeVehicle_worker/free_vehicle_request_action.worker.js')
 require('./app/workers/vendor/freeVehicle_worker/free_vehicle.cancel.worker.js')
+
+require('./app/workers/vendor/enquiries/enquiry.worker.js')
 
 
 const express = require('express');

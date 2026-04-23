@@ -1,0 +1,921 @@
+<%- include('../shared/partials/header', { admin: admin, title: title }) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col-sm-7">
+                    <h3 class="page-title mb-1">Admin Refund Ledger</h3>
+                    <p class="text-muted mb-0">
+                        Track payments, refunds, 3% deduction, and process admin refunds.
+                    </p>
+                </div>
+                <div class="col-sm-5 text-sm-end mt-3 mt-sm-0">
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="fetchLedgerData(1)">
+                            <i class="ti ti-refresh me-1"></i> Refresh
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="resetFilters()">
+                            <i class="ti ti-x me-1"></i> Reset Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-xxl-3 col-xl-3 col-md-6">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted mb-1">Overall Paid</p>
+                                <h4 class="mb-1" id="overallPaidAmount">₹0</h4>
+                                <small class="text-muted" id="overallEntries">0 entries</small>
+                            </div>
+                            <span class="avatar bg-primary text-white rounded-circle">
+                                <i class="ti ti-currency-rupee"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xxl-3 col-xl-3 col-md-6">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted mb-1">Overall Refund</p>
+                                <h4 class="mb-1 text-info" id="overallRefundAmount">₹0</h4>
+                                <small class="text-muted" id="overallNetAmount">Net ₹0</small>
+                            </div>
+                            <span class="avatar bg-info text-white rounded-circle">
+                                <i class="ti ti-receipt-refund"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xxl-3 col-xl-3 col-md-6">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted mb-1">3% Deduction</p>
+                                <h4 class="mb-1 text-warning" id="overallDeductionAmount">₹0</h4>
+                                <small class="text-muted">Platform retention</small>
+                            </div>
+                            <span class="avatar bg-warning text-white rounded-circle">
+                                <i class="ti ti-percentage"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xxl-3 col-xl-3 col-md-6">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <p class="text-muted mb-1">Current Month</p>
+                                <h4 class="mb-1 text-success" id="monthPaidAmount">₹0</h4>
+                                <small class="text-muted" id="monthEntries">0 entries</small>
+                            </div>
+                            <span class="avatar bg-success text-white rounded-circle">
+                                <i class="ti ti-calendar-stats"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Time Summary -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-0">Today</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Entries</span>
+                            <strong id="todayEntries">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Paid</span>
+                            <strong id="todayPaid">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Refund</span>
+                            <strong id="todayRefund">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Deduction</span>
+                            <strong id="todayDeduction">₹0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-0">This Week</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Entries</span>
+                            <strong id="weekEntries">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Paid</span>
+                            <strong id="weekPaid">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Refund</span>
+                            <strong id="weekRefund">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Deduction</span>
+                            <strong id="weekDeduction">₹0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white border-0 pb-0">
+                        <h5 class="card-title mb-0">This Month</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Entries</span>
+                            <strong id="currentMonthEntries">0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Paid</span>
+                            <strong id="currentMonthPaid">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Refund</span>
+                            <strong id="currentMonthRefund">₹0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Deduction</span>
+                            <strong id="currentMonthDeduction">₹0</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">From</label>
+                        <input type="date" id="filterFrom" class="form-control">
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">To</label>
+                        <input type="date" id="filterTo" class="form-control">
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Quick Range</label>
+                        <select id="filterQuickRange" class="form-select">
+                            <option value="">Custom</option>
+                            <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                            <option value="last_month">Last Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Ledger Type</label>
+                        <select id="filterLedgerType" class="form-select">
+                            <option value="">All</option>
+                            <option value="PAYMENT">Payment</option>
+                            <option value="REFUND">Refund</option>
+                            <option value="PAYOUT">Payout</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Payment Status</label>
+                        <select id="filterPaymentStatus" class="form-select">
+                            <option value="">All</option>
+                            <option value="PAID">Paid</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Refund Status</label>
+                        <select id="filterRefundStatus" class="form-select">
+                            <option value="">All</option>
+                            <option value="PROCESSED">Processed</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="FAILED">Failed</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label">Booking Token</label>
+                        <input type="text" id="filterBookingToken" class="form-control" placeholder="booking token">
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label">Search</label>
+                        <input type="text" id="filterSearch" class="form-control" placeholder="user, booking, transaction...">
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Sort</label>
+                        <select id="filterSort" class="form-select">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="amount_high">Amount High-Low</option>
+                            <option value="amount_low">Amount Low-High</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Page Size</label>
+                        <select id="filterLimit" class="form-select">
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="fetchLedgerData(1)">
+                            <i class="ti ti-filter me-1"></i> Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trend Tables -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">Daily Trend</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Paid</th>
+                                        <th>Refund</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dailyTrendBody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">No data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">Weekly Trend</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Week</th>
+                                        <th>Paid</th>
+                                        <th>Refund</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="weeklyTrendBody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">No data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="card-title mb-0">Monthly Trend</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Paid</th>
+                                        <th>Refund</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monthlyTrendBody">
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3">No data</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h5 class="card-title mb-0">Refund Eligible Transactions</h5>
+                    </div>
+                    <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                        <span class="text-muted" id="tableMetaText">Showing 0 records</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div id="tableLoader" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary"></div>
+                    <p class="text-muted mt-2 mb-0">Loading ledger...</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Txn</th>
+                                <th>User</th>
+                                <th>Booking</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>3% Cut</th>
+                                <th>Refundable</th>
+                                <th>Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ledgerTableBody">
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">No transactions found</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row mt-4 align-items-center">
+                    <div class="col-md-6">
+                        <p class="text-muted mb-0" id="paginationText">Page 1</p>
+                    </div>
+                    <div class="col-md-6">
+                        <nav>
+                            <ul class="pagination justify-content-md-end justify-content-center mb-0" id="paginationContainer"></ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Refund Modal -->
+<div class="modal fade" id="refundModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title">Process Refund</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div id="refundPreviewLoader" class="text-center py-4 d-none">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+
+                <div id="refundPreviewContent">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <small class="text-muted d-block">Payment Token</small>
+                                <strong id="previewPaymentToken">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <small class="text-muted d-block">Booking Token</small>
+                                <strong id="previewBookingToken">-</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <small class="text-muted d-block">Gross</small>
+                                <strong id="previewGross">₹0</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <small class="text-muted d-block">3% Deduction</small>
+                                <strong class="text-warning" id="previewDeduction">₹0</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <small class="text-muted d-block">Already Refunded</small>
+                                <strong class="text-info" id="previewAlreadyRefunded">₹0</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border rounded p-3">
+                                <small class="text-muted d-block">Remaining Refundable</small>
+                                <strong class="text-success" id="previewRemainingRefundable">₹0</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="refundForm">
+                        <input type="hidden" id="refundTransactionId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Refund Amount</label>
+                            <input type="number" class="form-control" id="refundAmount" min="0" step="0.01" placeholder="Enter refund amount">
+                            <small class="text-muted">Leave as max refundable amount or enter custom amount.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Reason</label>
+                            <textarea class="form-control" id="refundReason" rows="3" placeholder="Refund reason"></textarea>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="refundNotes" rows="2" placeholder="Optional admin notes"></textarea>
+                        </div>
+                    </form>
+
+                    <div class="alert alert-warning mt-4 mb-0">
+                        <strong>Note:</strong> Refund will be processed after deducting 3% platform charge where applicable.
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                <button class="btn btn-primary" id="submitRefundBtn" onclick="submitRefund()">
+                    <i class="ti ti-receipt-refund me-1"></i> Process Refund
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentPage = 1;
+    let lastLedgerResponse = null;
+    let refundModalInstance = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+        refundModalInstance = new bootstrap.Modal(document.getElementById('refundModal'));
+        fetchLedgerData(1);
+    });
+
+    function formatCurrency(amount) {
+        return `₹${Number(amount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        })}`;
+    }
+
+    function formatDateTime(value) {
+        if (!value) return '-';
+        const d = new Date(value);
+        return `${d.toLocaleDateString('en-IN')} ${d.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        })}`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function getFilters(page = 1) {
+        return {
+            page,
+            limit: document.getElementById('filterLimit').value || 10,
+            from: document.getElementById('filterFrom').value || '',
+            to: document.getElementById('filterTo').value || '',
+            quickRange: document.getElementById('filterQuickRange').value || '',
+            ledger_type: document.getElementById('filterLedgerType').value || '',
+            payment_status: document.getElementById('filterPaymentStatus').value || '',
+            refund_status: document.getElementById('filterRefundStatus').value || '',
+            booking_token: document.getElementById('filterBookingToken').value || '',
+            search: document.getElementById('filterSearch').value || '',
+            sort: document.getElementById('filterSort').value || 'newest'
+        };
+    }
+
+    function buildQuery(params) {
+        const qs = new URLSearchParams();
+        Object.keys(params).forEach((key) => {
+            const value = params[key];
+            if (value !== undefined && value !== null && value !== '') {
+                qs.append(key, value);
+            }
+        });
+        return qs.toString();
+    }
+
+    async function fetchLedgerData(page = 1) {
+        currentPage = page;
+        const loader = document.getElementById('tableLoader');
+        const tbody = document.getElementById('ledgerTableBody');
+
+        loader.classList.remove('d-none');
+        tbody.innerHTML = '';
+
+        try {
+            const filters = getFilters(page);
+            const query = buildQuery(filters);
+
+            const res = await fetch(`/admin/payments/ledger-dashboard?${query}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const json = await res.json();
+
+            if (!json.success) {
+                throw new Error(json.message || 'Failed to fetch ledger data');
+            }
+
+            lastLedgerResponse = json.data;
+
+            renderSummary(json.data.summary);
+            renderTrends(json.data.analytics);
+            renderTransactions(json.data.transactions);
+            renderPagination(json.data.pagination);
+
+        } catch (error) {
+            console.error(error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center text-danger py-4">
+                        ${escapeHtml(error.message || 'Failed to load data')}
+                    </td>
+                </tr>
+            `;
+        } finally {
+            loader.classList.add('d-none');
+        }
+    }
+
+    function renderSummary(summary) {
+        const overall = summary?.overall || {};
+        const today = summary?.today || {};
+        const week = summary?.current_week || {};
+        const month = summary?.current_month || {};
+
+        document.getElementById('overallPaidAmount').textContent = formatCurrency(overall.total_paid_amount);
+        document.getElementById('overallRefundAmount').textContent = formatCurrency(overall.total_refund_amount);
+        document.getElementById('overallDeductionAmount').textContent = formatCurrency(overall.total_deduction_amount);
+        document.getElementById('overallNetAmount').textContent = `Net ${formatCurrency(overall.net_amount)}`;
+        document.getElementById('overallEntries').textContent = `${overall.total_entries || 0} entries`;
+
+        document.getElementById('monthPaidAmount').textContent = formatCurrency(month.total_paid_amount);
+        document.getElementById('monthEntries').textContent = `${month.total_entries || 0} entries`;
+
+        document.getElementById('todayEntries').textContent = today.total_entries || 0;
+        document.getElementById('todayPaid').textContent = formatCurrency(today.total_paid_amount);
+        document.getElementById('todayRefund').textContent = formatCurrency(today.total_refund_amount);
+        document.getElementById('todayDeduction').textContent = formatCurrency(today.total_deduction_amount);
+
+        document.getElementById('weekEntries').textContent = week.total_entries || 0;
+        document.getElementById('weekPaid').textContent = formatCurrency(week.total_paid_amount);
+        document.getElementById('weekRefund').textContent = formatCurrency(week.total_refund_amount);
+        document.getElementById('weekDeduction').textContent = formatCurrency(week.total_deduction_amount);
+
+        document.getElementById('currentMonthEntries').textContent = month.total_entries || 0;
+        document.getElementById('currentMonthPaid').textContent = formatCurrency(month.total_paid_amount);
+        document.getElementById('currentMonthRefund').textContent = formatCurrency(month.total_refund_amount);
+        document.getElementById('currentMonthDeduction').textContent = formatCurrency(month.total_deduction_amount);
+    }
+
+    function renderTrends(analytics) {
+        const dailyBody = document.getElementById('dailyTrendBody');
+        const weeklyBody = document.getElementById('weeklyTrendBody');
+        const monthlyBody = document.getElementById('monthlyTrendBody');
+
+        const daily = analytics?.daily_ledger || [];
+        const weekly = analytics?.weekly_ledger || [];
+        const monthly = analytics?.monthly_ledger || [];
+
+        dailyBody.innerHTML = daily.length ? daily.map(item => `
+            <tr>
+                <td>${escapeHtml(item.label)}</td>
+                <td>${formatCurrency(item.total_paid_amount)}</td>
+                <td>${formatCurrency(item.total_refund_amount)}</td>
+            </tr>
+        `).join('') : `
+            <tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>
+        `;
+
+        weeklyBody.innerHTML = weekly.length ? weekly.map(item => `
+            <tr>
+                <td>W${item.week_number} (${escapeHtml(item.week_start_date)} - ${escapeHtml(item.week_end_date)})</td>
+                <td>${formatCurrency(item.total_paid_amount)}</td>
+                <td>${formatCurrency(item.total_refund_amount)}</td>
+            </tr>
+        `).join('') : `
+            <tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>
+        `;
+
+        monthlyBody.innerHTML = monthly.length ? monthly.map(item => `
+            <tr>
+                <td>${escapeHtml(item.month_label)}</td>
+                <td>${formatCurrency(item.total_paid_amount)}</td>
+                <td>${formatCurrency(item.total_refund_amount)}</td>
+            </tr>
+        `).join('') : `
+            <tr><td colspan="3" class="text-center text-muted py-3">No data</td></tr>
+        `;
+    }
+
+    function renderTransactions(transactions) {
+        const tbody = document.getElementById('ledgerTableBody');
+
+        if (!transactions || !transactions.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">No transactions found</td>
+                </tr>
+            `;
+            document.getElementById('tableMetaText').textContent = 'Showing 0 records';
+            return;
+        }
+
+        tbody.innerHTML = transactions.map((row) => {
+            const canRefund =
+                row.ledger_type === 'PAYMENT' &&
+                row.payment_status === 'PAID' &&
+                Number(row.net_refundable_amount || 0) > 0;
+
+            return `
+                <tr>
+                    <td>
+                        <div class="fw-semibold">${formatDateTime(row.created_at)}</div>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">${escapeHtml(row.transaction_token || '-')}</div>
+                        <small class="text-muted">${escapeHtml(row.gateway_transaction_id || '')}</small>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">${escapeHtml(row.user_name || '-')}</div>
+                        <small class="text-muted d-block">${escapeHtml(row.user_email || '')}</small>
+                        <small class="text-muted">${escapeHtml(row.user_phone || '')}</small>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">${escapeHtml(row.booking_token || '-')}</div>
+                        <small class="text-muted d-block">${escapeHtml(row.booking?.vehicle_type || '')} ${escapeHtml(row.booking?.vehicle_name || '')}</small>
+                        <small class="text-muted">${escapeHtml(row.booking?.city || '')}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-${row.ledger_type === 'PAYMENT' ? 'primary' : 'info'}">
+                            ${escapeHtml(row.ledger_type)}
+                        </span>
+                    </td>
+                    <td class="fw-semibold">${formatCurrency(row.amount)}</td>
+                    <td class="text-warning fw-semibold">${formatCurrency(row.deduction_amount)}</td>
+                    <td class="text-success fw-semibold">${formatCurrency(row.net_refundable_amount)}</td>
+                    <td>
+                        <span class="badge bg-${row.display_status === 'PAID' ? 'success' : row.display_status === 'FAILED' ? 'danger' : 'warning'}">
+                            ${escapeHtml(row.display_status || '-')}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        ${canRefund ? `
+                            <button class="btn btn-sm btn-primary" onclick="openRefundModal('${escapeHtml(row.transaction_token)}')">
+                                <i class="ti ti-receipt-refund me-1"></i> Refund
+                            </button>
+                        ` : `
+                            <span class="text-muted small">No action</span>
+                        `}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('tableMetaText').textContent = `Showing ${transactions.length} records`;
+    }
+
+    function renderPagination(pagination) {
+        const container = document.getElementById('paginationContainer');
+        const text = document.getElementById('paginationText');
+
+        text.textContent = `Page ${pagination.current_page} of ${pagination.total_pages} • Total ${pagination.total_count} records`;
+
+        let html = `
+            <li class="page-item ${pagination.has_prev_page ? '' : 'disabled'}">
+                <a class="page-link" href="javascript:void(0)" onclick="${pagination.has_prev_page ? `fetchLedgerData(${pagination.current_page - 1})` : 'return false'}">Previous</a>
+            </li>
+        `;
+
+        const start = Math.max(1, pagination.current_page - 2);
+        const end = Math.min(pagination.total_pages, pagination.current_page + 2);
+
+        for (let i = start; i <= end; i++) {
+            html += `
+                <li class="page-item ${i === pagination.current_page ? 'active' : ''}">
+                    <a class="page-link" href="javascript:void(0)" onclick="fetchLedgerData(${i})">${i}</a>
+                </li>
+            `;
+        }
+
+        html += `
+            <li class="page-item ${pagination.has_next_page ? '' : 'disabled'}">
+                <a class="page-link" href="javascript:void(0)" onclick="${pagination.has_next_page ? `fetchLedgerData(${pagination.current_page + 1})` : 'return false'}">Next</a>
+            </li>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    function resetFilters() {
+        document.getElementById('filterFrom').value = '';
+        document.getElementById('filterTo').value = '';
+        document.getElementById('filterQuickRange').value = '';
+        document.getElementById('filterLedgerType').value = '';
+        document.getElementById('filterPaymentStatus').value = '';
+        document.getElementById('filterRefundStatus').value = '';
+        document.getElementById('filterBookingToken').value = '';
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterSort').value = 'newest';
+        document.getElementById('filterLimit').value = '10';
+
+        fetchLedgerData(1);
+    }
+
+    async function openRefundModal(transactionId) {
+        document.getElementById('refundTransactionId').value = transactionId;
+        document.getElementById('refundReason').value = '';
+        document.getElementById('refundNotes').value = '';
+        document.getElementById('refundAmount').value = '';
+
+        document.getElementById('refundPreviewLoader').classList.remove('d-none');
+        document.getElementById('refundPreviewContent').classList.add('opacity-50');
+
+        refundModalInstance.show();
+
+        try {
+            const res = await fetch(`/admin/payments/refund-preview/${transactionId}`);
+            const json = await res.json();
+
+            if (!json.success) {
+                throw new Error(json.message || 'Failed to fetch refund preview');
+            }
+
+            const data = json.data;
+
+            document.getElementById('previewPaymentToken').textContent = data.payment_token || '-';
+            document.getElementById('previewBookingToken').textContent = data.booking_token || '-';
+            document.getElementById('previewGross').textContent = formatCurrency(data.gross_amount);
+            document.getElementById('previewDeduction').textContent = formatCurrency(data.deduction_amount);
+            document.getElementById('previewAlreadyRefunded').textContent = formatCurrency(data.already_refunded_amount);
+            document.getElementById('previewRemainingRefundable').textContent = formatCurrency(data.remaining_refundable_amount);
+            document.getElementById('refundAmount').value = Number(data.remaining_refundable_amount || 0);
+
+        } catch (error) {
+            alert(error.message || 'Failed to fetch refund preview');
+            refundModalInstance.hide();
+        } finally {
+            document.getElementById('refundPreviewLoader').classList.add('d-none');
+            document.getElementById('refundPreviewContent').classList.remove('opacity-50');
+        }
+    }
+
+    async function submitRefund() {
+        const transactionId = document.getElementById('refundTransactionId').value;
+        const amount = document.getElementById('refundAmount').value;
+        const reason = document.getElementById('refundReason').value;
+        const notes = document.getElementById('refundNotes').value;
+        const btn = document.getElementById('submitRefundBtn');
+
+        if (!reason.trim()) {
+            alert('Refund reason is required');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Processing...`;
+
+        try {
+            const res = await fetch(`/admin/payments/refund/${transactionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    amount,
+                    reason,
+                    notes
+                })
+            });
+
+            const json = await res.json();
+
+            if (!json.success) {
+                throw new Error(json.message || 'Refund failed');
+            }
+
+            alert(json.message || 'Refund processed successfully');
+            refundModalInstance.hide();
+            fetchLedgerData(currentPage);
+
+        } catch (error) {
+            alert(error.message || 'Failed to process refund');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="ti ti-receipt-refund me-1"></i> Process Refund`;
+        }
+    }
+</script>
+
+<style>
+    .avatar {
+        width: 46px;
+        height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .card {
+        border-radius: 14px;
+    }
+
+    .table > :not(caption) > * > * {
+        vertical-align: middle;
+    }
+
+    .page-wrapper .content {
+        padding-bottom: 40px;
+    }
+
+    .modal-content {
+        border-radius: 14px;
+    }
+
+    .pagination .page-link {
+        cursor: pointer;
+    }
+
+    @media (max-width: 767.98px) {
+        .page-header .btn-group {
+            width: 100%;
+        }
+
+        .page-header .btn-group .btn {
+            width: 50%;
+        }
+    }
+</style>
+
+<%- include('../shared/partials/footer') %>

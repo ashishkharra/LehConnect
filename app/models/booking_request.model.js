@@ -34,6 +34,12 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
       },
 
+      chat_unlocked: {
+        type: Sequelize.BOOLEAN,
+        allowNull: true,
+        defaultValue: false
+      },
+
       bid_amount: {
         type: Sequelize.DECIMAL(10, 2),
         allowNull: true,
@@ -91,6 +97,12 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
         defaultValue: null,
       },
+
+      flag: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0
+      }
     },
     {
       tableName: "tbl_booking_requests",

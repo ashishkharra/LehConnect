@@ -24,11 +24,25 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true
       },
 
-      balance: {
+      wallet_balance: {
         type: Sequelize.DECIMAL(14, 2),
         allowNull: false,
         defaultValue: 0.00,
-        comment: 'Current available wallet balance'
+        comment: 'Current wallet balance'
+      },
+
+      referral_balance: {
+        type: Sequelize.DECIMAL(14, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        comment: 'Current referral balance'
+      },
+
+      total_balance: {
+        type: Sequelize.DECIMAL(14, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        comment: 'Current balance'
       },
 
       currency: {

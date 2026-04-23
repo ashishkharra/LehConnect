@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = (sequelize, Sequelize) => {
 
     const FlightEnquiry = sequelize.define('FlightEnquiry', {
@@ -11,6 +9,12 @@ module.exports = (sequelize, Sequelize) => {
         },
 
         token: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
+        customer_token: {
             type: Sequelize.STRING,
             allowNull: true,
             defaultValue: null
@@ -74,6 +78,12 @@ module.exports = (sequelize, Sequelize) => {
 
         class_type: {
             type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
+        segments: {
+            type: Sequelize.JSON,
             allowNull: true,
             defaultValue: null
         },

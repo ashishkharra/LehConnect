@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = (sequelize, Sequelize) => {
 
     const InsuranceEnquiry = sequelize.define('InsuranceEnquiry', {
@@ -16,6 +14,12 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        customer_token: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
         vendor_token: {
             type: Sequelize.STRING,
             allowNull: true,
@@ -25,6 +29,12 @@ module.exports = (sequelize, Sequelize) => {
         from_web: {
             type: Sequelize.BOOLEAN,
             defaultValue: false
+        },
+
+        who_posted: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
         },
 
         car_number: {
@@ -64,21 +74,12 @@ module.exports = (sequelize, Sequelize) => {
             type: Sequelize.INTEGER,
             defaultValue: 0
         }
-
     },
-
         {
-
             tableName: 'tbl_insurance_enquiry',
-
             timestamps: true,
-
             createdAt: 'create_date',
-
             updatedAt: 'update_date'
-
         });
-
     return InsuranceEnquiry;
-
 };

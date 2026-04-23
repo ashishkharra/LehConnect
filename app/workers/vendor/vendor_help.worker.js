@@ -38,7 +38,7 @@ new Worker(
     );
 
     const devices = await VendorDevice.findAll({
-      where: { vendor_token: vendorTokens },
+      where: { vendor_token: vendorTokens, flag: 0 || false },
       attributes: ['fcm_token'],
       raw: true
     });

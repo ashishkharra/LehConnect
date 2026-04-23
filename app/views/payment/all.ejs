@@ -1,682 +1,687 @@
 <%- include('../shared/partials/header', { admin : admin, title: title}) %>
-        <!-- Page Content -->
-        <div class="page-wrapper">
-            <div class="content container-fluid">
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div class="row align-items-center">
-                        <div class="col-sm-6">
-                            <h3 class="page-title">All Payments Ledger</h3>
+    <!-- Page Content -->
+    <div class="page-wrapper">
+        <div class="content container-fluid">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col-sm-6">
+                        <h3 class="page-title">All Payments Ledger</h3>
+                    </div>
+                    <div class="col-sm-6 text-end">
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="showAdvancedFilters()">
+                                <i class="ti ti-filter me-2"></i>Advanced Filters
+                            </button>
+                            <button class="btn btn-success" onclick="showBulkActions()">
+                                <i class="ti ti-settings me-2"></i>Bulk Actions
+                            </button>
                         </div>
-                        <div class="col-sm-6 text-end">
-                            <div class="btn-group">
-                                <button class="btn btn-primary" onclick="showAdvancedFilters()">
-                                    <i class="ti ti-filter me-2"></i>Advanced Filters
-                                </button>
-                                <button class="btn btn-success" onclick="showBulkActions()">
-                                    <i class="ti ti-settings me-2"></i>Bulk Actions
-                                </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="row">
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-primary">
+                                    <i class="ti ti-currency-rupee"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= summary.totalAmount ? summary.totalAmount.toLocaleString('en-IN') : 0 %>
+                                    </h3>
+                                    <h6 class="text-muted">Total Volume</h6>
+                                </div>
+                            </div>
+                            <div class="dash-widget-footer">
+                                <span class="text-success">
+                                    <%= summary.totalCount || 0 %> transactions
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-success">
+                                    <i class="ti ti-trending-up"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= summary.monthlyAmount ? summary.monthlyAmount.toLocaleString('en-IN') : 0
+                                            %>
+                                    </h3>
+                                    <h6 class="text-muted">This Month</h6>
+                                </div>
+                            </div>
+                            <div class="dash-widget-footer">
+                                <span class="text-success">
+                                    <%= summary.monthlyCount || 0 %> transactions
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-warning">
+                                    <i class="ti ti-clock"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= summary.pendingAmount ? summary.pendingAmount.toLocaleString('en-IN') : 0
+                                            %>
+                                    </h3>
+                                    <h6 class="text-muted">Pending</h6>
+                                </div>
+                            </div>
+                            <div class="dash-widget-footer">
+                                <span class="text-warning">
+                                    <%= summary.pendingCount || 0 %> pending
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-sm-6 col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="dash-widget-header">
+                                <span class="dash-widget-icon bg-info">
+                                    <i class="ti ti-refund"></i>
+                                </span>
+                                <div class="dash-widget-info text-end">
+                                    <h3>₹<%= summary.refundAmount ? summary.refundAmount.toLocaleString('en-IN') : 0 %>
+                                    </h3>
+                                    <h6 class="text-muted">Refunds</h6>
+                                </div>
+                            </div>
+                            <div class="dash-widget-footer">
+                                <span class="text-info">
+                                    <%= summary.refundCount || 0 %> refunds
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                <!-- Summary Cards -->
+            <!-- Date Range & Quick Filters -->
+            <div class="date-range-picker">
                 <div class="row">
-                    <div class="col-xl-3 col-sm-6 col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="dash-widget-header">
-                                    <span class="dash-widget-icon bg-primary">
-                                        <i class="ti ti-currency-rupee"></i>
-                                    </span>
-                                    <div class="dash-widget-info text-end">
-                                        <h3>₹<%= summary.totalAmount ? summary.totalAmount.toLocaleString('en-IN') : 0 %></h3>
-                                        <h6 class="text-muted">Total Volume</h6>
-                                    </div>
-                                </div>
-                                <div class="dash-widget-footer">
-                                    <span class="text-success"><%= summary.totalCount || 0 %> transactions</span>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="fromDate" value="<%= defaultFromDate %>">
                         </div>
                     </div>
-                    <div class="col-xl-3 col-sm-6 col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="dash-widget-header">
-                                    <span class="dash-widget-icon bg-success">
-                                        <i class="ti ti-trending-up"></i>
-                                    </span>
-                                    <div class="dash-widget-info text-end">
-                                        <h3>₹<%= summary.monthlyAmount ? summary.monthlyAmount.toLocaleString('en-IN') : 0 %></h3>
-                                        <h6 class="text-muted">This Month</h6>
-                                    </div>
-                                </div>
-                                <div class="dash-widget-footer">
-                                    <span class="text-success"><%= summary.monthlyCount || 0 %> transactions</span>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="toDate" value="<%= defaultToDate %>">
                         </div>
                     </div>
-                    <div class="col-xl-3 col-sm-6 col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="dash-widget-header">
-                                    <span class="dash-widget-icon bg-warning">
-                                        <i class="ti ti-clock"></i>
-                                    </span>
-                                    <div class="dash-widget-info text-end">
-                                        <h3>₹<%= summary.pendingAmount ? summary.pendingAmount.toLocaleString('en-IN') : 0 %></h3>
-                                        <h6 class="text-muted">Pending</h6>
-                                    </div>
-                                </div>
-                                <div class="dash-widget-footer">
-                                    <span class="text-warning"><%= summary.pendingCount || 0 %> pending</span>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Quick Range</label>
+                            <select class="form-select" id="quickRange" onchange="applyQuickRange(this.value)">
+                                <option value="" <%=!appliedFilters?.quickRange ? 'selected' : '' %>>Custom Range
+                                </option>
+                                <option value="today" <%=appliedFilters?.quickRange==='today' ? 'selected' : '' %>>Today
+                                </option>
+                                <option value="yesterday" <%=appliedFilters?.quickRange==='yesterday' ? 'selected' : ''
+                                    %>>Yesterday</option>
+                                <option value="week" <%=appliedFilters?.quickRange==='week' ? 'selected' : '' %>>This
+                                    Week</option>
+                                <option value="month" <%=appliedFilters?.quickRange==='month' ? 'selected' : '' %>>This
+                                    Month</option>
+                                <option value="last_month" <%=appliedFilters?.quickRange==='last_month' ? 'selected'
+                                    : '' %>>Last Month</option>
+                                <option value="quarter" <%=appliedFilters?.quickRange==='quarter' ? 'selected' : '' %>
+                                    >This Quarter</option>
+                                <option value="year" <%=appliedFilters?.quickRange==='year' ? 'selected' : '' %>>This
+                                    Year</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="col-xl-3 col-sm-6 col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="dash-widget-header">
-                                    <span class="dash-widget-icon bg-info">
-                                        <i class="ti ti-refund"></i>
-                                    </span>
-                                    <div class="dash-widget-info text-end">
-                                        <h3>₹<%= summary.refundAmount ? summary.refundAmount.toLocaleString('en-IN') : 0 %></h3>
-                                        <h6 class="text-muted">Refunds</h6>
-                                    </div>
-                                </div>
-                                <div class="dash-widget-footer">
-                                    <span class="text-info"><%= summary.refundCount || 0 %> refunds</span>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="mb-3 d-flex align-items-end" style="height: 100%;">
+                            <button class="btn btn-primary w-100" onclick="applyDateFilter()">
+                                <i class="ti ti-filter me-2"></i>Apply Filter
+                            </button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Date Range & Quick Filters -->
-                <div class="date-range-picker">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">From Date</label>
-                                <input type="date" class="form-control" id="fromDate" 
-                                       value="<%= defaultFromDate %>">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">To Date</label>
-                                <input type="date" class="form-control" id="toDate" 
-                                       value="<%= defaultToDate %>">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Quick Range</label>
-                                <select class="form-select" id="quickRange" onchange="applyQuickRange(this.value)">
-                                    <option value="">Custom Range</option>
-                                    <option value="today">Today</option>
-                                    <option value="yesterday">Yesterday</option>
-                                    <option value="week">This Week</option>
-                                    <option value="month">This Month</option>
-                                    <option value="last_month">Last Month</option>
-                                    <option value="quarter">This Quarter</option>
-                                    <option value="year">This Year</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3 d-flex align-items-end" style="height: 100%;">
-                                <button class="btn btn-primary w-100" onclick="applyDateFilter()">
-                                    <i class="ti ti-filter me-2"></i>Apply Filter
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Advanced Filters -->
-                <div class="advanced-filters" id="advancedFilters">
-                    <h6 class="mb-3">Advanced Filters</h6>
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Transaction Type</label>
-                                <select class="form-select" id="filterTransactionType" multiple>
-                                    <option value="booking_payment">Booking Payment</option>
-                                    <option value="vendor_payout">Vendor Payout</option>
-                                    <option value="customer_refund">Customer Refund</option>
-                                    <option value="commission">Commission</option>
-                                    <option value="subscription">Subscription</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Payment Method</label>
-                                <select class="form-select" id="filterPaymentMethod" multiple>
-                                    <option value="upi">UPI</option>
-                                    <option value="credit_card">Credit Card</option>
-                                    <option value="debit_card">Debit Card</option>
-                                    <option value="netbanking">Net Banking</option>
-                                    <option value="wallet">Wallet</option>
-                                    <option value="cash">Cash</option>
-                                    <option value="bank_transfer">Bank Transfer</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Status</label>
-                                <select class="form-select" id="filterStatus" multiple>
-                                    <option value="success">Success</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="failed">Failed</option>
-                                    <option value="refunded">Refunded</option>
-                                    <option value="cancelled">Cancelled</option>
-                                    <option value="disputed">Disputed</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="mb-3">
-                                <label class="form-label">Amount Range (₹)</label>
-                                <div class="row">
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" id="minAmount" 
-                                               placeholder="Min">
-                                    </div>
-                                    <div class="col-6">
-                                        <input type="number" class="form-control" id="maxAmount" 
-                                               placeholder="Max">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">User Search</label>
-                                <input type="text" class="form-control" id="userSearch" 
-                                       placeholder="Search by user name, email, or phone">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label">Transaction ID</label>
-                                <input type="text" class="form-control" id="transactionIdSearch" 
-                                       placeholder="Search by transaction ID">
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="d-flex justify-content-between">
-                                <button class="btn btn-secondary" onclick="clearAdvancedFilters()">
-                                    <i class="ti ti-x me-2"></i>Clear All
-                                </button>
-                                <button class="btn btn-primary" onclick="applyAdvancedFilters()">
-                                    <i class="ti ti-check me-2"></i>Apply Filters
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- Advanced Filters -->
+            <div class="advanced-filters" id="advancedFilters">
+                <h6 class="mb-3">Advanced Filters</h6>
                 <div class="row">
-                    <!-- Left Column: Analytics & Charts -->
-                    <div class="col-lg-4">
-                        <!-- Income vs Expense Summary -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">Income vs Expense</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="summary-widget income">
-                                    <h4 class="text-success">₹<%= analytics.income ? analytics.income.toLocaleString('en-IN') : 0 %></h4>
-                                    <p class="mb-0">Total Income</p>
-                                </div>
-                                <div class="summary-widget expense">
-                                    <h4 class="text-danger">₹<%= analytics.expense ? analytics.expense.toLocaleString('en-IN') : 0 %></h4>
-                                    <p class="mb-0">Total Expense</p>
-                                </div>
-                                <div class="summary-widget net">
-                                    <h4 class="text-primary">₹<%= analytics.net ? analytics.net.toLocaleString('en-IN') : 0 %></h4>
-                                    <p class="mb-0">Net Balance</p>
-                                </div>
-                            </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Transaction Type</label>
+                            <select class="form-select" id="filterPaymentMethod" multiple>
+                                <option value="razorpay" <%=appliedFilters?.methods?.includes('razorpay') ? 'selected'
+                                    : '' %>>Razorpay</option>
+                                <option value="wallet" <%=appliedFilters?.methods?.includes('wallet') ? 'selected' : ''
+                                    %>>Wallet</option>
+                                <option value="upi" <%=appliedFilters?.methods?.includes('upi') ? 'selected' : '' %>>UPI
+                                </option>
+                                <option value="credit_card" <%=appliedFilters?.methods?.includes('credit_card')
+                                    ? 'selected' : '' %>>Credit Card</option>
+                                <option value="debit_card" <%=appliedFilters?.methods?.includes('debit_card')
+                                    ? 'selected' : '' %>>Debit Card</option>
+                                <option value="netbanking" <%=appliedFilters?.methods?.includes('netbanking')
+                                    ? 'selected' : '' %>>Net Banking</option>
+                                <option value="cash" <%=appliedFilters?.methods?.includes('cash') ? 'selected' : '' %>
+                                    >Cash</option>
+                                <option value="bank_transfer" <%=appliedFilters?.methods?.includes('bank_transfer')
+                                    ? 'selected' : '' %>>Bank Transfer</option>
+                                <option value="refund" <%=appliedFilters?.methods?.includes('refund') ? 'selected' : ''
+                                    %>>Refund</option>
+                            </select>
                         </div>
-
-                        <!-- Payment Methods Distribution -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <h5 class="card-title">Payment Methods</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="paymentMethodsChart"></canvas>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Payment Method</label>
+                            <select class="form-select" id="filterPaymentMethod" multiple>
+                                <option value="upi">UPI</option>
+                                <option value="credit_card">Credit Card</option>
+                                <option value="debit_card">Debit Card</option>
+                                <option value="netbanking">Net Banking</option>
+                                <option value="wallet">Wallet</option>
+                                <option value="cash">Cash</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="filterStatus" multiple>
+                                <option value="success" <%=appliedFilters?.statuses?.includes('success') ? 'selected'
+                                    : '' %>>Success</option>
+                                <option value="pending" <%=appliedFilters?.statuses?.includes('pending') ? 'selected'
+                                    : '' %>>Pending</option>
+                                <option value="failed" <%=appliedFilters?.statuses?.includes('failed') ? 'selected' : ''
+                                    %>>Failed</option>
+                                <option value="refunded" <%=appliedFilters?.statuses?.includes('refunded') ? 'selected'
+                                    : '' %>>Refunded</option>
+                                <option value="cancelled" <%=appliedFilters?.statuses?.includes('cancelled')
+                                    ? 'selected' : '' %>>Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label class="form-label">Amount Range (₹)</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="minAmount" placeholder="Min">
                                 </div>
-                            </div>
-                        </div>
-
-                        <!-- Transaction Status Overview -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <h5 class="card-title">Status Overview</h5>
-                            </div>
-                            <div class="card-body">
-                                <% if (statusOverview && statusOverview.length > 0) { %>
-                                    <% statusOverview.forEach(status => { %>
-                                        <div class="d-flex align-items-center mb-3">
-                                            <div class="flex-shrink-0">
-                                                <span class="badge bg-<%= getStatusColor(status.status) %> me-2">
-                                                    <%= status.status.charAt(0).toUpperCase() + status.status.slice(1) %>
-                                                </span>
-                                            </div>
-                                            <div class="flex-grow-1">
-                                                <div class="progress" style="height: 8px;">
-                                                    <div class="progress-bar bg-<%= getStatusColor(status.status) %>" 
-                                                         style="width: <%= status.percentage %>%;"></div>
-                                                </div>
-                                            </div>
-                                            <div class="flex-shrink-0 ms-3 text-end">
-                                                <h6 class="mb-0">₹<%= status.amount %></h6>
-                                                <small class="text-muted"><%= status.count %> transactions</small>
-                                            </div>
-                                        </div>
-                                    <% }); %>
-                                <% } else { %>
-                                    <div class="text-center py-3">
-                                        <p class="text-muted">No status data available</p>
-                                    </div>
-                                <% } %>
-                            </div>
-                        </div>
-
-                        <!-- Quick Export Options -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <h5 class="card-title">Quick Export</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="export-buttons">
-                                    <button class="btn btn-outline-success" onclick="exportCurrentView('excel')">
-                                        <i class="ti ti-file-spreadsheet me-2"></i>Excel
-                                    </button>
-                                    <button class="btn btn-outline-primary" onclick="exportCurrentView('pdf')">
-                                        <i class="ti ti-file-invoice me-2"></i>PDF
-                                    </button>
-                                    <button class="btn btn-outline-secondary" onclick="exportCurrentView('csv')">
-                                        <i class="ti ti-file-text me-2"></i>CSV
-                                    </button>
-                                    <button class="btn btn-outline-info" onclick="exportCurrentView('json')">
-                                        <i class="ti ti-code me-2"></i>JSON
-                                    </button>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" id="maxAmount" placeholder="Max">
                                 </div>
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">User Search</label>
+                            <input type="text" class="form-control" id="userSearch"
+                                placeholder="Search by user name, email, or phone">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Transaction ID</label>
+                            <input type="text" class="form-control" id="transactionIdSearch"
+                                placeholder="Search by transaction ID">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-secondary" onclick="clearAdvancedFilters()">
+                                <i class="ti ti-x me-2"></i>Clear All
+                            </button>
+                            <button class="btn btn-primary" onclick="applyAdvancedFilters()">
+                                <i class="ti ti-check me-2"></i>Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Right Column: Transactions Table -->
-                    <div class="col-lg-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">All Transactions</h5>
-                                <div class="card-action">
-                                    <div class="input-group" style="width: 250px;">
-                                        <input type="text" class="form-control" placeholder="Search..." 
-                                               id="searchAllTransactions" onkeyup="searchAllTransactions()">
-                                        <button class="btn btn-outline-secondary" type="button">
-                                            <i class="ti ti-search"></i>
-                                        </button>
-                                    </div>
+            <div class="row">
+                <!-- Left Column: Analytics & Charts -->
+
+
+                <!-- Right Column: Transactions Table -->
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">All Transactions</h5>
+                            <div class="card-action">
+                                <div class="input-group" style="width: 250px;">
+                                    <input type="text" class="form-control" placeholder="Search..."
+                                        id="searchAllTransactions" onkeyup="searchAllTransactions()">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="ti ti-search"></i>
+                                    </button>
                                 </div>
                             </div>
-                            <div class="card-body">
-                                <!-- Table Controls -->
-                                <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="showOnlyUnsettled"
-                                                   onchange="toggleUnsettledView()">
-                                            <label class="form-check-label" for="showOnlyUnsettled">
-                                                Show only unsettled
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <select class="form-select" id="sortBy" onchange="sortTransactions()">
-                                            <option value="newest">Newest First</option>
-                                            <option value="oldest">Oldest First</option>
-                                            <option value="amount_high">Amount (High to Low)</option>
-                                            <option value="amount_low">Amount (Low to High)</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <span class="text-muted">
-                                            Showing <%= startIndex + 1 %>-<%= endIndex %> of <%= totalCount %> transactions
-                                        </span>
+                        </div>
+                        <div class="card-body">
+                            <!-- Table Controls -->
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="showOnlyUnsettled"
+                                            <%=appliedFilters?.unsettled ? 'checked' : '' %>
+                                        onchange="toggleUnsettledView()">
+                                        <label class="form-check-label" for="showOnlyUnsettled">
+                                            Show only unsettled
+                                        </label>
                                     </div>
                                 </div>
+                                <div class="col-md-4">
+                                    <select class="form-select" id="sortBy" onchange="sortTransactions()">
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                        <option value="amount_high">Amount (High to Low)</option>
+                                        <option value="amount_low">Amount (Low to High)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <span class="text-muted">
+                                        Showing <%= startIndex %>-<%= endIndex %> of <%= totalCount %> transactions of
+                                                    <%= totalCount %> transactions
+                                    </span>
+                                </div>
+                            </div>
 
-                                <!-- Transactions Table -->
-                                <div class="table-responsive">
-                                    <table class="table table-hover table-center mb-0" id="allTransactionsTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Date</th>
-                                                <th>Transaction ID</th>
-                                                <th>User</th>
-                                                <th>Type</th>
-                                                <th>Amount</th>
-                                                <th>Method</th>
-                                                <th>Status</th>
-                                                <th>Settled</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <% if (transactions && transactions.length > 0) { %>
-                                                <% transactions.forEach(txn => { %>
-                                                    <tr data-id="<%= txn.id %>" 
-                                                        data-settled="<%= txn.settled_at ? 'true' : 'false' %>">
-                                                        <td>
-                                                            <strong><%= new Date(txn.created_at).toLocaleDateString() %></strong>
+                            <!-- Transactions Table -->
+                            <div class="table-responsive">
+                                <table class="table table-hover table-center mb-0" id="allTransactionsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Transaction ID</th>
+                                            <th>User</th>
+                                            <th>Type</th>
+                                            <th>Amount</th>
+                                            <th>Method</th>
+                                            <th>Status</th>
+                                            <th>Settled</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% if (transactions && transactions.length> 0) { %>
+                                            <% transactions.forEach(txn=> { %>
+                                                <tr data-id="<%= txn.id %>"
+                                                    data-settled="<%= txn.settled_at ? 'true' : 'false' %>">
+                                                    <td>
+                                                        <strong>
+                                                            <%= new Date(txn.created_at).toLocaleDateString() %>
+                                                        </strong>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            <%= new Date(txn.created_at).toLocaleTimeString([],
+                                                                {hour: '2-digit' , minute:'2-digit'}) %>
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <code><%= txn.transaction_id %></code>
+                                                        <% if (txn.gateway_transaction_id) { %>
+                                                            <br>
+                                                            <small class="text-muted" title="Gateway ID">
+                                                                <%= txn.gateway_transaction_id.substring(0, 10) %>...
+                                                            </small>
+                                                            <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar avatar-sm me-2">
+                                                                <img src="<%= txn.user_avatar || 'assets/img/profiles/avatar-02.jpg' %>"
+                                                                    class="rounded-circle" alt="User">
+                                                            </div>
+                                                            <div>
+                                                                <h6 class="mb-0">
+                                                                    <%= txn.user_name %>
+                                                                </h6>
+                                                                <small class="text-muted">
+                                                                    <%= txn.user_type.charAt(0).toUpperCase() +
+                                                                        txn.user_type.slice(1) %>
+                                                                </small>
+                                                                <% if (txn.user_email) { %>
+                                                                    <br>
+                                                                    <small class="text-muted">
+                                                                        <%= txn.user_email %>
+                                                                    </small>
+                                                                    <% } %>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-<%= getTypeColor(txn.transaction_type) %>">
+                                                            <%= getTypeName(txn.transaction_type) %>
+                                                        </span>
+                                                        <% if (txn.booking_id) { %>
                                                             <br>
                                                             <small class="text-muted">
-                                                                <%= new Date(txn.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %>
+                                                                Booking #<%= txn.booking_id %>
                                                             </small>
-                                                        </td>
-                                                        <td>
-                                                            <code><%= txn.transaction_id %></code>
-                                                            <% if (txn.gateway_transaction_id) { %>
-                                                                <br>
-                                                                <small class="text-muted" title="Gateway ID">
-                                                                    <%= txn.gateway_transaction_id.substring(0, 10) %>...
-                                                                </small>
                                                             <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="avatar avatar-sm me-2">
-                                                                    <img src="<%= txn.user_avatar || 'assets/img/profiles/avatar-02.jpg' %>" 
-                                                                         class="rounded-circle" alt="User">
-                                                                </div>
-                                                                <div>
-                                                                    <h6 class="mb-0"><%= txn.user_name %></h6>
-                                                                    <small class="text-muted">
-                                                                        <%= txn.user_type.charAt(0).toUpperCase() + txn.user_type.slice(1) %>
-                                                                    </small>
-                                                                    <% if (txn.user_email) { %>
-                                                                        <br>
-                                                                        <small class="text-muted"><%= txn.user_email %></small>
-                                                                    <% } %>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span class="badge bg-<%= getTypeColor(txn.transaction_type) %>">
-                                                                <%= getTypeName(txn.transaction_type) %>
+                                                    </td>
+                                                    <td>
+                                                        <h6
+                                                            class="<%= txn.amount > 0 ? 'text-success' : 'text-danger' %> mb-0">
+                                                            <%= txn.amount> 0 ? '+' : '' %>₹<%=
+                                                                    Math.abs(txn.amount).toLocaleString('en-IN') %>
+                                                        </h6>
+                                                        <small class="text-muted">
+                                                            <%= txn.currency %>
+                                                        </small>
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <i
+                                                                class="ti <%= getMethodIcon(txn.payment_method) %> me-2"></i>
+                                                            <span>
+                                                                <%= getMethodName(txn.payment_method) %>
                                                             </span>
-                                                            <% if (txn.booking_id) { %>
-                                                                <br>
-                                                                <small class="text-muted">
-                                                                    Booking #<%= txn.booking_id %>
-                                                                </small>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-<%= getStatusColor(txn.status) %>">
+                                                            <%= txn.status.charAt(0).toUpperCase() + txn.status.slice(1)
+                                                                %>
+                                                        </span>
+                                                        <% if (txn.status==='failed' ) { %>
+                                                            <br>
+                                                            <small class="text-danger">Retry available</small>
                                                             <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <h6 class="<%= txn.amount > 0 ? 'text-success' : 'text-danger' %> mb-0">
-                                                                <%= txn.amount > 0 ? '+' : '' %>₹<%= Math.abs(txn.amount).toLocaleString('en-IN') %>
-                                                            </h6>
-                                                            <small class="text-muted"><%= txn.currency %></small>
-                                                        </td>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                <i class="ti <%= getMethodIcon(txn.payment_method) %> me-2"></i>
-                                                                <span><%= getMethodName(txn.payment_method) %></span>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span class="badge bg-<%= getStatusColor(txn.status) %>">
-                                                                <%= txn.status.charAt(0).toUpperCase() + txn.status.slice(1) %>
+                                                    </td>
+                                                    <td>
+                                                        <% if (txn.settled_at) { %>
+                                                            <span class="badge bg-success">
+                                                                <i class="ti ti-check me-1"></i>Settled
                                                             </span>
-                                                            <% if (txn.status === 'failed') { %>
-                                                                <br>
-                                                                <small class="text-danger">Retry available</small>
-                                                            <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <% if (txn.settled_at) { %>
-                                                                <span class="badge bg-success">
-                                                                    <i class="ti ti-check me-1"></i>Settled
-                                                                </span>
-                                                                <br>
-                                                                <small class="text-muted">
-                                                                    <%= new Date(txn.settled_at).toLocaleDateString() %>
-                                                                </small>
+                                                            <br>
+                                                            <small class="text-muted">
+                                                                <%= new Date(txn.settled_at).toLocaleDateString() %>
+                                                            </small>
                                                             <% } else { %>
                                                                 <span class="badge bg-warning">
                                                                     <i class="ti ti-clock me-1"></i>Pending
                                                                 </span>
                                                                 <br>
-                                                                <button class="btn btn-sm btn-link p-0" 
-                                                                        onclick="markAsSettled('<%= txn.id %>')">
+                                                                <button class="btn btn-sm btn-link p-0"
+                                                                    onclick="markAsSettled('<%= txn.id %>')">
                                                                     Mark as settled
                                                                 </button>
-                                                            <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <div class="actions">
-                                                                <a href="javascript:void(0);" class="btn btn-sm bg-info-light me-2" 
-                                                                   onclick="viewTransactionDetails('<%= txn.id %>')">
-                                                                    <i class="ti ti-eye"></i>
+                                                                <% } %>
+                                                    </td>
+                                                    <td>
+                                                        <div class="actions">
+                                                            <a href="javascript:void(0);"
+                                                                class="btn btn-sm bg-info-light me-2"
+                                                                onclick="viewTransactionDetails('<%= txn.id %>')">
+                                                                <i class="ti ti-eye"></i>
+                                                            </a>
+                                                            <div class="dropdown">
+                                                                <a href="javascript:void(0);"
+                                                                    class="btn btn-sm bg-primary-light"
+                                                                    data-bs-toggle="dropdown">
+                                                                    <i class="ti ti-dots-vertical"></i>
                                                                 </a>
-                                                                <div class="dropdown">
-                                                                    <a href="javascript:void(0);" class="btn btn-sm bg-primary-light" 
-                                                                       data-bs-toggle="dropdown">
-                                                                        <i class="ti ti-dots-vertical"></i>
+                                                                <div class="dropdown-menu">
+                                                                    <a class="dropdown-item" href="javascript:void(0);"
+                                                                        onclick="editTransaction('<%= txn.id %>')">
+                                                                        <i class="ti ti-pencil me-2"></i>Edit
                                                                     </a>
-                                                                    <div class="dropdown-menu">
-                                                                        <a class="dropdown-item" href="javascript:void(0);"
-                                                                           onclick="editTransaction('<%= txn.id %>')">
-                                                                            <i class="ti ti-pencil me-2"></i>Edit
+                                                                    <% if (txn.status==='success' && !txn.settled_at) {
+                                                                        %>
+                                                                        <a class="dropdown-item"
+                                                                            href="javascript:void(0);"
+                                                                            onclick="markAsSettled('<%= txn.id %>')">
+                                                                            <i class="ti ti-check me-2"></i>Mark as
+                                                                            Settled
                                                                         </a>
-                                                                        <% if (txn.status === 'success' && !txn.settled_at) { %>
-                                                                            <a class="dropdown-item" href="javascript:void(0);"
-                                                                               onclick="markAsSettled('<%= txn.id %>')">
-                                                                                <i class="ti ti-check me-2"></i>Mark as Settled
-                                                                            </a>
                                                                         <% } %>
-                                                                        <% if (txn.status === 'failed') { %>
-                                                                            <a class="dropdown-item" href="javascript:void(0);"
-                                                                               onclick="retryTransaction('<%= txn.id %>')">
-                                                                                <i class="ti ti-refresh me-2"></i>Retry
-                                                                            </a>
-                                                                        <% } %>
-                                                                        <% if (txn.status === 'success' && txn.transaction_type === 'booking_payment') { %>
-                                                                            <a class="dropdown-item" href="javascript:void(0);"
-                                                                               onclick="initiateRefund('<%= txn.id %>')">
-                                                                                <i class="ti ti-refund me-2"></i>Refund
-                                                                            </a>
-                                                                        <% } %>
-                                                                        <div class="dropdown-divider"></div>
-                                                                        <a class="dropdown-item text-danger" href="javascript:void(0);"
-                                                                           onclick="deleteTransaction('<%= txn.id %>')">
-                                                                            <i class="ti ti-trash me-2"></i>Delete
-                                                                        </a>
-                                                                    </div>
+                                                                            <% if (txn.status==='failed' ) { %>
+                                                                                <a class="dropdown-item"
+                                                                                    href="javascript:void(0);"
+                                                                                    onclick="retryTransaction('<%= txn.id %>')">
+                                                                                    <i
+                                                                                        class="ti ti-refresh me-2"></i>Retry
+                                                                                </a>
+                                                                                <% } %>
+                                                                                    <% if (txn.status==='success' &&
+                                                                                        txn.transaction_type==='booking_payment'
+                                                                                        ) { %>
+                                                                                        <a class="dropdown-item"
+                                                                                            href="javascript:void(0);"
+                                                                                            onclick="initiateRefund('<%= txn.id %>')">
+                                                                                            <i
+                                                                                                class="ti ti-refund me-2"></i>Refund
+                                                                                        </a>
+                                                                                        <% } %>
+                                                                                            <div
+                                                                                                class="dropdown-divider">
+                                                                                            </div>
+                                                                                            <a class="dropdown-item text-danger"
+                                                                                                href="javascript:void(0);"
+                                                                                                onclick="deleteTransaction('<%= txn.id %>')">
+                                                                                                <i
+                                                                                                    class="ti ti-trash me-2"></i>Delete
+                                                                                            </a>
                                                                 </div>
                                                             </div>
-                                                        </td>
-                                                    </tr>
-                                                <% }); %>
-                                            <% } else { %>
-                                                <tr>
-                                                    <td colspan="9" class="text-center">
-                                                        <div class="empty-state">
-                                                            <i class="ti ti-receipt fs-48 text-muted mb-3"></i>
-                                                            <h5>No transactions found</h5>
-                                                            <p class="text-muted">Try adjusting your filters</p>
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            <% } %>
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                <% }); %>
+                                                    <% } else { %>
+                                                        <tr>
+                                                            <td colspan="9" class="text-center">
+                                                                <div class="empty-state">
+                                                                    <i class="ti ti-receipt fs-48 text-muted mb-3"></i>
+                                                                    <h5>No transactions found</h5>
+                                                                    <p class="text-muted">Try adjusting your filters</p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        <% } %>
+                                    </tbody>
+                                </table>
+                            </div>
+                                    <%
+                                    function buildQuery(extra = {}) {
+                                        const params = new URLSearchParams();
 
-                                <!-- Pagination -->
-                                <div class="row mt-3">
-                                    <div class="col-md-6">
-                                        <div class="d-flex align-items-center">
-                                            <span class="text-muted me-3">Show:</span>
-                                            <select class="form-select form-select-sm" style="width: auto;" 
-                                                    onchange="changePageSize(this.value)">
-                                                <option value="10" <%= pageSize === 10 ? 'selected' : '' %>>10</option>
-                                                <option value="25" <%= pageSize === 25 ? 'selected' : '' %>>25</option>
-                                                <option value="50" <%= pageSize === 50 ? 'selected' : '' %>>50</option>
-                                                <option value="100" <%= pageSize === 100 ? 'selected' : '' %>>100</option>
-                                            </select>
-                                            <span class="text-muted ms-3">entries per page</span>
-                                        </div>
+                                        if (defaultFromDate) params.set('from', defaultFromDate);
+                                        if (defaultToDate) params.set('to', defaultToDate);
+                                        if (appliedFilters?.quickRange) params.set('quickRange', appliedFilters.quickRange);
+                                        if (appliedFilters?.types?.length) params.set('types', appliedFilters.types.join(','));
+                                        if (appliedFilters?.methods?.length) params.set('methods', appliedFilters.methods.join(','));
+                                        if (appliedFilters?.statuses?.length) params.set('statuses', appliedFilters.statuses.join(','));
+                                        if (appliedFilters?.min_amount) params.set('min_amount', appliedFilters.min_amount);
+                                        if (appliedFilters?.max_amount) params.set('max_amount', appliedFilters.max_amount);
+                                        if (appliedFilters?.user) params.set('user', appliedFilters.user);
+                                        if (appliedFilters?.transaction_id) params.set('transaction_id', appliedFilters.transaction_id);
+                                        if (appliedFilters?.unsettled) params.set('unsettled', appliedFilters.unsettled);
+                                        if (appliedFilters?.sort) params.set('sort', appliedFilters.sort);
+                                        if (pageSize) params.set('size', pageSize);
+
+                                        Object.keys(extra).forEach((key) => {
+                                            if (extra[key] !== undefined && extra[key] !== null && extra[key] !== '') {
+                                                params.set(key, extra[key]);
+                                            }
+                                        });
+
+                                        return `?${params.toString()}`;
+                                    }
+                                    %>
+                            <!-- Pagination -->
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <span class="text-muted me-3">Show:</span>
+                                        <select class="form-select form-select-sm" style="width: auto;"
+                                            onchange="changePageSize(this.value)">
+                                            <option value="10" <%=pageSize===10 ? 'selected' : '' %>>10</option>
+                                            <option value="25" <%=pageSize===25 ? 'selected' : '' %>>25</option>
+                                            <option value="50" <%=pageSize===50 ? 'selected' : '' %>>50</option>
+                                            <option value="100" <%=pageSize===100 ? 'selected' : '' %>>100</option>
+                                        </select>
+                                        <span class="text-muted ms-3">entries per page</span>
                                     </div>
-                                    <div class="col-md-6">
-                                        <nav aria-label="Page navigation" class="pagination-custom">
-                                            <ul class="pagination justify-content-end mb-0">
-                                                <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
-                                                    <a class="page-link" href="?page=<%= currentPage - 1 %>&size=<%= pageSize %>">
-                                                        Previous
+                                </div>
+                                <div class="col-md-6">
+                                    <nav aria-label="Page navigation" class="pagination-custom">
+                                        <ul class="pagination justify-content-end mb-0">
+                                            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+                                                <a class="page-link"
+                                                    href="<%= buildQuery({ page: currentPage - 1 }) %>">Previous</a>
+                                            </li>
+
+                                            <% for(let i=Math.max(1, currentPage - 2); i <=Math.min(totalPages,
+                                                currentPage + 2); i++) { %>
+                                                <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                                                    <a class="page-link" href="<%= buildQuery({ page: i }) %>">
+                                                        <%= i %>
                                                     </a>
                                                 </li>
-                                                
-                                                <% for(let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
-                                                    <li class="page-item <%= i === currentPage ? 'active' : '' %>">
-                                                        <a class="page-link" href="?page=<%= i %>&size=<%= pageSize %>">
-                                                            <%= i %>
-                                                        </a>
-                                                    </li>
                                                 <% } %>
-                                                
-                                                <% if (currentPage + 2 < totalPages) { %>
-                                                    <li class="page-item disabled">
-                                                        <span class="page-link">...</span>
-                                                    </li>
-                                                    <li class="page-item">
-                                                        <a class="page-link" href="?page=<%= totalPages %>&size=<%= pageSize %>">
-                                                            <%= totalPages %>
-                                                        </a>
-                                                    </li>
-                                                <% } %>
-                                                
-                                                <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
-                                                    <a class="page-link" href="?page=<%= currentPage + 1 %>&size=<%= pageSize %>">
-                                                        Next
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- Monthly Trend Chart -->
-                        <div class="card mt-4">
-                            <div class="card-header">
-                                <h5 class="card-title">Monthly Transaction Trend</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="chart-container">
-                                    <canvas id="monthlyTrendChart"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                                                    <% if (currentPage + 2 < totalPages) { %>
+                                                        <li class="page-item disabled">
+                                                            <span class="page-link">...</span>
+                                                        </li>
+                                                        <li class="page-item">
+                                                            <a class="page-link"
+                                                                href="<%= buildQuery({ page: totalPages }) %>">
+                                                                <%= totalPages %>
+                                                            </a>
+                                                        </li>
+                                                        <% } %>
 
-        <!-- Bulk Actions Modal -->
-        <div class="modal fade" id="bulkActionsModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Bulk Actions</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Select Action</label>
-                            <select class="form-select" id="bulkActionType">
-                                <option value="">Choose action...</option>
-                                <option value="export">Export Selected</option>
-                                <option value="settle">Mark as Settled</option>
-                                <option value="status">Change Status</option>
-                                <option value="reconcile">Mark for Reconciliation</option>
-                                <option value="delete">Delete Transactions</option>
-                            </select>
-                        </div>
-                        
-                        <div id="bulkActionOptions" style="display: none;">
-                            <!-- Export Options -->
-                            <div id="exportOptions" class="action-options">
-                                <div class="mb-3">
-                                    <label class="form-label">Export Format</label>
-                                    <select class="form-select" id="bulkExportFormat">
-                                        <option value="excel">Excel</option>
-                                        <option value="csv">CSV</option>
-                                        <option value="pdf">PDF</option>
-                                    </select>
+                                                            <li
+                                                                class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+                                                                <a class="page-link"
+                                                                    href="<%= buildQuery({ page: currentPage + 1 }) %>">Next</a>
+                                                            </li>
+                                        </ul>
+                                    </nav>
                                 </div>
                             </div>
-                            
-                            <!-- Status Change Options -->
-                            <div id="statusOptions" class="action-options" style="display: none;">
-                                <div class="mb-3">
-                                    <label class="form-label">New Status</label>
-                                    <select class="form-select" id="newStatus">
-                                        <option value="success">Success</option>
-                                        <option value="pending">Pending</option>
-                                        <option value="failed">Failed</option>
-                                        <option value="refunded">Refunded</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <!-- Settlement Options -->
-                            <div id="settleOptions" class="action-options" style="display: none;">
-                                <div class="mb-3">
-                                    <label class="form-label">Settlement Date</label>
-                                    <input type="date" class="form-control" id="bulkSettlementDate" 
-                                           value="<%= new Date().toISOString().split('T')[0] %>">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="alert alert-info mt-3">
-                            <i class="ti ti-info-circle me-2"></i>
-                            This action will apply to all transactions matching current filters
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-primary" onclick="executeBulkAction()">Execute</button>
+
+                    <!-- Monthly Trend Chart -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="card-title">Monthly Transaction Trend</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="monthlyTrendChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Bulk Actions Modal -->
+    <div class="modal fade" id="bulkActionsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Bulk Actions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Select Action</label>
+                        <select class="form-select" id="bulkActionType">
+                            <option value="">Choose action...</option>
+                            <option value="export">Export Selected</option>
+                            <option value="settle">Mark as Settled</option>
+                            <option value="status">Change Status</option>
+                            <option value="reconcile">Mark for Reconciliation</option>
+                            <option value="delete">Delete Transactions</option>
+                        </select>
+                    </div>
+
+                    <div id="bulkActionOptions" style="display: none;">
+                        <!-- Export Options -->
+                        <div id="exportOptions" class="action-options">
+                            <div class="mb-3">
+                                <label class="form-label">Export Format</label>
+                                <select class="form-select" id="bulkExportFormat">
+                                    <option value="excel">Excel</option>
+                                    <option value="csv">CSV</option>
+                                    <option value="pdf">PDF</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Status Change Options -->
+                        <div id="statusOptions" class="action-options" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">New Status</label>
+                                <select class="form-select" id="newStatus">
+                                    <option value="success">Success</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="failed">Failed</option>
+                                    <option value="refunded">Refunded</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Settlement Options -->
+                        <div id="settleOptions" class="action-options" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Settlement Date</label>
+                                <input type="date" class="form-control" id="bulkSettlementDate"
+                                    value="<%= new Date().toISOString().split('T')[0] %>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="ti ti-info-circle me-2"></i>
+                        This action will apply to all transactions matching current filters
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="executeBulkAction()">Execute</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <script>
         // Initialize charts
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Payment Methods Chart
             const methodsCtx = document.getElementById('paymentMethodsChart').getContext('2d');
             new Chart(methodsCtx, {
@@ -686,7 +691,7 @@
                     datasets: [{
                         data: <%= JSON.stringify(methodData || []) %>,
                         backgroundColor: [
-                            '#667eea', '#28a745', '#17a2b8', '#ffc107', 
+                            '#667eea', '#28a745', '#17a2b8', '#ffc107',
                             '#dc3545', '#6c757d', '#20c997'
                         ]
                     }]
@@ -736,7 +741,7 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: function(value) {
+                                callback: function (value) {
                                     return '₹' + value.toLocaleString();
                                 }
                             }
@@ -745,7 +750,7 @@
                     plugins: {
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     return context.dataset.label + ': ₹' + context.parsed.y.toLocaleString();
                                 }
                             }
@@ -770,24 +775,67 @@
         }
 
         // Apply date filter
-        function applyDateFilter() {
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
-            
-            if (!fromDate || !toDate) {
-                Swal.fire('Error', 'Please select both dates', 'error');
-                return;
+        function applyQuickRange(range) {
+            let fromDate, toDate;
+            const today = new Date();
+
+            switch (range) {
+                case 'today':
+                    fromDate = toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    fromDate = toDate = yesterday.toISOString().split('T')[0];
+                    break;
+                case 'week':
+                    const weekStart = new Date(today);
+                    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+                    fromDate = weekStart.toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'month':
+                    fromDate = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'last_month':
+                    const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    fromDate = lastMonth.toISOString().split('T')[0];
+                    toDate = new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split('T')[0];
+                    break;
+                case 'quarter':
+                    const quarter = Math.floor(today.getMonth() / 3);
+                    fromDate = new Date(today.getFullYear(), quarter * 3, 1).toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                case 'year':
+                    fromDate = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+                    toDate = today.toISOString().split('T')[0];
+                    break;
+                default:
+                    return;
             }
-            
-            window.location.href = `?from=${fromDate}&to=${toDate}&page=1`;
+
+            document.getElementById('fromDate').value = fromDate;
+            document.getElementById('toDate').value = toDate;
+            document.getElementById('quickRange').value = range;
+
+            const url = buildUrlWithParams({
+                from: fromDate,
+                to: toDate,
+                quickRange: range,
+                page: 1
+            });
+
+            window.location.href = url;
         }
 
         // Apply quick range
         function applyQuickRange(range) {
             let fromDate, toDate;
             const today = new Date();
-            
-            switch(range) {
+
+            switch (range) {
                 case 'today':
                     fromDate = toDate = today.toISOString().split('T')[0];
                     break;
@@ -827,7 +875,7 @@
                 default:
                     return;
             }
-            
+
             document.getElementById('fromDate').value = fromDate;
             document.getElementById('toDate').value = toDate;
             document.getElementById('quickRange').value = range;
@@ -836,45 +884,47 @@
         // Apply advanced filters
         function applyAdvancedFilters() {
             const transactionTypes = Array.from(document.getElementById('filterTransactionType').selectedOptions)
-                                        .map(opt => opt.value);
+                .map(opt => opt.value);
             const paymentMethods = Array.from(document.getElementById('filterPaymentMethod').selectedOptions)
-                                      .map(opt => opt.value);
+                .map(opt => opt.value);
             const statuses = Array.from(document.getElementById('filterStatus').selectedOptions)
-                                .map(opt => opt.value);
+                .map(opt => opt.value);
             const minAmount = document.getElementById('minAmount').value;
             const maxAmount = document.getElementById('maxAmount').value;
             const userSearch = document.getElementById('userSearch').value;
             const transactionIdSearch = document.getElementById('transactionIdSearch').value;
-            
-            let url = '?page=1';
-            
-            if (transactionTypes.length > 0) url += `&types=${transactionTypes.join(',')}`;
-            if (paymentMethods.length > 0) url += `&methods=${paymentMethods.join(',')}`;
-            if (statuses.length > 0) url += `&statuses=${statuses.join(',')}`;
-            if (minAmount) url += `&min_amount=${minAmount}`;
-            if (maxAmount) url += `&max_amount=${maxAmount}`;
-            if (userSearch) url += `&user=${encodeURIComponent(userSearch)}`;
-            if (transactionIdSearch) url += `&transaction_id=${encodeURIComponent(transactionIdSearch)}`;
-            
+
+            const url = buildUrlWithParams({
+                types: transactionTypes.length ? transactionTypes.join(',') : '',
+                methods: paymentMethods.length ? paymentMethods.join(',') : '',
+                statuses: statuses.length ? statuses.join(',') : '',
+                min_amount: minAmount,
+                max_amount: maxAmount,
+                user: userSearch,
+                transaction_id: transactionIdSearch,
+                page: 1
+            });
+
             window.location.href = url;
         }
 
         // Clear advanced filters
         function clearAdvancedFilters() {
-            document.getElementById('filterTransactionType').selectedIndex = -1;
-            document.getElementById('filterPaymentMethod').selectedIndex = -1;
-            document.getElementById('filterStatus').selectedIndex = -1;
-            document.getElementById('minAmount').value = '';
-            document.getElementById('maxAmount').value = '';
-            document.getElementById('userSearch').value = '';
-            document.getElementById('transactionIdSearch').value = '';
+            const url = buildUrlWithParams(
+                {
+                    page: 1
+                },
+                ['types', 'methods', 'statuses', 'min_amount', 'max_amount', 'user', 'transaction_id', 'unsettled']
+            );
+
+            window.location.href = url;
         }
 
         // Search all transactions
         function searchAllTransactions() {
             const searchTerm = document.getElementById('searchAllTransactions').value.toLowerCase();
             const rows = document.querySelectorAll('#allTransactionsTable tbody tr');
-            
+
             rows.forEach(row => {
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(searchTerm) ? '' : 'none';
@@ -884,44 +934,33 @@
         // Toggle unsettled view
         function toggleUnsettledView() {
             const showOnlyUnsettled = document.getElementById('showOnlyUnsettled').checked;
-            const rows = document.querySelectorAll('#allTransactionsTable tbody tr');
-            
-            rows.forEach(row => {
-                const isSettled = row.getAttribute('data-settled') === 'true';
-                if (showOnlyUnsettled && isSettled) {
-                    row.style.display = 'none';
-                } else {
-                    row.style.display = '';
-                }
+
+            const url = buildUrlWithParams({
+                unsettled: showOnlyUnsettled ? '1' : '',
+                page: 1
             });
+
+            window.location.href = url;
         }
 
         // Sort transactions
         function sortTransactions() {
             const sortBy = document.getElementById('sortBy').value;
-            let url = window.location.pathname + window.location.search;
-            
-            // Remove existing sort parameter if exists
-            url = url.replace(/[?&]sort=[^&]*/, '');
-            
-            // Add new sort parameter
-            const separator = url.includes('?') ? '&' : '?';
-            url += `${separator}sort=${sortBy}`;
-            
+            const url = buildUrlWithParams({
+                sort: sortBy,
+                page: 1
+            });
+
             window.location.href = url;
         }
 
         // Change page size
         function changePageSize(size) {
-            let url = window.location.pathname + window.location.search;
-            
-            // Remove existing size parameter if exists
-            url = url.replace(/[?&]size=[^&]*/, '');
-            
-            // Add new size parameter
-            const separator = url.includes('?') ? '&' : '?';
-            url += `${separator}size=${size}&page=1`;
-            
+            const url = buildUrlWithParams({
+                size,
+                page: 1
+            });
+
             window.location.href = url;
         }
 
@@ -938,27 +977,27 @@
                     fetch(`/admin/payments/settle/${transactionId}`, {
                         method: 'POST'
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire('Success', 'Transaction marked as settled', 'success');
-                            location.reload();
-                        }
-                    });
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Success', 'Transaction marked as settled', 'success');
+                                location.reload();
+                            }
+                        });
                 }
             });
         }
 
         // Show bulk actions modal
         function showBulkActions() {
-            document.getElementById('bulkActionType').addEventListener('change', function() {
+            document.getElementById('bulkActionType').addEventListener('change', function () {
                 const actionType = this.value;
                 const optionsContainer = document.getElementById('bulkActionOptions');
                 const allOptions = document.querySelectorAll('.action-options');
-                
+
                 allOptions.forEach(opt => opt.style.display = 'none');
                 optionsContainer.style.display = 'none';
-                
+
                 if (actionType) {
                     optionsContainer.style.display = 'block';
                     const optionElement = document.getElementById(`${actionType}Options`);
@@ -967,7 +1006,7 @@
                     }
                 }
             });
-            
+
             $('#bulkActionsModal').modal('show');
         }
 
@@ -978,17 +1017,17 @@
                 Swal.fire('Error', 'Please select an action', 'error');
                 return;
             }
-            
+
             const currentUrl = new URL(window.location.href);
             const params = new URLSearchParams(currentUrl.search);
-            
-            switch(actionType) {
+
+            switch (actionType) {
                 case 'export':
                     const format = document.getElementById('bulkExportFormat').value;
                     params.set('export', format);
                     window.open(`/admin/payments/export-all?${params.toString()}`, '_blank');
                     break;
-                    
+
                 case 'settle':
                     const settlementDate = document.getElementById('bulkSettlementDate').value;
                     Swal.fire({
@@ -1004,22 +1043,22 @@
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({ 
+                                body: JSON.stringify({
                                     filters: Object.fromEntries(params),
-                                    settlementDate 
+                                    settlementDate
                                 })
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    Swal.fire('Success', `Marked ${data.count} transactions as settled`, 'success');
-                                    location.reload();
-                                }
-                            });
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Success', `Marked ${data.count} transactions as settled`, 'success');
+                                        location.reload();
+                                    }
+                                });
                         }
                     });
                     break;
-                    
+
                 case 'status':
                     const newStatus = document.getElementById('newStatus').value;
                     Swal.fire({
@@ -1035,22 +1074,22 @@
                                 headers: {
                                     'Content-Type': 'application/json',
                                 },
-                                body: JSON.stringify({ 
+                                body: JSON.stringify({
                                     filters: Object.fromEntries(params),
-                                    newStatus 
+                                    newStatus
                                 })
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    Swal.fire('Success', `Updated ${data.count} transactions`, 'success');
-                                    location.reload();
-                                }
-                            });
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Success', `Updated ${data.count} transactions`, 'success');
+                                        location.reload();
+                                    }
+                                });
                         }
                     });
                     break;
-                    
+
                 case 'delete':
                     Swal.fire({
                         title: 'Delete Transactions',
@@ -1068,18 +1107,18 @@
                                 },
                                 body: JSON.stringify({ filters: Object.fromEntries(params) })
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    Swal.fire('Deleted!', `Deleted ${data.count} transactions`, 'success');
-                                    location.reload();
-                                }
-                            });
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        Swal.fire('Deleted!', `Deleted ${data.count} transactions`, 'success');
+                                        location.reload();
+                                    }
+                                });
                         }
                     });
                     break;
             }
-            
+
             $('#bulkActionsModal').modal('hide');
         }
 
@@ -1088,7 +1127,7 @@
             const currentUrl = new URL(window.location.href);
             const params = new URLSearchParams(currentUrl.search);
             params.set('export', format);
-            
+
             window.open(`/admin/payments/export-all?${params.toString()}`, '_blank');
         }
 
@@ -1139,7 +1178,7 @@
                             const status = document.getElementById('editStatus').value;
                             const description = document.getElementById('editDescription').value;
                             const notes = document.getElementById('editNotes').value;
-                            
+
                             return fetch(`/admin/payments/transaction/${transactionId}`, {
                                 method: 'PUT',
                                 headers: {
@@ -1147,13 +1186,13 @@
                                 },
                                 body: JSON.stringify({ amount, status, description, notes })
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (!data.success) {
-                                    throw new Error(data.message);
-                                }
-                                return data;
-                            });
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (!data.success) {
+                                        throw new Error(data.message);
+                                    }
+                                    return data;
+                                });
                         }
                     }).then((result) => {
                         if (result.isConfirmed) {
@@ -1203,12 +1242,12 @@
                             const amount = document.getElementById('refundAmount').value;
                             const reason = document.getElementById('refundReason').value;
                             const notes = document.getElementById('refundNotes').value;
-                            
+
                             if (!reason) {
                                 Swal.showValidationMessage('Please select a refund reason');
                                 return false;
                             }
-                            
+
                             return fetch(`/admin/payments/refund/${transactionId}`, {
                                 method: 'POST',
                                 headers: {
@@ -1216,13 +1255,13 @@
                                 },
                                 body: JSON.stringify({ amount, reason, notes })
                             })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (!data.success) {
-                                    throw new Error(data.message);
-                                }
-                                return data;
-                            });
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (!data.success) {
+                                        throw new Error(data.message);
+                                    }
+                                    return data;
+                                });
                         }
                     }).then((result) => {
                         if (result.isConfirmed) {
@@ -1248,13 +1287,13 @@
                     fetch(`/admin/payments/transaction/${transactionId}`, {
                         method: 'DELETE'
                     })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            Swal.fire('Deleted!', 'Transaction has been deleted', 'success');
-                            location.reload();
-                        }
-                    });
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('Deleted!', 'Transaction has been deleted', 'success');
+                                location.reload();
+                            }
+                        });
                 }
             });
         }
@@ -1278,5 +1317,29 @@
                     });
                 });
         }, 60000);
+    </script>
+
+    <script>
+        function getCurrentQueryParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function buildUrlWithParams(extra = {}, removeKeys = []) {
+            const params = getCurrentQueryParams();
+
+            removeKeys.forEach((key) => params.delete(key));
+
+            Object.keys(extra).forEach((key) => {
+                const value = extra[key];
+
+                if (value === undefined || value === null || value === '') {
+                    params.delete(key);
+                } else {
+                    params.set(key, value);
+                }
+            });
+
+            return `${window.location.pathname}?${params.toString()}`;
+        }
     </script>
     <%- include('../shared/partials/footer') %>

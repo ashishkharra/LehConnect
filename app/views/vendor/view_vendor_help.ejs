@@ -1,120 +1,122 @@
-<%- include('../shared/partials/header', {
-    admin: admin,
-    title: title,
-    currentPage: currentPage
-}) %>
+<%- include('../shared/partials/header', { admin: admin, title: title, currentPage: currentPage }) %>
 
-<div class="page-wrapper">
-    <div class="content container-fluid">
+    <div class="page-wrapper">
+        <div class="content container-fluid">
 
-        <!-- Page Header -->
-        <div class="page-header">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h3 class="page-title">Help Details</h3>
-                </div>
-                <div class="col-auto">
-                    <a href="/vendor/help" class="btn btn-secondary">
-                        <i class="ti ti-arrow-left"></i> Back
-                    </a>
+            <!-- Page Header -->
+            <div class="page-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h3 class="page-title">Help Details</h3>
+                    </div>
+                    <div class="col-auto">
+                        <a href="/vendor/help" class="btn btn-secondary">
+                            <i class="ti ti-arrow-left"></i> Back
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
-        <!-- /Page Header -->
+            <!-- /Page Header -->
 
-        <div class="row">
-            <div class="col-md-8">
+            <div class="row">
+                <div class="col-md-8">
 
-                <!-- Help Card -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5><%= help.title %></h5>
-                        <span class="badge <%= help.status === 'OPEN' ? 'bg-danger' : (help.status === 'ANSWERED' ? 'bg-success' : 'bg-secondary') %>">
-                            <%= help.status %>
-                        </span>
+                    <!-- Help Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>
+                                <%= help.title %>
+                            </h5>
+                            <span
+                                class="badge <%= help.status === 'OPEN' ? 'bg-danger' : (help.status === 'ANSWERED' ? 'bg-success' : 'bg-secondary') %>">
+                                <%= help.status %>
+                            </span>
+                        </div>
+
+                        <div class="card-body">
+                            <p><strong>Category:</strong>
+                                <%= help.category %>
+                            </p>
+                            <p><strong>Created:</strong>
+                                <%= new Date(help.create_date).toLocaleString() %>
+                            </p>
+                            <hr>
+                            <p>
+                                <%= help.description %>
+                            </p>
+                        </div>
                     </div>
 
-                    <div class="card-body">
-                        <p><strong>Category:</strong> <%= help.category %></p>
-                        <p><strong>Created:</strong> <%= new Date(help.create_date).toLocaleString() %></p>
-                        <hr>
-                        <p><%= help.description %></p>
-                    </div>
-                </div>
+                    <!-- Answers -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Answers</h5>
+                        </div>
 
-                <!-- Answers -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5>Answers</h5>
-                    </div>
-
-                    <div class="card-body">
-                        <% if (help.VendorHelpAnswers && help.VendorHelpAnswers.length > 0) { %>
-                            <% help.VendorHelpAnswers.forEach(answer => { %>
-                                <div class="card mb-3">
-                                    <div class="card-body">
-                                        <p><%= answer.message %></p>
-                                        <small class="text-muted">
-                                            <%= new Date(answer.create_date).toLocaleString() %>
-                                        </small>
+                        <div class="card-body">
+                            <% if (help.help_answers && help.help_answers.length> 0) { %>
+                                <% help.help_answers.forEach(answer=> { %>
+                                    <div class="card mb-3">
+                                        <div class="card-body">
+                                            <p>
+                                                <%= answer.message %>
+                                            </p>
+                                            <small class="text-muted">
+                                                <%= new Date(answer.create_date).toLocaleString() %>
+                                            </small>
+                                        </div>
                                     </div>
+                                    <% }) %>
+                                        <% } else { %>
+                                            <p class="text-muted">No answers yet.</p>
+                                            <% } %>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <!-- Reply Form -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>Reply</h5>
+                        </div>
+
+                        <div class="card-body">
+                            <form action="/vendor/help/reply/<%= help.token %>" method="POST">
+                                <div class="mb-3">
+                                    <label class="form-label">Message</label>
+                                    <textarea name="message" rows="4" class="form-control" required></textarea>
                                 </div>
-                            <% }) %>
-                        <% } else { %>
-                            <p class="text-muted">No answers yet.</p>
-                        <% } %>
-                    </div>
-                </div>
 
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ti ti-send"></i> Send Reply
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Actions</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="/vendor/help/delete/<%= help.token %>" method="POST">
+                                <input type="hidden">
+
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="ti ti-trash"></i> Delete Help
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
             </div>
 
-            <div class="col-md-4">
-
-                <!-- Reply Form -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5>Reply</h5>
-                    </div>
-
-                    <div class="card-body">
-                        <form action="/vendor/help/reply/<%= help.token %>" method="POST">
-                            <div class="mb-3">
-                                <label class="form-label">Message</label>
-                                <textarea name="message" rows="4" class="form-control" required></textarea>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary">
-                                <i class="ti ti-send"></i> Send Reply
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Actions</h5>
-                    </div>
-                    <div class="card-body">
-                        <form action="/vendor/help/close/<%= help.token %>" method="POST">
-                            <button type="submit" class="btn btn-warning w-100 mb-2">
-                                <i class="ti ti-lock"></i> Close Help
-                            </button>
-                        </form>
-
-                        <form action="/vendor/help/delete/<%= help.token %>" method="POST"
-                            onsubmit="return confirm('Are you sure you want to delete this help request?')">
-                            <button type="submit" class="btn btn-danger w-100">
-                                <i class="ti ti-trash"></i> Delete Help
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-            </div>
         </div>
-
     </div>
-</div>
 
-<%- include('../shared/partials/footer') %>
+    <%- include('../shared/partials/footer') %>

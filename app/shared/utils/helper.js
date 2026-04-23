@@ -1,8 +1,48 @@
 const crypto = require('crypto');
 const { enc_key } = require("../../config/globals.js");
+const db = require('../../models/index.js')
 const buff_key = Buffer.from(enc_key, "hex");
 const { redisClient } = require('../../config/redis.config.js');
+const vendorReminderQueue = require('../../queues/vendor/vendor_reminder.queue.js')
 
+const fillMissingContactsFromCustomer = async (rows = [], customerTokenField = "customer_token") => {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+
+  const missingContactTokens = [
+    ...new Set(
+      rows
+        .filter((item) => !item.contact && item[customerTokenField])
+        .map((item) => item[customerTokenField])
+    ),
+  ];
+
+  if (!missingContactTokens.length) return rows;
+
+  const customers = await db.tbl_customer.findAll({
+    where: {
+      token: {
+        [Op.in]: missingContactTokens,
+      },
+    },
+    attributes: ["token", "contact"],
+    raw: true,
+  });
+
+  const customerContactMap = Object.fromEntries(
+    customers.map((item) => [item.token, item.contact])
+  );
+
+  return rows.map((item) => {
+    if (!item.contact && item[customerTokenField] && customerContactMap[item[customerTokenField]]) {
+      return {
+        ...item,
+        contact: customerContactMap[item[customerTokenField]],
+      };
+    }
+
+    return item;
+  });
+};
 
 const calculateVerificationPercentage = (vendor, vp, vp_status) => {
     if (vendor.name && vendor.city && vendor.state) {
@@ -433,8 +473,597 @@ const viewHelper = (req, res, next) => {
 
 };
 
+async function sendAdvanceRequestMessage({
+  booking_token,
+  owner_token,
+  requester_token,
+  requested_advance_amount,
+}) {
+  try {
+    const { conversation } = await findOrCreateConversation({
+      booking_token,
+      owner_token,
+      requester_token,
+    });
+
+    const token = randomstring(32);
+    const createdAt = new Date().toISOString();
+
+    const chatMessage = {
+      token,
+      conversation_token: conversation.token,
+      booking_token,
+      sender_token: owner_token,
+      receiver_token: requester_token,
+      message: `Advance request of ₹${requested_advance_amount}`,
+      message_type: "COMMISSION_REQUEST", // 🔥 MAIN FIX
+      status: "SENT",
+      created_at: createdAt,
+      meta: {
+        requestedAmount: requested_advance_amount,
+      },
+    };
+
+    const redisKey = `conversation:${conversation.token}:messages`;
+
+    await redisClient.rPush(redisKey, JSON.stringify(chatMessage));
+    await redisClient.expire(redisKey, 86400);
+
+    await chatQueue.add("persist-message", {
+      messages: [chatMessage],
+    });
+
+    const room = `conversation:${conversation.token}`;
+
+    // 🔥 EMIT TO BOTH USERS
+    global.io.to(room).emit("newMessage", chatMessage);
+
+    console.log("Advance request chat message sent");
+  } catch (err) {
+    console.error("sendAdvanceRequestMessage error:", err);
+  }
+}
+
+
+const formatReadableDate = (date) => {
+    if (!date) return null;
+
+    return new Date(date).toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Kolkata'
+    });
+};
+
+
+const queuePartialVendorReminder = async ({ triggeredBy, requestedBy = 'SYSTEM' }) => {
+    await vendorReminderQueue.add('REMIND_PARTIAL_VENDORS', {
+        triggeredBy,
+        requestedBy
+    });
+};
+
+
+
+const toArray = (value) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+
+    return String(value)
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+};
+
+const toNumber = (value, fallback = 0) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+};
+
+const escapeLike = (value = '') => {
+    return String(value).replace(/[\\%_]/g, '\\$&');
+};
+
+const safeJsonParse = (value) => {
+    try {
+        return JSON.parse(value);
+    } catch (error) {
+        return {};
+    }
+};
+
+const getMethodName = (method) => {
+    const map = {
+        razorpay: 'Razorpay',
+        wallet: 'Wallet',
+        upi: 'UPI',
+        card: 'Card',
+        credit_card: 'Credit Card',
+        debit_card: 'Debit Card',
+        netbanking: 'Net Banking',
+        cash: 'Cash',
+        bank_transfer: 'Bank Transfer',
+        refund: 'Refund'
+    };
+
+    return map[method] || method || 'N/A';
+};
+
+const getTypeName = (type) => {
+    const map = {
+        booking_payment: 'Booking Payment',
+        customer_refund: 'Customer Refund'
+    };
+
+    return map[type] || type || 'Other';
+};
+
+const getStatusColor = (status) => {
+    const map = {
+        success: 'success',
+        pending: 'warning',
+        failed: 'danger',
+        refunded: 'info',
+        cancelled: 'secondary'
+    };
+
+    return map[status] || 'secondary';
+};
+
+const getTypeColor = (type) => {
+    const map = {
+        booking_payment: 'primary',
+        customer_refund: 'info'
+    };
+
+    return map[type] || 'secondary';
+};
+
+const getMethodIcon = (method) => {
+    const map = {
+        razorpay: 'ti-credit-card',
+        wallet: 'ti-wallet',
+        upi: 'ti-device-mobile',
+        card: 'ti-credit-card',
+        credit_card: 'ti-credit-card',
+        debit_card: 'ti-credit-card',
+        netbanking: 'ti-building-bank',
+        cash: 'ti-cash',
+        bank_transfer: 'ti-building-bank',
+        refund: 'ti-refund'
+    };
+
+    return map[method] || 'ti-currency-rupee';
+};
+
+const getDateRangeFromQuickRange = (quickRange) => {
+    const now = new Date();
+    const start = new Date(now);
+
+    const format = (d) => d.toISOString().slice(0, 10);
+
+    switch (quickRange) {
+        case 'today':
+            return { from: format(now), to: format(now) };
+
+        case 'yesterday': {
+            const y = new Date(now);
+            y.setDate(y.getDate() - 1);
+            return { from: format(y), to: format(y) };
+        }
+
+        case 'week': {
+            const day = now.getDay();
+            start.setDate(now.getDate() - day);
+            return { from: format(start), to: format(now) };
+        }
+
+        case 'month':
+            start.setDate(1);
+            return { from: format(start), to: format(now) };
+
+        case 'last_month': {
+            const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const e = new Date(now.getFullYear(), now.getMonth(), 0);
+            return { from: format(s), to: format(e) };
+        }
+
+        case 'quarter': {
+            const quarter = Math.floor(now.getMonth() / 3);
+            const s = new Date(now.getFullYear(), quarter * 3, 1);
+            return { from: format(s), to: format(now) };
+        }
+
+        case 'year': {
+            const s = new Date(now.getFullYear(), 0, 1);
+            return { from: format(s), to: format(now) };
+        }
+
+        default:
+            return { from: null, to: null };
+    }
+};
+
+const buildOrderClause = (sort) => {
+    switch (sort) {
+        case 'oldest':
+            return 'ORDER BY ledger.created_at ASC';
+        case 'amount_high':
+            return 'ORDER BY ABS(ledger.amount) DESC, ledger.created_at DESC';
+        case 'amount_low':
+            return 'ORDER BY ABS(ledger.amount) ASC, ledger.created_at DESC';
+        default:
+            return 'ORDER BY ledger.created_at DESC';
+    }
+};
+
+const buildPaymentLedgerWhere = (query) => {
+    const where = [];
+    const replacements = {};
+
+    let {
+        from,
+        to,
+        quickRange,
+        types,
+        methods,
+        statuses,
+        min_amount,
+        max_amount,
+        user,
+        transaction_id,
+        unsettled
+    } = query;
+
+    if ((!from || !to) && quickRange) {
+        const range = getDateRangeFromQuickRange(quickRange);
+        from = from || range.from;
+        to = to || range.to;
+    }
+
+    if (from) {
+        where.push(`DATE(ledger.created_at) >= :from`);
+        replacements.from = from;
+    }
+
+    if (to) {
+        where.push(`DATE(ledger.created_at) <= :to`);
+        replacements.to = to;
+    }
+
+    const typeArr = toArray(types);
+    if (typeArr.length) {
+        where.push(`ledger.transaction_type IN (:types)`);
+        replacements.types = typeArr;
+    }
+
+    const methodArr = toArray(methods);
+    if (methodArr.length) {
+        where.push(`ledger.payment_method IN (:methods)`);
+        replacements.methods = methodArr;
+    }
+
+    const statusArr = toArray(statuses);
+    if (statusArr.length) {
+        where.push(`ledger.status IN (:statuses)`);
+        replacements.statuses = statusArr;
+    }
+
+    if (min_amount !== undefined && min_amount !== null && min_amount !== '') {
+        where.push(`ABS(ledger.amount) >= :min_amount`);
+        replacements.min_amount = toNumber(min_amount);
+    }
+
+    if (max_amount !== undefined && max_amount !== null && max_amount !== '') {
+        where.push(`ABS(ledger.amount) <= :max_amount`);
+        replacements.max_amount = toNumber(max_amount);
+    }
+
+    if (user) {
+        where.push(`
+            (
+                ledger.user_name LIKE :userSearch ESCAPE '\\\\'
+                OR ledger.user_email LIKE :userSearch ESCAPE '\\\\'
+                OR ledger.user_phone LIKE :userSearch ESCAPE '\\\\'
+                OR ledger.user_token LIKE :userSearch ESCAPE '\\\\'
+            )
+        `);
+        replacements.userSearch = `%${escapeLike(user)}%`;
+    }
+
+    if (transaction_id) {
+        where.push(`
+            (
+                ledger.transaction_id LIKE :transactionSearch ESCAPE '\\\\'
+                OR ledger.gateway_transaction_id LIKE :transactionSearch ESCAPE '\\\\'
+                OR ledger.booking_token LIKE :transactionSearch ESCAPE '\\\\'
+            )
+        `);
+        replacements.transactionSearch = `%${escapeLike(transaction_id)}%`;
+    }
+
+    if (String(unsettled) === 'true' || String(unsettled) === '1') {
+        where.push(`ledger.settled_at IS NULL`);
+    }
+
+    return {
+        whereClause: where.length ? `WHERE ${where.join(' AND ')}` : '',
+        replacements,
+        resolvedFrom: from || null,
+        resolvedTo: to || null
+    };
+};
+
+const getLedgerBaseSubquery = () => {
+    return `
+        (
+            SELECT
+                bp.id,
+                bp.token AS transaction_id,
+                bp.razorpay_payment_id AS gateway_transaction_id,
+                bp.booking_token,
+                b.id AS booking_id,
+                bp.payer_token AS user_token,
+                TRIM(CONCAT(COALESCE(vp.first_name, ''), ' ', COALESCE(vp.last_name, ''))) AS user_name,
+                vp.email AS user_email,
+                vp.contact AS user_phone,
+                vp.profile_image AS user_avatar,
+                'vendor' AS user_type,
+                'booking_payment' AS transaction_type,
+                CAST(bp.amount AS DECIMAL(14,2)) AS amount,
+                bp.currency,
+                CASE
+                    WHEN JSON_UNQUOTE(JSON_EXTRACT(bp.meta, '$.payment_method')) IS NOT NULL
+                        THEN LOWER(JSON_UNQUOTE(JSON_EXTRACT(bp.meta, '$.payment_method')))
+                    WHEN JSON_UNQUOTE(JSON_EXTRACT(bp.meta, '$.method')) IS NOT NULL
+                        THEN LOWER(JSON_UNQUOTE(JSON_EXTRACT(bp.meta, '$.method')))
+                    WHEN bp.razorpay_payment_id IS NOT NULL THEN 'razorpay'
+                    ELSE 'wallet'
+                END AS payment_method,
+                CASE
+                    WHEN bp.refund_status IN ('REFUNDED', 'PARTIALLY_REFUNDED') THEN 'refunded'
+                    WHEN bp.order_status = 'PAID' THEN 'success'
+                    WHEN bp.order_status IN ('CREATED', 'ATTEMPTED') THEN 'pending'
+                    WHEN bp.order_status = 'FAILED' THEN 'failed'
+                    ELSE 'pending'
+                END AS status,
+                NULL AS settled_at,
+                bp.paid_at,
+                bp.refunded_at,
+                bp.created_at,
+                bp.updated_at,
+                JSON_OBJECT(
+                    'source_table', 'tbl_booking_payments',
+                    'payment_for', bp.payment_for,
+                    'order_status', bp.order_status,
+                    'refund_status', bp.refund_status,
+                    'payee_vendor_token', bp.payee_vendor_token,
+                    'assigned_vendor_name', TRIM(CONCAT(COALESCE(vpayee.first_name, ''), ' ', COALESCE(vpayee.last_name, ''))),
+                    'booking_status', b.status,
+                    'accept_type', b.accept_type,
+                    'secure_booking', b.secure_booking
+                ) AS extra_meta
+            FROM tbl_booking_payments bp
+            LEFT JOIN tbl_vendor vp
+                ON vp.token = bp.payer_token
+            LEFT JOIN tbl_vendor vpayee
+                ON vpayee.token = bp.payee_vendor_token
+            LEFT JOIN tbl_booking b
+                ON b.token = bp.booking_token
+            WHERE COALESCE(bp.flag, 0) = 0
+
+            UNION ALL
+
+            SELECT
+                br.id,
+                br.token AS transaction_id,
+                br.razorpay_refund_id AS gateway_transaction_id,
+                br.booking_token,
+                b.id AS booking_id,
+                br.refund_to_token AS user_token,
+                TRIM(CONCAT(COALESCE(vto.first_name, ''), ' ', COALESCE(vto.last_name, ''))) AS user_name,
+                vto.email AS user_email,
+                vto.contact AS user_phone,
+                vto.profile_image AS user_avatar,
+                'vendor' AS user_type,
+                'customer_refund' AS transaction_type,
+                CAST(br.refund_amount * -1 AS DECIMAL(14,2)) AS amount,
+                br.currency,
+                'refund' AS payment_method,
+                CASE
+                    WHEN br.refund_status = 'PROCESSED' THEN 'refunded'
+                    WHEN br.refund_status = 'FAILED' THEN 'failed'
+                    ELSE 'pending'
+                END AS status,
+                br.updated_at AS settled_at,
+                NULL AS paid_at,
+                br.updated_at AS refunded_at,
+                br.created_at,
+                br.updated_at,
+                JSON_OBJECT(
+                    'source_table', 'tbl_booking_refunds',
+                    'refund_status', br.refund_status,
+                    'reason', br.reason,
+                    'refunded_by_token', br.refunded_by_token,
+                    'refunded_by_name', TRIM(CONCAT(COALESCE(vby.first_name, ''), ' ', COALESCE(vby.last_name, ''))),
+                    'refund_to_token', br.refund_to_token,
+                    'booking_status', b.status
+                ) AS extra_meta
+            FROM tbl_booking_refunds br
+            LEFT JOIN tbl_vendor vto
+                ON vto.token = br.refund_to_token
+            LEFT JOIN tbl_vendor vby
+                ON vby.token = br.refunded_by_token
+            LEFT JOIN tbl_booking b
+                ON b.token = br.booking_token
+            WHERE COALESCE(br.flag, 0) = 0
+        ) ledger
+    `;
+};
+
+// const getDateRangeFromQuickRange = (quickRange) => {
+//     const now = new Date();
+//     const start = new Date(now);
+
+//     const format = (d) => d.toISOString().slice(0, 10);
+
+//     switch (quickRange) {
+//         case 'today':
+//             return { from: format(now), to: format(now) };
+
+//         case 'yesterday': {
+//             const y = new Date(now);
+//             y.setDate(y.getDate() - 1);
+//             return { from: format(y), to: format(y) };
+//         }
+
+//         case 'week': {
+//             const day = now.getDay();
+//             start.setDate(now.getDate() - day);
+//             return { from: format(start), to: format(now) };
+//         }
+
+//         case 'month':
+//             start.setDate(1);
+//             return { from: format(start), to: format(now) };
+
+//         case 'last_month': {
+//             const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+//             const e = new Date(now.getFullYear(), now.getMonth(), 0);
+//             return { from: format(s), to: format(e) };
+//         }
+
+//         case 'quarter': {
+//             const quarter = Math.floor(now.getMonth() / 3);
+//             const s = new Date(now.getFullYear(), quarter * 3, 1);
+//             return { from: format(s), to: format(now) };
+//         }
+
+//         case 'year': {
+//             const s = new Date(now.getFullYear(), 0, 1);
+//             return { from: format(s), to: format(now) };
+//         }
+
+//         default:
+//             return { from: null, to: null };
+//     }
+// };
+
+
+const getClientIp = (req) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+        return String(forwarded).split(',')[0].trim();
+    }
+
+    return (
+        req.ip ||
+        req.connection?.remoteAddress ||
+        req.socket?.remoteAddress ||
+        req.connection?.socket?.remoteAddress ||
+        '0.0.0.0'
+    );
+};
+
+const registerCustomerIfNotExists = async (req, data = {}) => {
+    try {
+        const {
+            contact = null,
+            name = null,
+            email = null,
+            first_name = null,
+            last_name = null,
+            location = null,
+            address = null
+        } = data;
+
+        if (!contact) {
+            return null;
+        }
+
+        let customer = await db.customer.findOne({
+            where: { contact }
+        });
+
+        if (customer) {
+            const updatePayload = {};
+
+            if (!customer.first_name && (first_name || name)) {
+                updatePayload.first_name = first_name || String(name).trim();
+            }
+
+            if (!customer.last_name && last_name) {
+                updatePayload.last_name = last_name;
+            }
+
+            if (!customer.email && email) {
+                updatePayload.email = email;
+            }
+
+            if (!customer.location && location) {
+                updatePayload.location = location;
+            }
+
+            if (!customer.address && address) {
+                updatePayload.address = address;
+            }
+
+            if (Object.keys(updatePayload).length > 0) {
+                await customer.update(updatePayload);
+            }
+
+            return customer;
+        }
+
+        customer = await db.customer.create({
+            token: randomstring(64),
+            ref_code: null,
+            referer_code: null,
+            referer_code_used: 0,
+            first_name: first_name || (name ? String(name).trim() : null),
+            last_name: last_name || null,
+            contact,
+            alt_contact: null,
+            email: email || null,
+            password: null,
+            role: 'customer',
+            create_date: new Date(),
+            location: location || null,
+            address: address || null,
+            ip: getClientIp(req),
+            user_agent: req.headers['user-agent'] || null,
+            feedback: null,
+            image: null,
+            status: 1,
+            flag: 0
+        });
+
+        return customer;
+    } catch (error) {
+        console.log('Customer auto registration error:', error);
+        throw error;
+    }
+};
+
 
 module.exports = {
+    sendAdvanceRequestMessage,
+    getClientIp,
+    registerCustomerIfNotExists,
+    getDateRangeFromQuickRange,
+    toArray,
+    getMethodName,
+    getTypeName,
+    getStatusColor,
+    getTypeColor,
+    getMethodIcon,
+    buildPaymentLedgerWhere,
+    buildOrderClause,
+    getLedgerBaseSubquery,
     calculateVerificationPercentage,
     calculateVerificationPercentage_dummy,
     responseData,
@@ -458,5 +1087,9 @@ module.exports = {
     setCache,
     delCache,
     asyncHandler,
-    viewHelper
+    viewHelper,
+    formatReadableDate,
+    queuePartialVendorReminder,
+    safeJsonParse,
+    fillMissingContactsFromCustomer
 }
