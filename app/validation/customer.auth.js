@@ -196,13 +196,13 @@ module.exports.validate = (method) => {
                     .isLength({ min: 2, max: 255 })
                     .withMessage('From location must be between 2 and 255 characters'),
 
-                body('to_location')
-                    .if(body('trip_type').isIn(['oneway', 'round_trip']))
-                    .notEmpty().withMessage('To location is required for oneway and round trip')
-                    .isString().withMessage('Invalid to location')
-                    .trim()
-                    .isLength({ min: 2, max: 255 })
-                    .withMessage('To location must be between 2 and 255 characters'),
+                // body('to_location')
+                //     .if(body('trip_type').isIn(['oneway', 'round_trip']))
+                //     .notEmpty().withMessage('To location is required for oneway and round trip')
+                //     .isString().withMessage('Invalid to location')
+                //     .trim()
+                //     .isLength({ min: 2, max: 255 })
+                //     .withMessage('To location must be between 2 and 255 characters'),
 
                 body('departure_date')
                     .notEmpty().withMessage('Departure date is required')
@@ -220,12 +220,6 @@ module.exports.validate = (method) => {
                         }
                         return true;
                     }),
-
-                body('car_type')
-                    .optional()
-                    .isString().withMessage('Invalid car type')
-                    .isIn(['Sedan', 'SUV', 'hatchback', 'tempo traveller', 'bus'])
-                    .withMessage('Invalid car type selected'),
 
                 body('contact')
                     .optional(),

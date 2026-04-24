@@ -62,7 +62,7 @@ db.holydaypackageEnquiry = require('./holidaypackageEnquiry.model.js')(sequelize
 db.insuranceEnquiry = require('./insuranceEnquiry.model.js')(sequelize, Sequelize)
 db.hotelEnquiry = require('./hotelEnquiry.model.js')(sequelize, Sequelize)
 db.flightEnquiry = require('./flightEnquiry.model.js')(sequelize, Sequelize)
-db.CabEnquiry = require('./cabEnquiry.model.js')(sequelize,Sequelize)
+db.CabEnquiry = require('./cabEnquiry.model.js')(sequelize, Sequelize)
 db.siteSettings = require('./settings.model.js')(sequelize, Sequelize)
 db.conversation = require('./conversation.js')(sequelize, Sequelize)
 db.enquiryRequest = require('./enquiryRequests.model.js')(sequelize, Sequelize)
@@ -74,6 +74,9 @@ db.bookingAdvanceRequestHistory = require('./booking_advance_request_history.js'
 db.customerReferralHistory = require('./customerReferralHistory.js')(sequelize, Sequelize)
 db.EnquiryCalls = require('./enquiryCalls.model.js')(sequelize, Sequelize)
 db.AddVehicle = require('./Add_vehicle.model.js')(sequelize, Sequelize)
+db.customerFaqs = require('./customerFaq.model.js')(sequelize, Sequelize)
+db.customerHelp = require('./customer_help.model.js')(sequelize, Sequelize)
+db.customerHelpAnswer = require('./customer_help_answer.model.js')(sequelize, Sequelize)
 
 
 // BookingPayment <-> Booking
@@ -426,6 +429,22 @@ db.enquiryRequest.belongsTo(db.CabEnquiry, {
   }
 });
 
+
+// CabEnquiry <-> Vehicle
+db.CabEnquiry.belongsTo(db.AddVehicle, {
+  foreignKey: "vehicle_token",
+  targetKey: "token",
+  as: "vehicle_details",
+  constraints: false
+});
+
+db.AddVehicle.hasMany(db.CabEnquiry, {
+  foreignKey: "vehicle_token",
+  sourceKey: "token",
+  as: "cab_enquiries",
+  constraints: false
+});
+
 db.CabEnquiry.hasMany(db.enquiryRequest, {
   foreignKey: "enquiry_token",
   sourceKey: "token",
@@ -685,6 +704,23 @@ db.vendor_help_answer.belongsTo(db.vendor_help, {
   targetKey: 'token',
   constraints: false
 });
+
+
+db.customerHelp.hasMany(db.customerHelpAnswer, {
+  as: 'help_answers',
+  foreignKey: 'help_token',
+  sourceKey: 'token',
+  constraints: false
+});
+
+db.customerHelpAnswer.belongsTo(db.customerHelp, {
+  as: 'help',
+  foreignKey: 'help_token',
+  targetKey: 'token',
+  constraints: false
+});
+
+
 
 db.referral_history.belongsTo(db.vendor, {
   as: 'Referrer',

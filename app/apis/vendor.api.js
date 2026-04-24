@@ -23,6 +23,7 @@ const freeVehicleCancelQueue = require('../queues/vendor/freeVehicle_queue/free_
 const bookingCompletionQueue = require('../queues/vendor/booking_queue/booking_completion.queue.js');
 
 const enquiryNotificationQueue = require('../queues/vendor/enquiries/enquiry.queue.js')
+const leadRequestCustomerNotificationQueue = require('../queues/customer/enquiry.queue.js')
 
 
 // const vendorHelpQueue = require('../queues/vendor/vendor_help.queue.js')
@@ -8800,7 +8801,7 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
         limit = parseInt(limit, 10) || 12;
 
         const validServices = ["cab", "flight", "hotel", "holiday", "insurance"];
-        let totalLeads = null
+        let totalLeads = null;
 
         const selectedServices = String(services || "")
             .split(",")
@@ -8862,13 +8863,20 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
         nextMonthStart.setHours(0, 0, 0, 0);
 
         const weekStart = new Date(now);
-        const day = weekStart.getDay(); // 0=Sunday, 1=Monday
+        const day = weekStart.getDay();
         const diffToMonday = day === 0 ? -6 : 1 - day;
         weekStart.setDate(weekStart.getDate() + diffToMonday);
         weekStart.setHours(0, 0, 0, 0);
 
         const nextWeekStart = new Date(weekStart);
         nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+
+        const Vendor = db.vendor;
+        const FlightEnquiry = db.flightEnquiry;
+        const HotelEnquiry = db.hotelEnquiry;
+        const HolidayPackageEnquiry = db.holydaypackageEnquiry;
+        const InsuranceEnquiry = db.insuranceEnquiry;
+        const Vehicle = db.AddVehicle;
 
         const vendorSettingsPromise = Vendor.findOne({
             where: {
@@ -8893,6 +8901,7 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                 attributes: [
                     "id",
                     "token",
+                    "vehicle_token",
                     "vendor_token",
                     "who_posted",
                     "from_web",
@@ -9017,7 +9026,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                 flag: 0
             };
 
-            // ye filters sirf list data ke liye hain
             if (status) {
                 whereCondition.status = status;
             }
@@ -9096,6 +9104,33 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
             ];
         };
 
+        const buildAdditionalIncludes = (serviceKey) => {
+            const includes = [...buildVendorInclude(serviceKey)];
+
+            if (serviceKey === "cab") {
+                includes.push({
+                    model: Vehicle,
+                    as: "vehicle_details",
+                    required: false,
+                    attributes: [
+                        "token",
+                        "name",
+                        "type",
+                        "seater",
+                        "avg_per_km",
+                        "ac",
+                        "gps",
+                        "availability",
+                        "image1",
+                        "image2",
+                        "status"
+                    ]
+                });
+            }
+
+            return includes;
+        };
+
         const fetchServiceData = async (serviceKey) => {
             const config = serviceConfig[serviceKey];
             const whereCondition = buildWhere(serviceKey);
@@ -9103,13 +9138,14 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
             const rows = await config.model.findAll({
                 where: whereCondition,
                 attributes: config.attributes,
-                include: buildVendorInclude(serviceKey),
+                include: buildAdditionalIncludes(serviceKey),
                 order: [["create_date", "DESC"]]
             });
 
             return rows.map((item) => {
                 const row = item.toJSON ? item.toJSON() : item;
                 const vendor = row.vendor_details || null;
+                const vehicle = row.vehicle_details || null;
 
                 const leadContact =
                     row.from_web === true
@@ -9128,6 +9164,7 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                     enquiry_type: config.enquiryType,
                     id: row.id,
                     token: row.token,
+                    vehicle_token: row.vehicle_token || null,
                     vendor_token: row.vendor_token || null,
                     who_posted: row.who_posted || null,
                     from_web: row.from_web,
@@ -9156,7 +9193,22 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                                 to_location: row.to_location,
                                 departure_date: row.departure_date,
                                 return_date: row.return_date,
-                                car_type: row.car_type
+                                car_type: row.car_type,
+                                vehicle: vehicle
+                                    ? {
+                                        token: vehicle.token || null,
+                                        name: vehicle.name || null,
+                                        type: vehicle.type || null,
+                                        seater: vehicle.seater ?? null,
+                                        avg_per_km: vehicle.avg_per_km ?? null,
+                                        ac: vehicle.ac ?? null,
+                                        gps: vehicle.gps ?? null,
+                                        availability: vehicle.availability || null,
+                                        image1: vehicle.image1 || null,
+                                        image2: vehicle.image2 || null,
+                                        status: vehicle.status || null
+                                    }
+                                    : null
                             }
                             : serviceKey === "flight"
                                 ? {
@@ -9199,7 +9251,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
             });
         };
 
-        // TOTAL LEADS => sabhi enquiry tables se, bina filter ke
         const fetchTotalLeadsCounters = async () => {
             const [
                 cabTotal,
@@ -9259,7 +9310,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
             };
         };
 
-        // ACCEPTED COUNTERS => enquiry_requests table se, bina filters ke
         const fetchAcceptedLeadCounters = async (serviceKey = null) => {
             const baseWhere = {
                 requester_token: vendorToken,
@@ -9338,7 +9388,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
 
         let mergedRows = serviceRows.flat();
 
-        // current vendor ne is enquiry par request kari hai ya nahi
         const enquiryTokensByType = {};
 
         for (const row of mergedRows) {
@@ -9452,7 +9501,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                         to_date: to_date || null
                     },
 
-                    // ye accepted counters enquiry_requests table se bina filters ke
                     accepted_leads_counters: {
                         total_accepted: totalLeads,
                         monthly_accepted: acceptedLeadCounters.monthly_accepted,
@@ -9460,6 +9508,8 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                         today_accepted: acceptedLeadCounters.today_accepted,
                         service_wise: acceptedLeadServiceWise
                     },
+
+                    total_leads_counters: totalLeadsCounters,
 
                     date_ranges: {
                         month_start: monthStart,
@@ -9470,7 +9520,6 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                         tomorrow_start: tomorrowStart
                     },
 
-                    // list ka filtered total
                     filtered_total: filteredTotal,
                     current_page: page,
                     per_page: limit,
@@ -9580,10 +9629,102 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
             insurance: db.insuranceEnquiry || db.InsuranceEnquiry
         };
 
-        const isValidPhoneLike = (value) => {
-            if (value === null || value === undefined) return false;
-            const cleaned = String(value).replace(/\D/g, "");
-            return cleaned.length >= 10 && cleaned.length <= 15;
+        // SAFE attributes per table
+        // Only keep columns that actually exist in that table
+        const enquiryAttributesMap = {
+            cab: [
+                "id",
+                "token",
+                "customer_token",
+                "vendor_token",
+                "who_posted",
+                "from_web",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "car_type",
+                "contact",
+                "status",
+                "flag",
+                "create_date",
+                "update_date"
+            ],
+            flight: [
+                "id",
+                "token",
+                "customer_token",
+                "vendor_token",
+                "who_posted",
+                "from_web",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "adults",
+                "children",
+                "class_type",
+                "segments",
+                "status",
+                "flag",
+                "create_date",
+                "update_date"
+            ],
+            hotel: [
+                "id",
+                "token",
+                "customer_token",
+                "vendor_token",
+                "who_posted",
+                "from_web",
+                "area",
+                "check_in",
+                "check_out",
+                "adults",
+                "children",
+                "room_type",
+                "status",
+                "flag",
+                "create_date",
+                "update_date"
+            ],
+            holiday_package: [
+                "id",
+                "token",
+                "customer_token",
+                "vendor_token",
+                "who_posted",
+                "from_web",
+                "from_city",
+                "to_city",
+                "departure_date",
+                "adults",
+                "children",
+                "room_type",
+                "status",
+                "flag",
+                "create_date",
+                "update_date"
+            ],
+            insurance: [
+                "id",
+                "token",
+                "customer_token",
+                "vendor_token",
+                "who_posted",
+                "from_web",
+                "car_number",
+                "name",
+                "contact",
+                "agree_policy",
+                "whatsapp",
+                "status",
+                "flag",
+                "create_date",
+                "update_date"
+            ]
         };
 
         const normalizePhone = (value) => {
@@ -9592,138 +9733,30 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
             return cleaned || null;
         };
 
-        const customerTokenCandidates = [
-            ...new Set(
-                requestRows
-                    .map((row) => {
-                        const meta = row.meta && typeof row.meta === "object" ? row.meta : null;
-                        return meta?.customer_token || null;
-                    })
-                    .filter(Boolean)
-            )
-        ];
+        const isValidIndianPhone = (value) => {
+            const cleaned = normalizePhone(value);
+            return !!(cleaned && cleaned.length === 10);
+        };
 
-        // We'll collect actual enquiry rows first
         const enrichedRows = [];
-
-        // cache to avoid repeated DB hits for same enquiry
         const enquiryCache = new Map();
-
-        // collect customer tokens that require customer-table lookup
         const customerTokensToLookup = new Set();
+        const vendorTokensToLookup = new Set();
 
         for (const row of requestRows) {
             const normalizedType = String(row.enquiry_type || "").toLowerCase().trim();
             const EnquiryModel = enquiryModelMap[normalizedType];
+            const cacheKey = `${normalizedType}__${row.enquiry_token}`;
 
             let lead = null;
-            const cacheKey = `${normalizedType}__${row.enquiry_token}`;
 
             if (EnquiryModel && row.enquiry_token) {
                 if (enquiryCache.has(cacheKey)) {
                     lead = enquiryCache.get(cacheKey);
                 } else {
-                    const attributesByType = {
-                        cab: [
-                            "id",
-                            "token",
-                            "customer_token",
-                            "vendor_token",
-                            "who_posted",
-                            "from_web",
-                            "trip_type",
-                            "from_location",
-                            "to_location",
-                            "departure_date",
-                            "return_date",
-                            "car_type",
-                            "contact",
-                            "status",
-                            "flag",
-                            "create_date",
-                            "update_date"
-                        ],
-                        flight: [
-                            "id",
-                            "token",
-                            "customer_token",
-                            "vendor_token",
-                            "who_posted",
-                            "from_web",
-                            "trip_type",
-                            "from_location",
-                            "to_location",
-                            "departure_date",
-                            "return_date",
-                            "adults",
-                            "children",
-                            "class_type",
-                            "segments",
-                            "contact",
-                            "status",
-                            "flag",
-                            "create_date",
-                            "update_date"
-                        ],
-                        hotel: [
-                            "id",
-                            "token",
-                            "customer_token",
-                            "vendor_token",
-                            "who_posted",
-                            "from_web",
-                            "area",
-                            "check_in",
-                            "check_out",
-                            "adults",
-                            "children",
-                            "room_type",
-                            "contact",
-                            "status",
-                            "flag",
-                            "create_date",
-                            "update_date"
-                        ],
-                        holiday_package: [
-                            "id",
-                            "token",
-                            "customer_token",
-                            "vendor_token",
-                            "who_posted",
-                            "from_web",
-                            "from_city",
-                            "to_city",
-                            "departure_date",
-                            "adults",
-                            "children",
-                            "room_type",
-                            "contact",
-                            "status",
-                            "flag",
-                            "create_date",
-                            "update_date"
-                        ],
-                        insurance: [
-                            "id",
-                            "token",
-                            "customer_token",
-                            "vendor_token",
-                            "from_web",
-                            "car_number",
-                            "name",
-                            "contact",
-                            "agree_policy",
-                            "whatsapp",
-                            "status",
-                            "flag",
-                            "create_date",
-                            "update_date"
-                        ]
-                    };
-
                     lead = await EnquiryModel.findOne({
                         where: { token: row.enquiry_token },
-                        attributes: attributesByType[normalizedType] || ["id", "token", "contact"],
+                        attributes: enquiryAttributesMap[normalizedType] || ["id", "token"],
                         raw: true
                     });
 
@@ -9731,60 +9764,89 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
                 }
             }
 
-            // prepare tokens that need customer-table lookup
-            if (lead && !lead.contact && lead.customer_token) {
-                const customerToken = String(lead.customer_token).trim();
-                const normalizedPhone = normalizePhone(customerToken);
+            if (lead) {
+                const enquiryType = normalizedType;
+                const whoPosted = String(lead.who_posted || "").toUpperCase().trim();
 
-                if (!(normalizedPhone && normalizedPhone.length >= 10 && normalizedPhone.length <= 15) && customerToken.length > 10) {
-                    customerTokensToLookup.add(customerToken);
+                // CAB: always customer flow
+                if (enquiryType === "cab") {
+                    const customerToken = lead.customer_token ? String(lead.customer_token).trim() : null;
+                    if (customerToken && !isValidIndianPhone(customerToken)) {
+                        customerTokensToLookup.add(customerToken);
+                    }
+                } else {
+                    if (whoPosted === "CUSTOMER") {
+                        const customerToken = lead.customer_token ? String(lead.customer_token).trim() : null;
+                        if (customerToken && !isValidIndianPhone(customerToken)) {
+                            customerTokensToLookup.add(customerToken);
+                        }
+                    }
+
+                    if (whoPosted === "VENDOR") {
+                        const vendorToken = lead.vendor_token ? String(lead.vendor_token).trim() : null;
+                        if (vendorToken) {
+                            vendorTokensToLookup.add(vendorToken);
+                        }
+                    }
                 }
             }
 
-            enrichedRows.push({
-                row,
-                lead
-            });
+            enrichedRows.push({ row, lead });
         }
 
         let customerMap = {};
+        let vendorMap = {};
 
-        if (customerTokensToLookup.size) {
-            const CustomerModel = db.tbl_customer || db.Customer || db.customer;
+        const CustomerModel = db.tbl_customer || db.Customer || db.customer;
+        const VendorModel = db.tbl_vendor || db.Vendor || db.vendor;
 
-            if (CustomerModel) {
-                const customers = await CustomerModel.findAll({
-                    where: {
-                        token: {
-                            [Op.in]: [...customerTokensToLookup]
-                        }
-                    },
-                    attributes: ["token", "contact"],
-                    raw: true
-                });
+        if (customerTokensToLookup.size && CustomerModel) {
+            const customers = await CustomerModel.findAll({
+                where: {
+                    token: {
+                        [Op.in]: [...customerTokensToLookup]
+                    }
+                },
+                attributes: ["token", "contact"],
+                raw: true
+            });
 
-                customerMap = Object.fromEntries(
-                    customers.map((item) => [item.token, item.contact])
-                );
-            }
+            customerMap = Object.fromEntries(
+                customers.map((item) => [item.token, item.contact])
+            );
+        }
+
+        if (vendorTokensToLookup.size && VendorModel) {
+            const vendors = await VendorModel.findAll({
+                where: {
+                    token: {
+                        [Op.in]: [...vendorTokensToLookup]
+                    }
+                },
+                attributes: ["token", "contact"],
+                raw: true
+            });
+
+            vendorMap = Object.fromEntries(
+                vendors.map((item) => [item.token, item.contact])
+            );
         }
 
         const resolveContact = (lead, fallbackContact = null, enquiryType = null) => {
             if (!lead) return fallbackContact || null;
 
+            // if actual enquiry table has contact, use it
             if (lead.contact) {
                 return lead.contact;
             }
 
             const normalizedEnquiryType = String(enquiryType || "").toLowerCase().trim();
 
-            // CAB: always customer side
+            // CAB always from customer
             if (normalizedEnquiryType === "cab") {
                 const customerToken = lead.customer_token ? String(lead.customer_token).trim() : null;
 
-                if (!customerToken) {
-                    return fallbackContact || null;
-                }
+                if (!customerToken) return fallbackContact || null;
 
                 if (isValidIndianPhone(customerToken)) {
                     return normalizePhone(customerToken);
@@ -9798,27 +9860,19 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
             if (whoPosted === "CUSTOMER") {
                 const customerToken = lead.customer_token ? String(lead.customer_token).trim() : null;
 
-                if (!customerToken) {
-                    return fallbackContact || null;
-                }
+                if (!customerToken) return fallbackContact || null;
 
                 if (isValidIndianPhone(customerToken)) {
                     return normalizePhone(customerToken);
                 }
 
-                if (customerToken.length > 10) {
-                    return customerMap[customerToken] || fallbackContact || null;
-                }
-
-                return fallbackContact || null;
+                return customerMap[customerToken] || fallbackContact || null;
             }
 
             if (whoPosted === "VENDOR") {
                 const vendorToken = lead.vendor_token ? String(lead.vendor_token).trim() : null;
 
-                if (!vendorToken) {
-                    return fallbackContact || null;
-                }
+                if (!vendorToken) return fallbackContact || null;
 
                 return vendorMap[vendorToken] || fallbackContact || null;
             }
@@ -9895,7 +9949,7 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
                 leadDetails = {
                     car_number: lead.car_number,
                     name: lead.name,
-                    contact: lead.contact,
+                    contact: resolveContact(lead, row.contact, row.enquiry_type),
                     agree_policy: lead.agree_policy,
                     whatsapp: lead.whatsapp
                 };
@@ -9940,6 +9994,7 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
                 );
             });
         }
+
 
         const filteredTotal = search ? rows.length : enquiryRequests.count;
 
@@ -10537,6 +10592,21 @@ router.post("/lead/request", [vendorMiddleware], async (req, res) => {
             );
         }
 
+        const requesterVendor = await Vendor.findOne({
+            where: {
+                token: requesterToken,
+                flag: 0
+            },
+            attributes: ["first_name", "last_name", "contact"],
+            transaction: t
+        });
+
+        let customerTokenForNotification = null;
+
+        if (enquiry.who_posted === "CUSTOMER") {
+            customerTokenForNotification = enquiry.customer_token || null;
+        }
+
         await t.commit();
 
         res.status(201).json(
@@ -10566,16 +10636,32 @@ router.post("/lead/request", [vendorMiddleware], async (req, res) => {
             )
         );
 
-        const io = getIO()
+        const io = getIO();
 
-        io.to(`vendor:${requesterToken}`).emit('lead:accept', {
-            booking_token: enquiry?.token || null,
-            deducted_amount: 30,
-            message: `आपने यह लीड स्वीकार कर ली है। आपके वॉलेट से 30 काट लिए गए हैं।`,
-            event: 'LEAD_REQUEST_ACCEPTED',
-            type: 'SUCCESS',
-            timestamp: new Date().toISOString()
-        });
+        await leadRequestCustomerNotificationQueue.add(
+            "LEAD_REQUEST_CUSTOMER",
+            {
+                enquiry_type,
+                enquiry_token,
+                enquiry_request_token: enquiryRequest.token,
+                requester_token: requesterToken,
+                vendor_name:
+                    `${requesterVendor?.first_name || ""} ${requesterVendor?.last_name || ""}`.trim() ||
+                    "Vendor",
+                vendor_contact: requesterVendor?.contact || null,
+                title: "नई लीड रिक्वेस्ट मिली",
+                message: "आपकी enquiry पर एक vendor ने request भेजी है।",
+                meta: {
+                    who_posted: enquiry.who_posted || null,
+                    from_web: enquiry.from_web === true,
+                    lead_status: updatedRequestCount >= 10 ? "inactive" : "active"
+                }
+            },
+            {
+                removeOnComplete: true,
+                removeOnFail: false
+            }
+        );
     } catch (error) {
         if (!t.finished) {
             await t.rollback();
@@ -11558,15 +11644,20 @@ router.post("/enquiry/call/store", [vendorMiddleware, verifiedOnly, vendorValida
             enquiry_token,
             enquiry_type,
             customer_token,
+            contact,
             call_type = "outgoing",
             status = "success",
         } = req.body;
+
+        console.log('body ->>> ', req.body)
+
+        // process.exit(1)
 
         const callEntry = await EnquiryCall.create({
             token: randomstring(64),
             enquiry_token,
             enquiry_type: String(enquiry_type).toLowerCase(),
-            customer_token,
+            customer_token: customer_token || contact,
             called_by: vendorToken,
             call_type,
             status,

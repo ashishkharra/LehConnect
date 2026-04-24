@@ -14,7 +14,7 @@ const {
   generateOTP,
 } = require("../shared/utils/helper.js");
 const { validatePhone } = require("../shared/utils/validation.js");
-const { vendorMiddleware } = require("../middleware/auth.js");
+const { vendorMiddleware, customerMiddleware } = require("../middleware/auth.js");
 const admin = require("../config/firebase.js");
 const { ENV, testNumbers } = require("../config/globals.js");
 const querystring = require("querystring");
@@ -32,8 +32,8 @@ router.post("/refresh-token", async (req, res) => {
     const clientRefreshToken = req.headers["x-refresh-token"];
     const { fcmToken, device_id, platformName = "android" } = req.body;
 
-    const deviceId = device_id || null
-    const platform = platformName || null
+    const deviceId = device_id || null;
+    const platform = platformName || null;
 
     if (!authHeader || !clientRefreshToken) {
       return res.status(401).json(responseData("Unauthorized", {}, req, false));
@@ -64,13 +64,33 @@ router.post("/refresh-token", async (req, res) => {
     }
 
     const decryptedRefresh = decryptRefreshToken(
-      JSON.parse(session.session_token),
+      JSON.parse(session.session_token)
     );
 
     if (decryptedRefresh !== clientRefreshToken) {
       return res
         .status(401)
         .json(responseData("Invalid refresh token", {}, req, false));
+    }
+
+    // role from session
+    const identity = String(session.role || "").toUpperCase();
+
+    console.log("Refresh token request for user_token:", token, "role:", identity);
+
+    let userModel = null;
+    let deviceModel = null;
+
+    if (identity === "VENDOR") {
+      userModel = db.vendor;
+      deviceModel = db.vendor_device_fcm;
+    } else if (identity === "CUSTOMER") {
+      userModel = db.customer;
+      deviceModel = db.customer_device_fcm;
+    } else {
+      return res
+        .status(401)
+        .json(responseData("Invalid session role", {}, req, false));
     }
 
     const newRefreshToken = randomstring(128);
@@ -83,7 +103,7 @@ router.post("/refresh-token", async (req, res) => {
       last_used_at: new Date(),
     });
 
-    const user = await db.vendor.findOne({
+    const user = await userModel.findOne({
       where: { token, flag: 0 },
     });
 
@@ -91,43 +111,52 @@ router.post("/refresh-token", async (req, res) => {
       return res.status(401).json(responseData("Unauthorized", {}, req, false));
     }
 
-    // ✅ FCM token sync for same device
-    if (fcmToken && deviceId) {
-      console.log("[FCM_REFRESH] incoming token:", fcmToken);
-      console.log("[FCM_REFRESH] deviceId:", deviceId);
-      console.log("[FCM_REFRESH] vendor token:", token);
+    // FCM token sync for same device
+    if (fcmToken && deviceId && deviceModel) {
+      const deviceWhere =
+        identity === "VENDOR"
+          ? {
+            vendor_token: token,
+            device_id: deviceId,
+          }
+          : {
+            customer_token: token,
+            device_id: deviceId,
+          };
 
-      const existingDevice = await db.vendor_device_fcm.findOne({
-        where: {
-          vendor_token: token,
-          device_id: deviceId,
-        },
+      const existingDevice = await deviceModel.findOne({
+        where: deviceWhere,
       });
 
       if (existingDevice) {
-        console.log("[FCM_REFRESH] old DB token:", existingDevice.fcm_token);
-
         await existingDevice.update({
           fcm_token: fcmToken,
           platform,
           contact: user.contact || existingDevice.contact || null,
         });
 
-        console.log("[FCM_REFRESH] existing device token updated");
       } else {
-        await db.vendor_device_fcm.create({
-          token: randomstring(64),
-          vendor_token: token,
-          contact: user.contact || null,
-          fcm_token: fcmToken,
-          device_id: deviceId,
-          platform,
-        });
+        const createPayload =
+          identity === "VENDOR"
+            ? {
+              token: randomstring(64),
+              vendor_token: token,
+              contact: user.contact || null,
+              fcm_token: fcmToken,
+              device_id: deviceId,
+              platform,
+            }
+            : {
+              token: randomstring(64),
+              customer_token: token,
+              contact: user.contact || null,
+              fcm_token: fcmToken,
+              device_id: deviceId,
+              platform,
+            };
 
-        console.log("[FCM_REFRESH] new device token created");
+        await deviceModel.create(createPayload);
       }
-    } else {
-      console.log("[FCM_REFRESH] fcmToken or deviceId missing");
     }
 
     return res.status(200).json(
@@ -136,11 +165,11 @@ router.post("/refresh-token", async (req, res) => {
         {
           token,
           refreshToken: newRefreshToken,
-          identity: "VENDOR",
+          identity,
         },
         req,
-        true,
-      ),
+        true
+      )
     );
   } catch (err) {
     console.error("Refresh token error:", err);
@@ -184,6 +213,42 @@ router.post("/logout", [vendorMiddleware], async (req, res) => {
   }
 });
 
+router.post("/customer/logout", [customerMiddleware], async (req, res) => {
+  try {
+    const session = req.dbSession;
+    const fcmToken = String(req.body.fcmToken || "").trim();
+
+    await session.update({ revoked_at: new Date() });
+
+    await req.user.update({
+      access_token_revoked: true,
+      refresh_token_revoked: true,
+    });
+
+    // Logout current device token only
+    if (fcmToken) {
+      const result = await db.customer_device_fcm.update(
+        {
+          flag: 1,
+        },
+        {
+          where: {
+            customer_token: req.user.token,
+            fcm_token: fcmToken,
+          },
+        }
+      );
+    }
+
+    return res
+      .status(200)
+      .json(responseData("Logged out successfully", {}, req, true));
+  } catch (err) {
+    console.error("Logout error:", err);
+    return res.status(500).json(responseData("Logout failed", {}, req, false));
+  }
+});
+
 router.post("/verifyOtp", async (req, res) => {
   let transaction;
 
@@ -196,8 +261,6 @@ router.post("/verifyOtp", async (req, res) => {
     const fcmToken = req.body.fcmToken || null;
     const deviceId = req.body.device_id || null;
     const platform = req.body.platformName || "android";
-
-    console.log('body ->>>> ', req.body)
 
     if (!["customer", "vendor"].includes(role)) {
       return res.status(401).json(responseData("Invalid role", {}, req, false));

@@ -18,6 +18,8 @@ require('./app/workers/vendor/freeVehicle_worker/free_vehicle_request_action.wor
 require('./app/workers/vendor/freeVehicle_worker/free_vehicle.cancel.worker.js')
 
 require('./app/workers/vendor/enquiries/enquiry.worker.js')
+require('./app/workers/customer/customer.worker.js')
+require('./app/workers/customer/enquiry.worker.js')
 
 
 const express = require('express');

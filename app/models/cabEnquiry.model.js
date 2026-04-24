@@ -12,6 +12,12 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
 
+        vehicle_token: {
+            type: Sequelize.STRING,
+            allowNull: true,
+            defaultValue: null
+        },
+
         vendor_token: {
             type: Sequelize.STRING,
             allowNull: true,

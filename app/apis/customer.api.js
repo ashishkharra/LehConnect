@@ -1,10 +1,15 @@
 const router = require('express').Router();
+const crypto = require('crypto')
+const razorpay = require('../config/razorpay.js');
 const { responseData, formatReadableDate, registerCustomerIfNotExists, fillMissingContactsFromCustomer, generateRefCode } = require("../shared/utils/helper.js");
 const { randomstring } = require('../shared/utils/helper.js');
 const customerValidation = require('../validation/customer.auth.js');
 const db = require('../models/index');
 const { Op, Transaction, Sequelize, col, literal, where } = require("sequelize");
 const { getIO } = require('../sockets/index.js');
+const enquiryNotificationQueue = require('../queues/vendor/enquiries/enquiry.queue.js');
+const { admin_url, RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, REQUEST_FEE } = require('../config/globals.js');
+const getOrCreateWallet = require('../shared/utils/wallet.js');
 
 const { customerMiddleware } = require('../middleware/auth.js');
 const { uploadImages } = require('../middleware/multer.js');
@@ -23,9 +28,13 @@ const Counter = db.counter
 const Review = db.review
 const Video = db.helpVideo
 const Vehicle = db.AddVehicle
-
-const enquiryNotificationQueue = require('../queues/vendor/enquiries/enquiry.queue.js');
-const { admin_url } = require('../config/globals.js');
+const EnquiryRequest = db.enquiryRequest
+const WalletTransaction = db.wallet_transaction
+const Wallet = db.wallet
+const About = db.about
+const Faq = db.customerFaqs
+const CustomerHelp = db.customerHelp
+const CustomerHelpAnswer = db.customerHelpAnswer
 
 
 const queueEnquiryToAllVendors = async ({
@@ -79,6 +88,44 @@ async function getCustomerEnquiries({
     const matchCustomerTokens = [...new Set([token, number].filter(Boolean))];
 
     const enquiryConfigs = [
+        {
+            type: "cab",
+            model: CabEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "vehicle_token",
+                "vendor_token",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "car_type",
+                "contact",
+                "status",
+                "who_posted",
+                "create_date",
+            ],
+            mapRow: (row) => ({
+                enquiry_table: "tbl_cab_enquiry",
+                enquiry_type: "cab",
+                enquiry_token: row.token,
+                customer_token: row.customer_token || null,
+                vehicle_token: row.vehicle_token || null,
+                vendor_token: row.vendor_token || null,
+                trip_type: row.trip_type || null,
+                from_location: row.from_location || null,
+                to_location: row.to_location || null,
+                departure_date: row.departure_date || null,
+                return_date: row.return_date || null,
+                car_type: row.car_type || null,
+                contact: row.contact || null,
+                status: row.status || null,
+                created_at: row.create_date || null,
+            }),
+        },
         {
             type: "flight",
             model: FlightEnquiry,
@@ -178,7 +225,7 @@ async function getCustomerEnquiries({
                     customer_token: {
                         [Op.in]: matchCustomerTokens,
                     },
-                    who_posted: 'CUSTOMER',
+                    who_posted: "CUSTOMER",
                 },
                 attributes: config.attributes,
                 order: [["create_date", "DESC"]],
@@ -217,163 +264,369 @@ async function getCustomerEnquiries({
 }
 
 async function getCustomerEnquiryByToken({
-  token,
-  number,
-  enquiry_type,
-  enquiry_token,
+    token,
+    number,
+    enquiry_type,
+    enquiry_token,
 }) {
-  const normalizedType = String(enquiry_type).toLowerCase().trim();
-  const matchCustomerTokens = [...new Set([token, number].filter(Boolean))];
+    const normalizedType = String(enquiry_type).toLowerCase().trim();
+    const matchCustomerTokens = [...new Set([token, number].filter(Boolean))];
 
-  const enquiryConfigMap = {
-    flight: {
-      model: FlightEnquiry,
-      attributes: [
-        "id",
-        "token",
-        "customer_token",
-        "from_location",
-        "to_location",
-        "departure_date",
-        "return_date",
-        "trip_type",
-        "adults",
-        "children",
-        "class_type",
-        "segments",
-        "status",
-        "create_date",
-      ],
-      mapRow: (row) => ({
-        enquiry_table: "tbl_flight_enquiry",
-        enquiry_type: "flight",
-        enquiry_token: row.token,
-        customer_token: row.customer_token || null,
-        from_location: row.from_location || null,
-        to_location: row.to_location || null,
-        departure_date: row.departure_date || null,
-        return_date: row.return_date || null,
-        trip_type: row.trip_type || null,
-        adults: row.adults ?? null,
-        children: row.children ?? null,
-        class_type: row.class_type || null,
-        segments: row.segments || null,
-        status: row.status || null,
-        created_at: row.create_date || null,
-      }),
-    },
+    const enquiryConfigMap = {
+        cab: {
+            model: CabEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "vehicle_token",
+                "who_posted",
+                "from_web",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "car_type",
+                "contact",
+                "status",
+                "flag",
+                "create_date",
+                "update_date",
+            ],
+            mapRow: (row) => ({
+                id: row.id,
+                enquiry_table: "tbl_cab_enquiry",
+                enquiry_type: "cab",
+                enquiry_token: row.token,
+                customer_token: row.customer_token || null,
+                vehicle_token: row.vehicle_token || null,
+                who_posted: row.who_posted || null,
+                from_web: row.from_web === true,
+                trip_type: row.trip_type || null,
+                from_location: row.from_location || null,
+                to_location: row.to_location || null,
+                departure_date: row.departure_date || null,
+                return_date: row.return_date || null,
+                car_type: row.car_type || null,
+                contact: row.contact || null,
+                status: row.status || null,
+                flag: row.flag ?? 0,
+                created_at: row.create_date || null,
+                updated_at: row.update_date || null,
+            }),
+        },
 
-    holiday_package: {
-      model: HolidayPackageEnquiry,
-      attributes: [
-        "id",
-        "token",
-        "customer_token",
-        "from_city",
-        "to_city",
-        "departure_date",
-        "adults",
-        "children",
-        "room_type",
-        "status",
-        "create_date",
-      ],
-      mapRow: (row) => ({
-        enquiry_table: "tbl_holiday_package_enquiry",
-        enquiry_type: "holiday_package",
-        enquiry_token: row.token,
-        customer_token: row.customer_token || null,
-        from_city: row.from_city || null,
-        to_city: row.to_city || null,
-        departure_date: row.departure_date || null,
-        adults: row.adults ?? null,
-        children: row.children ?? null,
-        room_type: row.room_type || null,
-        status: row.status || null,
-        created_at: row.create_date || null,
-      }),
-    },
+        flight: {
+            model: FlightEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "who_posted",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "trip_type",
+                "adults",
+                "children",
+                "class_type",
+                "segments",
+                "status",
+                "create_date",
+            ],
+            mapRow: (row) => ({
+                enquiry_table: "tbl_flight_enquiry",
+                enquiry_type: "flight",
+                enquiry_token: row.token,
+                id: row.id,
+                customer_token: row.customer_token || null,
+                who_posted: row.who_posted || null,
+                from_location: row.from_location || null,
+                to_location: row.to_location || null,
+                departure_date: row.departure_date || null,
+                return_date: row.return_date || null,
+                trip_type: row.trip_type || null,
+                adults: row.adults ?? null,
+                children: row.children ?? null,
+                class_type: row.class_type || null,
+                segments: row.segments || null,
+                status: row.status || null,
+                created_at: row.create_date || null,
+            }),
+        },
 
-    hotel: {
-      model: HotelEnquiry,
-      attributes: [
-        "id",
-        "token",
-        "customer_token",
-        "area",
-        "check_in",
-        "check_out",
-        "adults",
-        "children",
-        "room_type",
-        "status",
-        "create_date",
-      ],
-      mapRow: (row) => ({
-        enquiry_table: "tbl_hotel_enquiry",
-        enquiry_type: "hotel",
-        enquiry_token: row.token,
-        customer_token: row.customer_token || null,
-        area: row.area || null,
-        check_in: row.check_in || null,
-        check_out: row.check_out || null,
-        adults: row.adults ?? null,
-        children: row.children ?? null,
-        room_type: row.room_type || null,
-        status: row.status || null,
-        created_at: row.create_date || null,
-      }),
-    },
+        holiday_package: {
+            model: HolidayPackageEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "who_posted",
+                "from_city",
+                "to_city",
+                "departure_date",
+                "adults",
+                "children",
+                "room_type",
+                "status",
+                "create_date",
+            ],
+            mapRow: (row) => ({
+                id: row.id,
+                enquiry_table: "tbl_holiday_package_enquiry",
+                enquiry_type: "holiday_package",
+                enquiry_token: row.token,
+                customer_token: row.customer_token || null,
+                who_posted: row.who_posted || null,
+                from_city: row.from_city || null,
+                to_city: row.to_city || null,
+                departure_date: row.departure_date || null,
+                adults: row.adults ?? null,
+                children: row.children ?? null,
+                room_type: row.room_type || null,
+                status: row.status || null,
+                created_at: row.create_date || null,
+            }),
+        },
 
-    insurance: {
-      model: InsuranceEnquiry,
-      attributes: [
-        "id",
-        "token",
-        "customer_token",
-        "car_number",
-        "name",
-        "contact",
-        "status",
-        "create_date",
-      ],
-      mapRow: (row) => ({
-        enquiry_table: "tbl_insurance_enquiry",
-        enquiry_type: "insurance",
-        enquiry_token: row.token,
-        customer_token: row.customer_token || null,
-        car_number: row.car_number || null,
-        name: row.name || null,
-        contact: row.contact || null,
-        status: row.status || null,
-        created_at: row.create_date || null,
-      }),
-    },
-  };
+        hotel: {
+            model: HotelEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "who_posted",
+                "area",
+                "check_in",
+                "check_out",
+                "adults",
+                "children",
+                "room_type",
+                "status",
+                "create_date",
+            ],
+            mapRow: (row) => ({
+                id: row.id,
+                enquiry_table: "tbl_hotel_enquiry",
+                enquiry_type: "hotel",
+                enquiry_token: row.token,
+                customer_token: row.customer_token || null,
+                who_posted: row.who_posted || null,
+                area: row.area || null,
+                check_in: row.check_in || null,
+                check_out: row.check_out || null,
+                adults: row.adults ?? null,
+                children: row.children ?? null,
+                room_type: row.room_type || null,
+                status: row.status || null,
+                created_at: row.create_date || null,
+            }),
+        },
 
-  const config = enquiryConfigMap[normalizedType];
-  if (!config) return null;
+        insurance: {
+            model: InsuranceEnquiry,
+            attributes: [
+                "id",
+                "token",
+                "customer_token",
+                "who_posted",
+                "car_number",
+                "name",
+                "contact",
+                "status",
+                "create_date",
+            ],
+            mapRow: (row) => ({
+                id: row.id,
+                enquiry_table: "tbl_insurance_enquiry",
+                enquiry_type: "insurance",
+                enquiry_token: row.token,
+                customer_token: row.customer_token || null,
+                who_posted: row.who_posted || null,
+                car_number: row.car_number || null,
+                name: row.name || null,
+                contact: row.contact || null,
+                status: row.status || null,
+                created_at: row.create_date || null,
+            }),
+        },
+    };
 
-  const row = await config.model.findOne({
-    where: {
-      token: enquiry_token,
-      customer_token: {
-        [Op.in]: matchCustomerTokens,
-      },
-        who_posted: 'CUSTOMER',
-    },
-    attributes: config.attributes,
-    raw: true,
-  });
+    const config = enquiryConfigMap[normalizedType];
+    if (!config) return null;
 
-  if (!row) return null;
+    const row = await config.model.findOne({
+        where: {
+            token: enquiry_token,
+            customer_token: {
+                [Op.in]: matchCustomerTokens,
+            },
+            who_posted: "CUSTOMER",
+        },
+        attributes: config.attributes,
+        raw: true,
+    });
 
-  return config.mapRow(row);
+    if (!row) return null;
+
+    let enquiryData = config.mapRow(row);
+
+    if (normalizedType === "cab" && enquiryData.vehicle_token) {
+        const vehicleRow = await Vehicle.findOne({
+            where: {
+                token: enquiryData.vehicle_token,
+            },
+            attributes: [
+                "id",
+                "token",
+                "name",
+                "type",
+                "seater",
+                "avg_per_km",
+                "ac",
+                "gps",
+                "availability",
+                "image1",
+                "image2",
+                "status",
+                "created_at",
+                "updated_at",
+            ],
+            raw: true,
+        });
+
+        enquiryData.vehicle = vehicleRow
+            ? {
+                id: vehicleRow.id || null,
+                token: vehicleRow.token || null,
+                name: vehicleRow.name || null,
+                type: vehicleRow.type || null,
+                seater: vehicleRow.seater ?? null,
+                avg_per_km: vehicleRow.avg_per_km ?? null,
+                ac: vehicleRow.ac === true,
+                gps: vehicleRow.gps === true,
+                availability: vehicleRow.availability || null,
+                image1: vehicleRow.image1 || null,
+                image2: vehicleRow.image2 || null,
+                status: vehicleRow.status || null,
+                created_at: vehicleRow.created_at || null,
+                updated_at: vehicleRow.updated_at || null,
+            }
+            : null;
+    } else if (normalizedType === "cab") {
+        enquiryData.vehicle = null;
+    }
+
+    const enquiryRequests = await EnquiryRequest.findAll({
+        where: {
+            enquiry_type: normalizedType,
+            enquiry_token,
+            flag: 0,
+        },
+        attributes: [
+            "id",
+            "token",
+            "enquiry_type",
+            "enquiry_token",
+            "requester_token",
+            "vendor_token",
+            "who_posted",
+            "from_web",
+            "amount",
+            "message",
+            "contact",
+            "status",
+            "meta",
+            "created_at",
+            "updated_at",
+        ],
+        order: [["created_at", "DESC"]],
+        raw: true,
+    });
+
+    const vendorTokens = [
+        ...new Set(
+            enquiryRequests
+                .map((item) => item.requester_token || item.vendor_token)
+                .filter(Boolean)
+        ),
+    ];
+
+    let vendorMap = {};
+
+    if (vendorTokens.length) {
+        const vendors = await Vendor.findAll({
+            where: {
+                token: {
+                    [Op.in]: vendorTokens,
+                },
+                flag: 0,
+            },
+            attributes: [
+                "token",
+                "first_name",
+                "last_name",
+                "contact",
+                "alt_contact",
+                "email",
+                "image",
+                "city",
+                "state",
+                "address",
+            ],
+            raw: true,
+        });
+
+        vendorMap = vendors.reduce((acc, vendor) => {
+            acc[vendor.token] = {
+                token: vendor.token || null,
+                name: `${vendor.first_name || ""} ${vendor.last_name || ""}`.trim() || null,
+                contact: vendor.contact || null,
+                alt_contact: vendor.alt_contact || null,
+                email: vendor.email || null,
+                image: vendor.image || null,
+                city: vendor.city || null,
+                state: vendor.state || null,
+                address: vendor.address || null,
+            };
+            return acc;
+        }, {});
+    }
+
+    const requestsWithVendor = enquiryRequests.map((item) => {
+        const vendorToken = item.requester_token || item.vendor_token || null;
+
+        return {
+            id: item.id,
+            request_token: item.token || null,
+            enquiry_type: item.enquiry_type || null,
+            enquiry_token: item.enquiry_token || null,
+            requester_token: item.requester_token || null,
+            vendor_token: item.vendor_token || null,
+            who_posted: item.who_posted || null,
+            from_web: item.from_web === true,
+            amount: item.amount ?? null,
+            message: item.message || null,
+            contact: item.contact || null,
+            status: item.status || null,
+            meta: item.meta || null,
+            created_at: item.created_at || null,
+            updated_at: item.updated_at || null,
+            vendor: vendorMap[vendorToken] || null,
+        };
+    });
+
+    return {
+        ...enquiryData,
+        total_requests: requestsWithVendor.length,
+        enquiry_requests: requestsWithVendor,
+    };
 }
 
 router.get('/get/dashboard', [customerMiddleware], async (req, res) => {
     try {
-
         const [serviceResult, sliderResult, countersResult, recentReviews, recentVideos] = await Promise.all([
             Service.findAll({
                 where: {
@@ -468,6 +721,161 @@ router.get('/get/dashboard', [customerMiddleware], async (req, res) => {
     } catch (error) {
         console.error('Getting dashboard error:', error);
         return res.status(500).json(responseData('Error occurred', {}, req, false));
+    }
+});
+
+router.get('/get/faqs', [customerMiddleware], async (req, res) => {
+    try {
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = 5;
+        const offset = (page - 1) * limit;
+
+        const faqs = await Faq.findAll({
+            where: {
+                status: 'active'
+            },
+            attributes: ['id', 'question', 'answer'],
+            order: [['id', 'DESC']],
+            limit,
+            offset
+        });
+
+        return res.status(200).json(
+            responseData(
+                'Faq fetched successfully',
+                {
+                    faqs,
+                    page,
+                    hasMore: faqs.length === limit
+                },
+                req,
+                true
+            )
+        );
+
+    } catch (error) {
+        console.error('Get faq error:', error);
+        return res.status(500).json(
+            responseData('Error occurred', {}, req, false)
+        );
+    }
+});
+
+router.get('/get/about', [customerMiddleware], async (req, res) => {
+    try {
+        const result = await About.findOne({
+            where: {
+                status: 'active'
+            },
+            attributes: [
+                'heading',
+                'title',
+                'description',
+                [Sequelize.literal(`CONCAT('${admin_url}', image)`), 'image']
+            ]
+        })
+        return res.status(200).json(responseData('About fetch successfully', result, req, true))
+    } catch (error) {
+        console.log('Fetching about section error : ', error)
+        return res.status(500).json(responseData('Error occured', {}, req, false))
+    }
+})
+
+router.post('/post/help', [customerMiddleware], async (req, res) => {
+    try {
+        const { description } = req.body;
+        if (!description || description.length < 10) {
+            return res.status(401).json(responseData('Description is empty', {}, req, false))
+        }
+        const customerToken = req.user.token;
+
+        const help = await CustomerHelp.create({
+            token: randomstring(64),
+            customer_token: customerToken,
+            title: 'HELP',
+            description,
+            category: 'OTHER'
+        });
+
+        return res.status(201).json(
+            responseData('Help request submitted successfully', help, req, true)
+        );
+
+    } catch (error) {
+        console.error('Vendor help create error:', error);
+        return res.status(500).json(
+            responseData('Internal server error', {}, req, false)
+        );
+    }
+})
+
+router.get('/get/help/data', [customerMiddleware], async (req, res) => {
+    try {
+        const customer = req.user;
+
+        if (!customer?.token) {
+            return res.status(401).json(
+                responseData('Unauthorized', {}, req, false)
+            );
+        }
+
+        let { page, limit, status } = req.query;
+
+        page = Number(page) || 1;
+        limit = Number(limit) || 10;
+
+        const statusMap = {
+            PENDING: 'OPEN',
+            CLOSED: 'ANSWERED'
+        };
+
+        status = status?.toUpperCase() || 'OPEN';
+        status = statusMap[status] || status;
+
+        const offset = (page - 1) * limit;
+
+        const where = {
+            customer_token: customer.token,
+            status
+        };
+
+        const { count, rows } = await CustomerHelp.findAndCountAll({
+            where,
+            order: [['create_date', 'DESC']],
+            limit,
+            offset,
+            distinct: true,
+            subQuery: false,
+            include: [
+                {
+                    model: CustomerHelpAnswer,
+                    as: 'help_answers',
+                    attributes: ['token', 'help_token', 'message', 'create_date'],
+                    required: false
+                }
+            ]
+        });
+
+        return res.status(200).json(
+            responseData(
+                'Help data fetched successfully',
+                {
+                    total: count,
+                    page,
+                    limit,
+                    totalPages: Math.ceil(count / limit),
+                    docs: rows
+                },
+                req,
+                true
+            )
+        );
+
+    } catch (err) {
+        console.error('[GET HELP DATA ERROR]', err);
+        return res.status(500).json(
+            responseData('Something went wrong', {}, req, false)
+        );
     }
 });
 
@@ -817,7 +1225,7 @@ router.post("/cab/enquiry", [customerValidation.validate('post-cab-enquiry')], a
     }
 });
 
-router.post('/enquiry', [], async (req, res) => {
+router.post('/enquiry', async (req, res) => {
     try {
         const {
             name,
@@ -1176,10 +1584,11 @@ router.post("/flight-enquiry", [customerMiddleware, customerValidation.validate(
             from_web = false
         } = req.body;
 
-        customerToken
+        const customerToken = req.user.token
 
         const payload = {
             token: randomstring(64),
+            customer_token: customerToken,
             vendor_token: null,
             trip_type,
             adults: adults || 1,
@@ -1248,6 +1657,71 @@ router.post("/flight-enquiry", [customerMiddleware, customerValidation.validate(
     }
 });
 
+router.post("/cab-enquiry", [customerMiddleware, customerValidation.validate('post-cab-enquiry')], async (req, res) => {
+    try {
+        const {
+            trip_type,
+            from_location,
+            to_location = null,
+            departure_date,
+            return_date = null,
+            car_type = null,
+            contact = null,
+            from_web = false,
+            vehicle_token
+        } = req.body;
+
+        const customerToken = req.user.token
+
+        const cabEnquiry = await CabEnquiry.create({
+            token: randomstring(64),
+            customer_token: customerToken,
+            trip_type,
+            from_location,
+            to_location: ['oneway', 'round_trip'].includes(trip_type) ? to_location : null,
+            departure_date,
+            return_date: trip_type === 'round_trip' ? return_date : null,
+            car_type,
+            contact,
+            who_posted: 'CUSTOMER',
+            vehicle_token: vehicle_token || null,
+            from_web
+        });
+
+        await queueEnquiryToAllVendors({
+            senderToken: null,
+            type: "NEW_CAB_ENQUIRY",
+            title: "New Cab Enquiry",
+            message: `A new cab enquiry has been submitted from ${from_location || "N/A"} to ${to_location || "N/A"} for ${departure_date || "N/A"}. Please review the travel details and respond soon.`,
+            payload: {
+                module: "cab_enquiry",
+                enquiry: {
+                    id: cabEnquiry.id,
+                    token: cabEnquiry.token,
+                    trip_type: cabEnquiry.trip_type,
+                    from_location: cabEnquiry.from_location,
+                    to_location: cabEnquiry.to_location,
+                    departure_date: cabEnquiry.departure_date,
+                    return_date: cabEnquiry.return_date,
+                    car_type: cabEnquiry.car_type,
+                    contact: cabEnquiry.contact,
+                    who_posted: cabEnquiry.who_posted,
+                    from_web: cabEnquiry.from_web
+                }
+            }
+        });
+
+        return res.status(201).json(
+            responseData("Cab enquiry submitted successfully", {}, req, true)
+        );
+
+    } catch (error) {
+        console.log("Cab enquiry error", error);
+        return res.status(500).json(
+            responseData("Internal server error", {}, req, false)
+        );
+    }
+});
 
 
 // enquries
@@ -1299,8 +1773,7 @@ router.get("/enquiries/list", [customerMiddleware, customerValidation.validate("
             responseData("Something went wrong", {}, req, false)
         );
     }
-}
-);
+});
 
 router.get("/enquiries/detail/:enquiry_type/:enquiry_token", [customerMiddleware], async (req, res) => {
     try {
@@ -1352,6 +1825,10 @@ router.get("/call-enquiries/list", [customerMiddleware], async (req, res) => {
             enquiry_type = null,
             search = ""
         } = req.query;
+
+        console.log("Received call enquiries list request with query:", req.query);
+
+        // process.exit(1)
 
         const customerToken = req.user.token;
 
@@ -1480,7 +1957,6 @@ router.get("/call-enquiries/list", [customerMiddleware], async (req, res) => {
                     attributes: [
                         "id",
                         "token",
-                        "contact",
                         "trip_type",
                         "from_location",
                         "to_location",
@@ -1766,16 +2242,20 @@ router.get("/call-enquiries/list", [customerMiddleware], async (req, res) => {
 
 router.get("/call-enquiries/detail/:enquiry_type/:enquiry_token", [customerMiddleware], async (req, res) => {
     try {
-        const customerToken = req.user.token;
+        const customerToken = req.user.token || null;
+        const customerContact = req.user.contact || null;
+        const matchCustomerTokens = [customerToken, customerContact].filter(Boolean);
         const { enquiry_type, enquiry_token } = req.params;
 
         const normalizedType = String(enquiry_type).toLowerCase().trim();
 
         const callHistory = await db.CallsEnquiry.findAll({
             where: {
-                customer_token: customerToken,
                 enquiry_type: normalizedType,
-                enquiry_token
+                enquiry_token,
+                customer_token: {
+                    [Op.in]: matchCustomerTokens
+                }
             },
             attributes: [
                 "id",
@@ -1899,6 +2379,550 @@ router.get("/call-enquiries/detail/:enquiry_type/:enquiry_token", [customerMiddl
         console.error("customer call enquiry detail error:", error);
         return res.status(500).json(
             responseData(error.message || "Something went wrong", {}, req, false)
+        );
+    }
+});
+
+// get vehicles
+router.get('/get-vehicles', [customerMiddleware], async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 12;
+        const search = req.query.search || '';
+        const type = req.query.type || 'all';
+        const seating = req.query.seating || 'all';
+        const ac = req.query.ac || 'all';
+        const gps = req.query.gps || 'all';
+        const minPrice = req.query.minPrice || null;
+        const maxPrice = req.query.maxPrice || null;
+
+        const offset = (page - 1) * limit;
+
+        let whereClause = {
+            status: 'active',
+            availability: 'available'
+        };
+
+        if (search && search.trim() !== '') {
+            whereClause[Op.or] = [
+                { name: { [Op.like]: `%${search}%` } },
+                { type: { [Op.like]: `%${search}%` } },
+                {
+                    [Op.and]: [
+                        Sequelize.where(
+                            Sequelize.fn('LOWER', Sequelize.col('name')),
+                            { [Op.like]: `%${search.toLowerCase()}%` }
+                        )
+                    ]
+                }
+            ];
+        }
+
+        if (type && type !== 'all') {
+            whereClause.type = type;
+        }
+
+        if (seating && seating !== 'all') {
+            if (seating === '4') {
+                whereClause.seater = { [Op.lte]: 4 };
+            } else if (seating === '6') {
+                whereClause.seater = { [Op.between]: [5, 6] };
+            } else if (seating === '7') {
+                whereClause.seater = { [Op.between]: [7, 8] };
+            } else if (seating === '9') {
+                whereClause.seater = { [Op.gte]: 9 };
+            } else {
+                whereClause.seater = parseInt(seating);
+            }
+        }
+
+        if (ac && ac !== 'all') {
+            whereClause.ac = ac === 'true' || ac === '1';
+        }
+
+        if (gps && gps !== 'all') {
+            whereClause.gps = gps === 'true' || gps === '1';
+        }
+        if (minPrice || maxPrice) {
+            whereClause.price_per_day = {};
+            if (minPrice) whereClause.price_per_day[Op.gte] = parseFloat(minPrice);
+            if (maxPrice) whereClause.price_per_day[Op.lte] = parseFloat(maxPrice);
+        }
+
+        // Fetch vehicles with pagination
+        const { count, rows } = await Vehicle.findAndCountAll({
+            where: whereClause,
+            limit: limit,
+            offset: offset,
+            order: [['created_at', 'DESC']],
+            attributes: [
+                'id',
+                'token',
+                'name',
+                'type',
+                'seater',
+                'avg_per_km',
+                'ac',
+                'gps',
+                'availability',
+                'status',
+                'created_at',
+                [Sequelize.literal(`CASE WHEN image1 IS NOT NULL AND image1 != '' THEN CONCAT('${admin_url}', image1) ELSE NULL END`), 'image1'],
+                [Sequelize.literal(`CASE WHEN image2 IS NOT NULL AND image2 != '' THEN CONCAT('${admin_url}', image2) ELSE NULL END`), 'image2']
+            ],
+            raw: true
+        });
+
+        // Calculate pagination info
+        const totalPages = Math.ceil(count / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
+        // Prepare response data
+        const result = {
+            vehicles: rows,
+            pagination: {
+                current_page: page,
+                total_pages: totalPages,
+                total_records: count,
+                records_per_page: limit,
+                has_next_page: hasNextPage,
+                has_prev_page: hasPrevPage,
+                next_page: hasNextPage ? page + 1 : null,
+                prev_page: hasPrevPage ? page - 1 : null
+            },
+            filters_applied: {
+                search: search || null,
+                type: type,
+                seating: seating,
+                ac: ac,
+                gps: gps,
+                min_price: minPrice,
+                max_price: maxPrice
+            }
+        };
+
+        return res.status(200).json(
+            responseData('Vehicles fetched successfully', result, req, true)
+        );
+
+    } catch (error) {
+        console.error('Get vehicles error:', error);
+        return res.status(500).json(
+            responseData('Error occurred while fetching vehicles', {}, req, false)
+        );
+    }
+});
+
+// wallet apis
+router.get('/wallet/summary', [customerMiddleware], async (req, res) => {
+    try {
+        const customerToken = req.user.token;
+        const page = Number(req.query.page) || 1;
+        const limit = Number(req.query.limit) || 4;
+        const { status } = req.query;
+
+        const wallet = await getOrCreateWallet({
+            user_token: customerToken,
+            role: 'CUSTOMER'
+        });
+
+        const offset = (page - 1) * limit;
+
+        const whereCondition = { wallet_id: wallet.id };
+
+        if (status) {
+            if (status === 'COMPLETED') {
+                whereCondition.status = 'SUCCESS';
+            } else if (status === 'FAILED') {
+                whereCondition.status = 'FAILED';
+            } else if (status === 'PENDING') {
+                whereCondition.status = 'PENDING';
+            }
+        }
+
+        const { rows, count } = await WalletTransaction.findAndCountAll({
+            where: whereCondition,
+            order: [
+                ['created_at', 'DESC'],
+                ['id', 'DESC']
+            ],
+            limit,
+            offset,
+            attributes: [
+                'id',
+                'token',
+                'transaction_type',
+                'amount',
+                'opening_balance',
+                'closing_balance',
+                'wallet_balance',
+                'referral_balance',
+                'reason',
+                'reference_type',
+                'reference_id',
+                'status',
+                'created_at'
+            ]
+        });
+
+        const transactions = rows.map((txn) => ({
+            id: txn.id,
+            token: txn.token,
+            type: txn.transaction_type,
+            amount: Number(txn.amount),
+            opening_balance: Number(txn.opening_balance) || 0,
+            closing_balance: Number(txn.closing_balance) || 0,
+            wallet_balance: Number(txn.wallet_balance) || 0,
+            referral_balance: Number(txn.referral_balance) || 0,
+            reason: txn.reason,
+            reference_type: txn.reference_type,
+            reference_id: txn.reference_id,
+            status: txn.status,
+            created_at: txn.created_at
+        }));
+
+        const responseObject = {
+            wallet: {
+                wallet_token: wallet.token,
+                wallet_balance: Number(wallet.wallet_balance) || 0,
+                referral_balance: Number(wallet.referral_balance) || 0,
+                total_balance: Number(wallet.total_balance) || 0,
+                last_transaction_at: wallet.last_transaction_at,
+                created_at: wallet.created_at,
+                updated_at: wallet.updated_at
+            },
+            transactions: {
+                docs: transactions,
+                page,
+                limit,
+                totalDocs: count,
+                totalPages: Math.ceil(count / limit)
+            }
+        };
+
+        return res.json(
+            responseData(
+                'Wallet summary fetched successfully',
+                responseObject,
+                req,
+                true
+            )
+        );
+    } catch (err) {
+        console.error('❌ wallet summary error:', err);
+
+        return res.status(500).json(
+            responseData('Failed to fetch wallet summary', {}, req, false)
+        );
+    }
+});
+
+router.post('/wallet/create-order', [customerMiddleware], async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const customerToken = req.user.token;
+
+        const numericAmount = Number(amount);
+
+        if (!numericAmount || numericAmount <= 0) {
+            return res.status(400).json(
+                responseData('Invalid amount', {}, req, false)
+            );
+        }
+
+        if (numericAmount < 100) {
+            return res.status(400).json(
+                responseData('Minimum amount is 100', {}, req, false)
+            );
+        }
+
+        const wallet = await getOrCreateWallet({
+            user_token: customerToken,
+            role: 'CUSTOMER'
+        });
+
+        const currentWalletBalance = Number(wallet.wallet_balance) || 0;
+        const currentReferralBalance = Number(wallet.referral_balance) || 0;
+        const currentTotalBalance = Number(wallet.total_balance) || 0;
+
+        const amountInPaise = Math.round(numericAmount * 100);
+
+        if (!Number.isInteger(amountInPaise) || amountInPaise <= 0) {
+            return res.status(400).json(
+                responseData('Invalid amount value', {}, req, false)
+            );
+        }
+
+        const order = await razorpay.orders.create({
+            amount: amountInPaise,
+            currency: 'INR',
+            receipt: `wallet_${wallet.id}_${Date.now()}`,
+            notes: {
+                wallet_id: String(wallet.id),
+                customer_token: customerToken,
+                purpose: 'ADD_MONEY'
+            }
+        });
+
+        await WalletTransaction.create({
+            token: randomstring(64),
+            wallet_id: wallet.id,
+            transaction_type: 'CREDIT',
+            amount: numericAmount,
+            opening_balance: currentTotalBalance,
+            closing_balance: currentTotalBalance,
+            wallet_balance: currentWalletBalance,
+            referral_balance: currentReferralBalance,
+            reason: 'ADD_MONEY',
+            reference_type: 'RAZORPAY_ORDER',
+            reference_id: order.id,
+            status: 'PENDING'
+        });
+
+        return res.json(
+            responseData(
+                'Order created',
+                {
+                    order_id: order.id,
+                    razorpay_key: RAZORPAY_KEY_ID,
+                    amount: order.amount,
+                    currency: order.currency,
+                    wallet: {
+                        wallet_token: wallet.token,
+                        wallet_balance: currentWalletBalance,
+                        referral_balance: currentReferralBalance,
+                        total_balance: currentTotalBalance
+                    }
+                },
+                req,
+                true
+            )
+        );
+    } catch (err) {
+        console.error('❌ create-order error:', err);
+        return res.status(500).json(
+            responseData('Order creation failed', {}, req, false)
+        );
+    }
+});
+
+router.post('/wallet/verify-payment', [customerMiddleware], async (req, res) => {
+    const t = await db.sequelize.transaction();
+
+    try {
+        const {
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature
+        } = req.body;
+
+        const customerToken = req.user.token;
+
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('razorpay_order_id, razorpay_payment_id and razorpay_signature are required', {}, req, false)
+            );
+        }
+
+        const wallet = await getOrCreateWallet({
+            user_token: customerToken,
+            role: 'CUSTOMER',
+            transaction: t
+        });
+
+        const lockedWallet = await db.wallet.findOne({
+            where: {
+                id: wallet.id,
+                user_token: customerToken,
+                role: 'CUSTOMER',
+                status: 'ACTIVE'
+            },
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!lockedWallet) {
+            await t.rollback();
+            return res.status(404).json(
+                responseData('Wallet not found', {}, req, false)
+            );
+        }
+
+        const txn = await WalletTransaction.findOne({
+            where: {
+                wallet_id: lockedWallet.id,
+                reference_type: 'RAZORPAY_ORDER',
+                reference_id: razorpay_order_id,
+                status: 'PENDING'
+            },
+            transaction: t,
+            lock: t.LOCK.UPDATE
+        });
+
+        if (!txn) {
+            await t.rollback();
+            return res.status(400).json(
+                responseData('Transaction not found or already processed', {}, req, false)
+            );
+        }
+
+        const body = `${razorpay_order_id}|${razorpay_payment_id}`;
+        const expectedSignature = crypto
+            .createHmac('sha256', RAZORPAY_KEY_SECRET)
+            .update(body)
+            .digest('hex');
+
+        if (expectedSignature !== razorpay_signature) {
+            await txn.update(
+                {
+                    status: 'FAILED',
+                    reference_type: 'RAZORPAY_PAYMENT',
+                    reference_id: razorpay_payment_id,
+                    failure_reason: 'INVALID_SIGNATURE'
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            return res.status(400).json(
+                responseData('Invalid payment signature', {}, req, false)
+            );
+        }
+
+        const payment = await razorpay.payments.fetch(razorpay_payment_id);
+
+        if (payment.order_id !== razorpay_order_id) {
+            await txn.update(
+                {
+                    status: 'FAILED',
+                    reference_type: 'RAZORPAY_PAYMENT',
+                    reference_id: razorpay_payment_id,
+                    failure_reason: 'ORDER_MISMATCH'
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            return res.status(400).json(
+                responseData('Order mismatch', {}, req, false)
+            );
+        }
+
+        if (payment.status !== 'captured') {
+            await txn.update(
+                {
+                    status: 'FAILED',
+                    reference_type: 'RAZORPAY_PAYMENT',
+                    reference_id: razorpay_payment_id,
+                    failure_reason: 'PAYMENT_NOT_CAPTURED'
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            return res.status(400).json(
+                responseData('Payment not captured', {}, req, false)
+            );
+        }
+
+        if (Number(payment.amount) !== Math.round(Number(txn.amount) * 100)) {
+            await txn.update(
+                {
+                    status: 'FAILED',
+                    reference_type: 'RAZORPAY_PAYMENT',
+                    reference_id: razorpay_payment_id,
+                    failure_reason: 'AMOUNT_MISMATCH'
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            return res.status(400).json(
+                responseData('Payment amount mismatch', {}, req, false)
+            );
+        }
+
+        const amount = Number(txn.amount) || 0;
+
+        if (amount <= 0) {
+            await txn.update(
+                {
+                    status: 'FAILED',
+                    reference_type: 'RAZORPAY_PAYMENT',
+                    reference_id: razorpay_payment_id,
+                    failure_reason: 'INVALID_TRANSACTION_AMOUNT'
+                },
+                { transaction: t }
+            );
+
+            await t.commit();
+
+            return res.status(400).json(
+                responseData('Invalid transaction amount', {}, req, false)
+            );
+        }
+
+        const openingWalletBalance = Number(lockedWallet.wallet_balance) || 0;
+        const openingReferralBalance = Number(lockedWallet.referral_balance) || 0;
+        const openingTotalBalance = Number(lockedWallet.total_balance) || 0;
+
+        const closingWalletBalance = openingWalletBalance + amount;
+        const closingReferralBalance = openingReferralBalance;
+        const closingTotalBalance = closingWalletBalance + closingReferralBalance;
+
+        await lockedWallet.update(
+            {
+                wallet_balance: closingWalletBalance,
+                referral_balance: closingReferralBalance,
+                total_balance: closingTotalBalance,
+                last_transaction_at: new Date()
+            },
+            { transaction: t }
+        );
+
+        await txn.update(
+            {
+                status: 'SUCCESS',
+                reference_type: 'RAZORPAY_PAYMENT',
+                reference_id: razorpay_payment_id,
+                opening_balance: openingTotalBalance,
+                closing_balance: closingTotalBalance,
+                wallet_balance: closingWalletBalance,
+                referral_balance: closingReferralBalance,
+                failure_reason: null
+            },
+            { transaction: t }
+        );
+
+        await t.commit();
+
+        return res.json(
+            responseData(
+                'Wallet credited successfully',
+                {
+                    wallet_token: lockedWallet.token,
+                    credited_amount: amount,
+                    wallet_balance: closingWalletBalance,
+                    referral_balance: closingReferralBalance,
+                    total_balance: closingTotalBalance
+                },
+                req,
+                true
+            )
+        );
+    } catch (err) {
+        await t.rollback();
+
+        console.error('❌ verify-payment error:', err);
+
+        return res.status(500).json(
+            responseData('Payment verification failed', {}, req, false)
         );
     }
 });
