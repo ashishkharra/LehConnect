@@ -35,6 +35,12 @@ const About = db.about
 const Faq = db.customerFaqs
 const CustomerHelp = db.customerHelp
 const CustomerHelpAnswer = db.customerHelpAnswer
+const CustomerBooking = db.customerBooking
+const WalletHold = db.wallet_hold
+
+const MAX_WALLET_USE = 300;
+
+const toNum = (value) => Number(value || 0);
 
 
 const queueEnquiryToAllVendors = async ({
@@ -95,8 +101,6 @@ async function getCustomerEnquiries({
                 "id",
                 "token",
                 "customer_token",
-                "vehicle_token",
-                "vendor_token",
                 "trip_type",
                 "from_location",
                 "to_location",
@@ -113,8 +117,6 @@ async function getCustomerEnquiries({
                 enquiry_type: "cab",
                 enquiry_token: row.token,
                 customer_token: row.customer_token || null,
-                vehicle_token: row.vehicle_token || null,
-                vendor_token: row.vendor_token || null,
                 trip_type: row.trip_type || null,
                 from_location: row.from_location || null,
                 to_location: row.to_location || null,
@@ -126,6 +128,7 @@ async function getCustomerEnquiries({
                 created_at: row.create_date || null,
             }),
         },
+
         {
             type: "flight",
             model: FlightEnquiry,
@@ -149,6 +152,7 @@ async function getCustomerEnquiries({
                 created_at: row.create_date || null,
             }),
         },
+
         {
             type: "holiday_package",
             model: HolidayPackageEnquiry,
@@ -172,6 +176,7 @@ async function getCustomerEnquiries({
                 created_at: row.create_date || null,
             }),
         },
+
         {
             type: "hotel",
             model: HotelEnquiry,
@@ -193,6 +198,7 @@ async function getCustomerEnquiries({
                 created_at: row.create_date || null,
             }),
         },
+
         {
             type: "insurance",
             model: InsuranceEnquiry,
@@ -279,7 +285,6 @@ async function getCustomerEnquiryByToken({
                 "id",
                 "token",
                 "customer_token",
-                "vehicle_token",
                 "who_posted",
                 "from_web",
                 "trip_type",
@@ -300,7 +305,6 @@ async function getCustomerEnquiryByToken({
                 enquiry_type: "cab",
                 enquiry_token: row.token,
                 customer_token: row.customer_token || null,
-                vehicle_token: row.vehicle_token || null,
                 who_posted: row.who_posted || null,
                 from_web: row.from_web === true,
                 trip_type: row.trip_type || null,
@@ -473,51 +477,51 @@ async function getCustomerEnquiryByToken({
 
     let enquiryData = config.mapRow(row);
 
-    if (normalizedType === "cab" && enquiryData.vehicle_token) {
-        const vehicleRow = await Vehicle.findOne({
-            where: {
-                token: enquiryData.vehicle_token,
-            },
-            attributes: [
-                "id",
-                "token",
-                "name",
-                "type",
-                "seater",
-                "avg_per_km",
-                "ac",
-                "gps",
-                "availability",
-                "image1",
-                "image2",
-                "status",
-                "created_at",
-                "updated_at",
-            ],
-            raw: true,
-        });
+    // if (normalizedType === "cab" && enquiryData.vehicle_token) {
+    //     const vehicleRow = await Vehicle.findOne({
+    //         where: {
+    //             token: enquiryData.vehicle_token,
+    //         },
+    //         attributes: [
+    //             "id",
+    //             "token",
+    //             "name",
+    //             "type",
+    //             "seater",
+    //             "avg_per_km",
+    //             "ac",
+    //             "gps",
+    //             "availability",
+    //             "image1",
+    //             "image2",
+    //             "status",
+    //             "created_at",
+    //             "updated_at",
+    //         ],
+    //         raw: true,
+    //     });
 
-        enquiryData.vehicle = vehicleRow
-            ? {
-                id: vehicleRow.id || null,
-                token: vehicleRow.token || null,
-                name: vehicleRow.name || null,
-                type: vehicleRow.type || null,
-                seater: vehicleRow.seater ?? null,
-                avg_per_km: vehicleRow.avg_per_km ?? null,
-                ac: vehicleRow.ac === true,
-                gps: vehicleRow.gps === true,
-                availability: vehicleRow.availability || null,
-                image1: vehicleRow.image1 || null,
-                image2: vehicleRow.image2 || null,
-                status: vehicleRow.status || null,
-                created_at: vehicleRow.created_at || null,
-                updated_at: vehicleRow.updated_at || null,
-            }
-            : null;
-    } else if (normalizedType === "cab") {
-        enquiryData.vehicle = null;
-    }
+    //     enquiryData.vehicle = vehicleRow
+    //         ? {
+    //             id: vehicleRow.id || null,
+    //             token: vehicleRow.token || null,
+    //             name: vehicleRow.name || null,
+    //             type: vehicleRow.type || null,
+    //             seater: vehicleRow.seater ?? null,
+    //             avg_per_km: vehicleRow.avg_per_km ?? null,
+    //             ac: vehicleRow.ac === true,
+    //             gps: vehicleRow.gps === true,
+    //             availability: vehicleRow.availability || null,
+    //             image1: vehicleRow.image1 || null,
+    //             image2: vehicleRow.image2 || null,
+    //             status: vehicleRow.status || null,
+    //             created_at: vehicleRow.created_at || null,
+    //             updated_at: vehicleRow.updated_at || null,
+    //         }
+    //         : null;
+    // } else if (normalizedType === "cab") {
+    //     enquiryData.vehicle = null;
+    // }
 
     const enquiryRequests = await EnquiryRequest.findAll({
         where: {
@@ -623,6 +627,44 @@ async function getCustomerEnquiryByToken({
         total_requests: requestsWithVendor.length,
         enquiry_requests: requestsWithVendor,
     };
+}
+
+function verifyRazorpaySignature({ order_id, payment_id, signature }) {
+    const body = `${order_id}|${payment_id}`;
+
+    const expectedSignature = crypto
+        .createHmac("sha256", RAZORPAY_KEY_SECRET)
+        .update(body)
+        .digest("hex");
+
+    return expectedSignature === signature;
+}
+
+async function calculateServerAmount({ vehicle_token, total_distance }) {
+    const vehicle = await Vehicle.findOne({
+        where: {
+            token: vehicle_token
+        },
+        attributes: ["token", "avg_per_km"],
+        raw: true
+    });
+
+    if (!vehicle) {
+        throw new Error("Vehicle not found");
+    }
+
+    const distance = toNum(total_distance);
+    const rate = toNum(vehicle.avg_per_km);
+
+    if (distance <= 0) {
+        throw new Error("Invalid total distance");
+    }
+
+    if (rate <= 0) {
+        throw new Error("Invalid vehicle rate");
+    }
+
+    return Number((distance * rate).toFixed(2));
 }
 
 router.get('/get/dashboard', [customerMiddleware], async (req, res) => {
@@ -1262,7 +1304,7 @@ router.post('/enquiry', async (req, res) => {
         }
 
         await Enquiry.create({
-            token: randomstring.generate(64),
+            token: randomstring(64),
             name: name.trim(),
             mobile: mobile.trim(),
             email: email ? email.trim() : null,
@@ -1657,68 +1699,825 @@ router.post("/flight-enquiry", [customerMiddleware, customerValidation.validate(
     }
 });
 
-router.post("/cab-enquiry", [customerMiddleware, customerValidation.validate('post-cab-enquiry')], async (req, res) => {
+
+router.get("/booking/list", [customerMiddleware], async (req, res) => {
     try {
-        const {
-            trip_type,
-            from_location,
-            to_location = null,
-            departure_date,
-            return_date = null,
-            car_type = null,
-            contact = null,
-            from_web = false,
-            vehicle_token
-        } = req.body;
+        let {
+            page = 1,
+            limit = 12,
+            status,
+            search,
+            from_date,
+            to_date
+        } = req.query;
 
-        const customerToken = req.user.token
+        page = parseInt(page, 10) || 1;
+        limit = parseInt(limit, 10) || 12;
+        const offset = (page - 1) * limit;
 
-        const cabEnquiry = await CabEnquiry.create({
-            token: randomstring(64),
+        const customerToken = req.user.token;
+
+        const whereCondition = {
             customer_token: customerToken,
+            flag: 0
+        };
+
+        // ✅ status filter
+        if (status) {
+            whereCondition.status = status;
+        }
+
+        // ✅ date filter
+        if (from_date || to_date) {
+            whereCondition.create_date = {};
+
+            if (from_date) {
+                whereCondition.create_date[Op.gte] = new Date(from_date);
+            }
+
+            if (to_date) {
+                const endDate = new Date(to_date);
+                endDate.setHours(23, 59, 59, 999);
+                whereCondition.create_date[Op.lte] = endDate;
+            }
+        }
+
+        // ✅ search filter
+        if (search && String(search).trim()) {
+            const searchText = String(search).trim();
+
+            whereCondition[Op.or] = [
+                { token: { [Op.like]: `%${searchText}%` } },
+                { from_location: { [Op.like]: `%${searchText}%` } },
+                { to_location: { [Op.like]: `%${searchText}%` } },
+                { car_type: { [Op.like]: `%${searchText}%` } },
+                { contact: { [Op.like]: `%${searchText}%` } }
+            ];
+        }
+
+        const bookings = await CustomerBooking.findAndCountAll({
+            where: whereCondition,
+            attributes: [
+                "id",
+                "token",
+                "vehicle_token",
+                "vendor_token",
+                "customer_token",
+                "who_posted",
+                "from_web",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "car_type",
+                "contact",
+                "status",
+                "create_date",
+                "update_date"
+            ],
+            include: [
+                {
+                    model: Vehicle,
+                    as: "vehicle_details",
+                    required: false,
+                    attributes: [
+                        "id",
+                        "token",
+                        "name",
+                        "type",
+                        "status",
+                        "created_at",
+                        "updated_at"
+                    ]
+                }
+            ],
+            order: [["create_date", "DESC"]],
+            limit,
+            offset
+        });
+
+        const total = bookings.count;
+        const totalPages = Math.ceil(total / limit);
+
+        const data = bookings.rows.map((item) => {
+            const row = item.toJSON();
+
+            return {
+                booking_id: row.id,
+                booking_token: row.token,
+                customer_token: row.customer_token,
+                vendor_token: row.vendor_token,
+                vehicle_token: row.vehicle_token,
+
+                trip_type: row.trip_type,
+                from_location: row.from_location,
+                to_location: row.to_location,
+                departure_date: row.departure_date,
+                return_date: row.return_date,
+                car_type: row.car_type,
+
+                contact: row.contact,
+                status: row.status,
+                from_web: row.from_web,
+
+                created_at: row.create_date,
+                updated_at: row.update_date,
+
+                vehicle: row.vehicle_details
+                    ? {
+                        id: row.vehicle_details.id,
+                        token: row.vehicle_details.token,
+                        name: row.vehicle_details.name,
+                        type: row.vehicle_details.type,
+                        status: row.vehicle_details.status
+                    }
+                    : null
+            };
+        });
+
+        return res.status(200).json(
+            responseData(
+                "Customer bookings fetched successfully",
+                {
+                    total,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: totalPages,
+                    filters: {
+                        status: status || null,
+                        search: search || null,
+                        from_date: from_date || null,
+                        to_date: to_date || null
+                    },
+                    data
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        console.log("booking list error:", error);
+        return res.status(500).json(
+            responseData(
+                error.message || "Something went wrong",
+                {},
+                req,
+                false
+            )
+        );
+    }
+});
+
+router.get("/booking/details/:booking_token", [customerMiddleware], async (req, res) => {
+    try {
+        const { booking_token } = req.params;
+
+        if (!booking_token) {
+            return res.status(400).json(
+                responseData("booking_token is required", {}, req, false)
+            );
+        }
+
+        const customerToken = req.user.token;
+
+        const booking = await CustomerBooking.findOne({
+            where: {
+                token: booking_token,
+                customer_token: customerToken,
+                flag: 0
+            },
+            attributes: [
+                "id",
+                "token",
+                "vehicle_token",
+                "customer_token",
+                "who_posted",
+                "from_web",
+                "trip_type",
+                "from_location",
+                "to_location",
+                "departure_date",
+                "return_date",
+                "car_type",
+                "contact",
+                "total_distance",
+                "total_amount",
+                "wallet_amount_used",
+                "razorpay_amount",
+                "payment_status",
+                "wallet_status",
+                "razorpay_order_id",
+                "razorpay_payment_id",
+                "status",
+                "create_date",
+                "update_date"
+            ],
+            include: [
+                {
+                    model: Vehicle,
+                    as: "booking_vehicle_details",
+                    required: false,
+                    attributes: [
+                        "id",
+                        "token",
+                        "name",
+                        "type",
+                        "seater",
+                        "avg_per_km",
+                        "ac",
+                        "gps",
+                        "availability",
+                        [
+                            Sequelize.literal(
+                                `CASE WHEN booking_vehicle_details.image1 IS NOT NULL AND booking_vehicle_details.image1 != '' THEN CONCAT('${admin_url}', booking_vehicle_details.image1) ELSE NULL END`
+                            ),
+                            "image1"
+                        ],
+                        [
+                            Sequelize.literal(
+                                `CASE WHEN booking_vehicle_details.image2 IS NOT NULL AND booking_vehicle_details.image2 != '' THEN CONCAT('${admin_url}', booking_vehicle_details.image2) ELSE NULL END`
+                            ),
+                            "image2"
+                        ],
+                        "status",
+                        "created_at",
+                        "updated_at"
+                    ]
+                }
+            ]
+        });
+
+        if (!booking) {
+            return res.status(404).json(
+                responseData("Booking not found", {}, req, false)
+            );
+        }
+
+        const row = booking.toJSON();
+
+        const vehicle = row.booking_vehicle_details || null;
+
+        return res.status(200).json(
+            responseData(
+                "Booking details fetched successfully",
+                {
+                    booking: row,
+                    vehicle_details: vehicle || null,
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        console.log("booking details error:", error);
+
+        return res.status(500).json(
+            responseData(
+                error.message || "Something went wrong",
+                {},
+                req,
+                false
+            )
+        );
+    }
+});
+
+router.post("/booking", [customerMiddleware], async (req, res) => {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+        const customerToken = req.user.token;
+
+        const {
+            vehicle_token,
+            vendor_token,
             trip_type,
             from_location,
-            to_location: ['oneway', 'round_trip'].includes(trip_type) ? to_location : null,
+            to_location,
             departure_date,
-            return_date: trip_type === 'round_trip' ? return_date : null,
+            return_date,
             car_type,
             contact,
-            who_posted: 'CUSTOMER',
-            vehicle_token: vehicle_token || null,
-            from_web
+            total_distance,
+            use_wallet = false
+        } = req.body;
+
+        // ✅ VALIDATIONS (NO THROW)
+        if (!vehicle_token) {
+            await transaction.rollback();
+            return res.status(400).json(
+                responseData("vehicle_token is required", {}, req, false)
+            );
+        }
+
+        if (!trip_type) {
+            await transaction.rollback();
+            return res.status(400).json(
+                responseData("trip_type is required", {}, req, false)
+            );
+        }
+
+        if (!from_location) {
+            await transaction.rollback();
+            return res.status(400).json(
+                responseData("from_location is required", {}, req, false)
+            );
+        }
+
+        if (!to_location && trip_type !== "local") {
+            await transaction.rollback();
+            return res.status(400).json(
+                responseData("to_location is required", {}, req, false)
+            );
+        }
+
+        const totalAmount = await calculateServerAmount({
+            vehicle_token,
+            total_distance
         });
 
-        await queueEnquiryToAllVendors({
-            senderToken: null,
-            type: "NEW_CAB_ENQUIRY",
-            title: "New Cab Enquiry",
-            message: `A new cab enquiry has been submitted from ${from_location || "N/A"} to ${to_location || "N/A"} for ${departure_date || "N/A"}. Please review the travel details and respond soon.`,
-            payload: {
-                module: "cab_enquiry",
-                enquiry: {
-                    id: cabEnquiry.id,
-                    token: cabEnquiry.token,
-                    trip_type: cabEnquiry.trip_type,
-                    from_location: cabEnquiry.from_location,
-                    to_location: cabEnquiry.to_location,
-                    departure_date: cabEnquiry.departure_date,
-                    return_date: cabEnquiry.return_date,
-                    car_type: cabEnquiry.car_type,
-                    contact: cabEnquiry.contact,
-                    who_posted: cabEnquiry.who_posted,
-                    from_web: cabEnquiry.from_web
-                }
+        let walletAmountUsed = 0;
+        let razorpayAmount = totalAmount;
+        let wallet = null;
+        let walletHold = null;
+        let reservedTxn = null;
+
+        if (use_wallet === true || use_wallet === "true") {
+            wallet = await Wallet.findOne({
+                where: {
+                    user_token: customerToken,
+                    role: "CUSTOMER",
+                    status: "ACTIVE",
+                    flag: false
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            // ✅ WALLET NOT FOUND HANDLE
+            if (!wallet) {
+                await transaction.rollback();
+                return res.status(400).json(
+                    responseData("Wallet not found or inactive", {}, req, false)
+                );
             }
-        });
 
-        return res.status(201).json(
-            responseData("Cab enquiry submitted successfully", {}, req, true)
+            const referralBalance = toNum(wallet?.referral_balance);
+
+            walletAmountUsed = Math.min(MAX_WALLET_USE, referralBalance, totalAmount);
+            razorpayAmount = Number((totalAmount - walletAmountUsed).toFixed(2));
+
+            if (walletAmountUsed > 0) {
+                walletHold = await WalletHold.create(
+                    {
+                        token: randomstring(64),
+                        wallet_id: wallet.id,
+                        amount: walletAmountUsed,
+                        reason: "BOOKING_PAYMENT",
+                        reference_id: null,
+                        booking_token: null,
+                        status: "HELD",
+                        flag: false,
+                        expires_at: new Date(Date.now() + 15 * 60 * 1000)
+                    },
+                    { transaction }
+                );
+
+                reservedTxn = await WalletTransaction.create(
+                    {
+                        token: randomstring(64),
+                        wallet_id: wallet.id,
+                        transaction_type: "DEBIT",
+                        amount: walletAmountUsed,
+                        opening_balance: wallet.total_balance,
+                        closing_balance: wallet.total_balance,
+                        wallet_balance: wallet.wallet_balance,
+                        referral_balance: wallet.referral_balance,
+                        reason: "BOOKING_PAYMENT_RESERVED",
+                        reference_type: "CUSTOMER_BOOKING",
+                        reference_id: null,
+                        status: "PENDING",
+                        hold_id: walletHold.id,
+                        meta: {
+                            note: "Wallet amount reserved only, not deducted"
+                        }
+                    },
+                    { transaction }
+                );
+            }
+        }
+
+        const bookingToken = randomstring(64);
+
+        const booking = await CustomerBooking.create(
+            {
+                token: bookingToken,
+                vehicle_token,
+                vendor_token: vendor_token || null,
+                customer_token: customerToken,
+                who_posted: "CUSTOMER",
+                from_web: false,
+                trip_type,
+                from_location,
+                to_location,
+                departure_date: departure_date || null,
+                return_date: return_date || null,
+                car_type: car_type || null,
+                contact: contact || null,
+
+                total_distance,
+                total_amount: totalAmount,
+                wallet_amount_used: walletAmountUsed,
+                razorpay_amount: razorpayAmount,
+
+                payment_status: razorpayAmount > 0 ? "PENDING" : "SUCCESS",
+                wallet_status:
+                    walletAmountUsed > 0
+                        ? razorpayAmount > 0
+                            ? "RESERVED"
+                            : "USED"
+                        : "NONE",
+
+                status: razorpayAmount > 0 ? "PENDING" : "CONFIRMED",
+                flag: 0
+            },
+            { transaction }
         );
 
+        if (walletHold) {
+            await walletHold.update(
+                {
+                    reference_id: bookingToken,
+                    booking_token: bookingToken
+                },
+                { transaction }
+            );
+        }
+
+        if (reservedTxn) {
+            await reservedTxn.update(
+                {
+                    reference_id: bookingToken
+                },
+                { transaction }
+            );
+        }
+
+        // ✅ REST SAME AS YOUR ORIGINAL CODE...
+
+        let razorpayOrder = null;
+
+        if (razorpayAmount > 0) {
+            razorpayOrder = await razorpay.orders.create({
+                amount: Math.round(razorpayAmount * 100),
+                currency: "INR",
+                receipt: `bk_${booking.id}_${Date.now()}`.slice(0, 40),
+                notes: {
+                    booking_token: bookingToken,
+                    customer_token: customerToken,
+                    wallet_amount_used: String(walletAmountUsed)
+                }
+            });
+
+            await booking.update(
+                {
+                    razorpay_order_id: razorpayOrder.id
+                },
+                { transaction }
+            );
+        }
+
+        await transaction.commit();
+
+        return res.status(200).json(
+            responseData(
+                "Booking created successfully",
+                {
+                    booking_token: bookingToken,
+                    total_amount: totalAmount,
+                    wallet_amount_used: walletAmountUsed,
+                    razorpay_amount: razorpayAmount,
+                    payment_status: razorpayAmount > 0 ? "PENDING" : "SUCCESS",
+                    wallet_status:
+                        walletAmountUsed > 0
+                            ? razorpayAmount > 0
+                                ? "RESERVED"
+                                : "USED"
+                            : "NONE",
+                    razorpay_order: razorpayOrder
+                        ? {
+                              id: razorpayOrder.id,
+                              amount: razorpayOrder.amount,
+                              currency: razorpayOrder.currency,
+                              key_id: RAZORPAY_KEY_ID
+                          }
+                        : null
+                },
+                req,
+                true
+            )
+        );
     } catch (error) {
-        console.log("Cab enquiry error", error);
+        await transaction.rollback();
+
+        console.log("booking create error:", error);
+
         return res.status(500).json(
-            responseData("Internal server error", {}, req, false)
+            responseData(
+                "Error occured",
+                {},
+                req,
+                false
+            )
+        );
+    }
+});
+
+router.post("/payment/verify", [customerMiddleware], async (req, res) => {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+        const customerToken = req.user.token;
+
+        const {
+            booking_token,
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature
+        } = req.body;
+
+        if (!booking_token) throw new Error("booking_token is required");
+        if (!razorpay_order_id) throw new Error("razorpay_order_id is required");
+        if (!razorpay_payment_id) throw new Error("razorpay_payment_id is required");
+        if (!razorpay_signature) throw new Error("razorpay_signature is required");
+
+        const isValidSignature = verifyRazorpaySignature({
+            order_id: razorpay_order_id,
+            payment_id: razorpay_payment_id,
+            signature: razorpay_signature
+        });
+
+        if (!isValidSignature) {
+            throw new Error("Invalid Razorpay signature");
+        }
+
+        const booking = await CustomerBooking.findOne({
+            where: {
+                token: booking_token,
+                customer_token: customerToken,
+                razorpay_order_id,
+                flag: 0
+            },
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            throw new Error("Booking not found");
+        }
+
+        if (booking.payment_status === "SUCCESS") {
+            await transaction.commit();
+
+            return res.status(200).json(
+                responseData(
+                    "Payment already verified",
+                    {
+                        booking_token,
+                        payment_status: "SUCCESS"
+                    },
+                    req,
+                    true
+                )
+            );
+        }
+
+        const walletAmountUsed = toNum(booking.wallet_amount_used);
+
+        if (walletAmountUsed > 0 && booking.wallet_status === "RESERVED") {
+            const walletHold = await WalletHold.findOne({
+                where: {
+                    booking_token,
+                    status: "HELD",
+                    flag: false
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (!walletHold) {
+                throw new Error("Wallet hold not found or already processed");
+            }
+
+            const wallet = await Wallet.findOne({
+                where: {
+                    id: walletHold.wallet_id,
+                    user_token: customerToken,
+                    role: "CUSTOMER",
+                    status: "ACTIVE",
+                    flag: false
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (!wallet) {
+                throw new Error("Wallet not found");
+            }
+
+            const openingWalletBalance = toNum(wallet.wallet_balance);
+            const openingReferralBalance = toNum(wallet.referral_balance);
+            const openingTotalBalance = toNum(wallet.total_balance);
+
+            if (openingReferralBalance < walletAmountUsed) {
+                throw new Error("Insufficient referral balance while confirming wallet hold");
+            }
+
+            const closingReferralBalance = openingReferralBalance - walletAmountUsed;
+            const closingTotalBalance = openingWalletBalance + closingReferralBalance;
+
+            await wallet.update(
+                {
+                    referral_balance: closingReferralBalance,
+                    total_balance: closingTotalBalance,
+                    last_transaction_at: new Date()
+                },
+                { transaction }
+            );
+
+            await walletHold.update(
+                {
+                    status: "CONSUMED"
+                },
+                { transaction }
+            );
+
+            await WalletTransaction.update(
+                {
+                    status: "SUCCESS",
+                    transaction_type: "DEBIT",
+                    opening_balance: openingTotalBalance,
+                    closing_balance: closingTotalBalance,
+                    wallet_balance: openingWalletBalance,
+                    referral_balance: closingReferralBalance,
+                    reason: "BOOKING_PAYMENT_SUCCESS",
+                    meta: {
+                        razorpay_payment_id,
+                        razorpay_order_id
+                    }
+                },
+                {
+                    where: {
+                        hold_id: walletHold.id,
+                        reference_id: booking_token,
+                        status: "PENDING"
+                    },
+                    transaction
+                }
+            );
+        }
+
+        await booking.update(
+            {
+                razorpay_payment_id,
+                payment_status: "SUCCESS",
+                wallet_status:
+                    walletAmountUsed > 0
+                        ? "USED"
+                        : "NONE",
+                status: "CONFIRMED"
+            },
+            { transaction }
+        );
+
+        await transaction.commit();
+
+        return res.status(200).json(
+            responseData(
+                "Payment verified successfully",
+                {
+                    booking_token,
+                    payment_status: "SUCCESS",
+                    wallet_status: walletAmountUsed > 0 ? "USED" : "NONE",
+                    razorpay_payment_id
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        await transaction.rollback();
+
+        console.log("payment verify error:", error);
+
+        return res.status(500).json(
+            responseData(error.message || "Something went wrong", {}, req, false)
+        );
+    }
+});
+
+router.post("/payment/fail", [customerMiddleware], async (req, res) => {
+    const transaction = await db.sequelize.transaction();
+
+    try {
+        const customerToken = req.user.token;
+        const { booking_token, reason } = req.body;
+
+        if (!booking_token) {
+            throw new Error("booking_token is required");
+        }
+
+        const booking = await CustomerBooking.findOne({
+            where: {
+                token: booking_token,
+                customer_token: customerToken,
+                flag: 0
+            },
+            transaction,
+            lock: transaction.LOCK.UPDATE
+        });
+
+        if (!booking) {
+            throw new Error("Booking not found");
+        }
+
+        if (booking.payment_status === "SUCCESS") {
+            throw new Error("Booking already paid");
+        }
+
+        const walletAmountUsed = toNum(booking.wallet_amount_used);
+
+        if (walletAmountUsed > 0 && booking.wallet_status === "RESERVED") {
+            const walletHold = await WalletHold.findOne({
+                where: {
+                    booking_token,
+                    status: "HELD",
+                    flag: false
+                },
+                transaction,
+                lock: transaction.LOCK.UPDATE
+            });
+
+            if (walletHold) {
+                await walletHold.update(
+                    {
+                        status: "RELEASED"
+                    },
+                    { transaction }
+                );
+
+                await WalletTransaction.update(
+                    {
+                        status: "REVERSED",
+                        reason: "BOOKING_PAYMENT_RELEASED",
+                        failure_reason: reason || "Payment failed or cancelled",
+                        meta: {
+                            released_at: new Date()
+                        }
+                    },
+                    {
+                        where: {
+                            hold_id: walletHold.id,
+                            reference_id: booking_token,
+                            status: "PENDING"
+                        },
+                        transaction
+                    }
+                );
+            }
+        }
+
+        await booking.update(
+            {
+                payment_status: "FAILED",
+                wallet_status: walletAmountUsed > 0 ? "REFUNDED" : "NONE",
+                status: "CANCELLED"
+            },
+            { transaction }
+        );
+
+        await transaction.commit();
+
+        return res.status(200).json(
+            responseData(
+                "Payment failed and wallet hold released",
+                {
+                    booking_token,
+                    payment_status: "FAILED",
+                    wallet_status: walletAmountUsed > 0 ? "REFUNDED" : "NONE"
+                },
+                req,
+                true
+            )
+        );
+    } catch (error) {
+        await transaction.rollback();
+
+        console.log("payment fail error:", error);
+
+        return res.status(500).json(
+            responseData(error.message || "Something went wrong", {}, req, false)
         );
     }
 });

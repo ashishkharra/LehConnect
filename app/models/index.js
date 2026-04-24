@@ -77,6 +77,8 @@ db.AddVehicle = require('./Add_vehicle.model.js')(sequelize, Sequelize)
 db.customerFaqs = require('./customerFaq.model.js')(sequelize, Sequelize)
 db.customerHelp = require('./customer_help.model.js')(sequelize, Sequelize)
 db.customerHelpAnswer = require('./customer_help_answer.model.js')(sequelize, Sequelize)
+db.customerBooking = require('./customer_booking.model.js')(sequelize, Sequelize)
+db.customerBookingPayment = require('./customer_booking_payment.model.js')(sequelize, Sequelize)
 
 
 // BookingPayment <-> Booking
@@ -804,6 +806,34 @@ db.chat.belongsTo(db.conversation, {
   targetKey: "token",
   as: "conversation",
   constraints: false
+});
+
+db.customerBooking.belongsTo(db.AddVehicle, {
+    foreignKey: "vehicle_token",
+    targetKey: "token",
+    as: "vehicle_details",
+    constraints: false
+});
+
+db.AddVehicle.hasMany(db.customerBooking, {
+    foreignKey: "vehicle_token",
+    sourceKey: "token",
+    as: "customer_bookings",
+    constraints: false
+});
+
+db.customerBooking.belongsTo(db.AddVehicle, {
+    foreignKey: "vehicle_token",
+    targetKey: "token",
+    as: "booking_vehicle_details",
+    constraints: false
+});
+
+db.customerBooking.belongsTo(db.vendor, {
+    foreignKey: "vendor_token",
+    targetKey: "token",
+    as: "booking_vendor_details",
+    constraints: false
 });
 
 module.exports = db;

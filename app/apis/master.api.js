@@ -604,7 +604,7 @@ router.post("/verifyOtp", async (req, res) => {
     console.error("verify otp error:", error);
 
     return res.status(500).json(
-      responseData("Error occurred", {}, req, false)
+      responseData("Error occured", {}, req, false)
     );
   }
 });

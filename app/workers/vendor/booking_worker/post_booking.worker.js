@@ -5,7 +5,6 @@ const admin = require("../../../config/firebase");
 
 const { buildAlertMulticast } = require("../../../shared/utils/fcmMessage");
 const { cleanupInvalidTokens } = require("../../../shared/utils/fcmCleanup");
-const { sendOneSignalPush } = require("../../../shared/utils/onsignal.push.js");
 
 const Notification = db.notification;
 const VendorDevice = db.vendor_device_fcm;

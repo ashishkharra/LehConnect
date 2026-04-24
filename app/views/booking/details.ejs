@@ -1,0 +1,407 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+
+<%
+    const money = (v) => '₹' + Number(v || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+    const dateTime = (v) => {
+        if (!v) return 'N/A';
+        return new Date(v).toLocaleString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const text = (v) => {
+        if (v === null || v === undefined || v === '') return 'N/A';
+        return v;
+    };
+
+    const boolText = (v) => {
+        if (v === true || v === 1 || v === '1') return 'Yes';
+        if (v === false || v === 0 || v === '0') return 'No';
+        return 'N/A';
+    };
+
+    const badge = (status) => {
+        status = String(status || '').toUpperCase();
+
+        if (['PAID','SUCCESS','CONFIRMED','COMPLETED','USED','CONSUMED','ACTIVE','AVAILABLE'].includes(status)) return 'bg-success';
+        if (['PARTIAL','PENDING','RESERVED','HELD'].includes(status)) return 'bg-warning';
+        if (['FAILED','CANCELLED','REJECTED','EXPIRED','REFUNDED','RELEASED','REVERSED','INACTIVE'].includes(status)) return 'bg-danger';
+
+        return 'bg-secondary';
+    };
+
+    const customerName =
+        customer?.name ||
+        `${customer?.first_name || ''} ${customer?.last_name || ''}`.trim() ||
+        'Customer';
+
+    const vehicleImages = [];
+
+    if (vehicle?.image1_full || vehicle?.image1) vehicleImages.push(vehicle.image1_full || (admin_url + vehicle.image1));
+    if (vehicle?.image2_full || vehicle?.image2) vehicleImages.push(vehicle.image2_full || (admin_url + vehicle.image2));
+    if (vehicle?.image3_full || vehicle?.image3) vehicleImages.push(vehicle.image3_full || (admin_url + vehicle.image3));
+%>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Booking Details</h3>
+                    <p class="text-muted mb-0">Booking Token: <%= booking.token %></p>
+                </div>
+                <div class="col-auto">
+                    <a href="/bookings" class="btn btn-outline-secondary">
+                        <i class="ti ti-arrow-left me-2"></i>Back to Bookings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-lg-8">
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Booking Information</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <small class="text-muted">Booking ID</small>
+                                <h6>#<%= booking.id %></h6>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Booking Status</small><br>
+                                <span class="badge <%= badge(booking.status) %>"><%= booking.status || 'PENDING' %></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Trip Type</small>
+                                <h6><%= text(booking.trip_type) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">From Location</small>
+                                <h6><i class="ti ti-map-pin me-1"></i><%= text(booking.from_location) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">To Location</small>
+                                <h6><i class="ti ti-map-pin me-1"></i><%= text(booking.to_location) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Departure Date</small>
+                                <h6><%= dateTime(booking.departure_date) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Return Date</small>
+                                <h6><%= dateTime(booking.return_date) %></h6>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Distance</small>
+                                <h6><%= booking.total_distance || 0 %> KM</h6>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Car Type</small>
+                                <h6><%= text(booking.car_type) %></h6>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Contact</small>
+                                <h6><%= text(booking.contact) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Created At</small>
+                                <h6><%= dateTime(booking.create_date) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Updated At</small>
+                                <h6><%= dateTime(booking.update_date) %></h6>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Payment Information</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <small class="text-muted">Total Amount</small>
+                                <h5 class="text-success"><%= money(booking.total_amount) %></h5>
+                            </div>
+
+                            <div class="col-md-3">
+                                <small class="text-muted">Wallet Used</small>
+                                <h5><%= money(booking.wallet_amount_used) %></h5>
+                            </div>
+
+                            <div class="col-md-3">
+                                <small class="text-muted">Razorpay Amount</small>
+                                <h5><%= money(booking.razorpay_amount) %></h5>
+                            </div>
+
+                            <div class="col-md-3">
+                                <small class="text-muted">Payment Type</small>
+                                <h5><%= text(booking.payment_type) %></h5>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Payment Status</small><br>
+                                <span class="badge <%= badge(booking.payment_status) %>"><%= booking.payment_status || 'PENDING' %></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">Wallet Status</small><br>
+                                <span class="badge <%= badge(booking.wallet_status) %>"><%= booking.wallet_status || 'NONE' %></span>
+                            </div>
+
+                            <div class="col-md-4">
+                                <small class="text-muted">From Web</small>
+                                <h6><%= boolText(booking.from_web) %></h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Razorpay Order ID</small>
+                                <p class="mb-0 text-break"><%= text(booking.razorpay_order_id) %></p>
+                            </div>
+
+                            <div class="col-md-6">
+                                <small class="text-muted">Razorpay Payment ID</small>
+                                <p class="mb-0 text-break"><%= text(booking.razorpay_payment_id) %></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FULL VEHICLE DETAILS -->
+                <div class="card mt-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Full Vehicle Information</h5>
+                        <% if (vehicle?.status) { %>
+                            <span class="badge <%= badge(vehicle.status) %>"><%= vehicle.status %></span>
+                        <% } %>
+                    </div>
+
+                    <div class="card-body">
+                        <% if (vehicle) { %>
+
+                            <% if (vehicleImages.length) { %>
+                                <div class="row mb-4">
+                                    <% vehicleImages.forEach((img) => { %>
+                                        <div class="col-md-4 mb-3">
+                                            <img
+                                                src="<%= img %>"
+                                                class="img-fluid rounded border"
+                                                style="width:100%;height:180px;object-fit:cover;"
+                                                alt="Vehicle Image"
+                                            >
+                                        </div>
+                                    <% }) %>
+                                </div>
+                            <% } %>
+
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Vehicle ID</small>
+                                    <h6>#<%= text(vehicle.id) %></h6>
+                                </div>
+
+                                <div class="col-md-9">
+                                    <small class="text-muted">Vehicle Token</small>
+                                    <p class="mb-0 text-break"><%= text(vehicle.token) %></p>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Vehicle Name</small>
+                                    <h6><%= text(vehicle.name) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Vehicle Type</small>
+                                    <h6><%= text(vehicle.type) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Seater</small>
+                                    <h6><%= text(vehicle.seater) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Average Per KM</small>
+                                    <h6><%= money(vehicle.avg_per_km) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">AC</small>
+                                    <h6><%= boolText(vehicle.ac) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">GPS</small>
+                                    <h6><%= boolText(vehicle.gps) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Availability</small>
+                                    <h6><%= text(vehicle.availability) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Vehicle Status</small><br>
+                                    <span class="badge <%= badge(vehicle.status) %>"><%= text(vehicle.status) %></span>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Created At</small>
+                                    <h6><%= dateTime(vehicle.created_at) %></h6>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <small class="text-muted">Updated At</small>
+                                    <h6><%= dateTime(vehicle.updated_at) %></h6>
+                                </div>
+
+                                <% Object.keys(vehicle).forEach((key) => { %>
+                                    <% 
+                                        const hiddenKeys = [
+                                            'id','token','name','type','seater','avg_per_km','ac','gps',
+                                            'availability','status','created_at','updated_at',
+                                            'image1','image2','image3','image1_full','image2_full','image3_full'
+                                        ];
+                                    %>
+
+                                    <% if (!hiddenKeys.includes(key)) { %>
+                                        <div class="col-md-4">
+                                            <small class="text-muted"><%= key.replace(/_/g, ' ').toUpperCase() %></small>
+                                            <% if (typeof vehicle[key] === 'object' && vehicle[key] !== null) { %>
+                                                <pre class="small bg-light p-2 rounded"><%= JSON.stringify(vehicle[key], null, 2) %></pre>
+                                            <% } else { %>
+                                                <h6 class="text-break"><%= text(vehicle[key]) %></h6>
+                                            <% } %>
+                                        </div>
+                                    <% } %>
+                                <% }) %>
+                            </div>
+
+                        <% } else { %>
+                            <div class="text-center py-4">
+                                <i class="ti ti-car-off fs-1 text-muted"></i>
+                                <h5 class="mt-2">No vehicle details found</h5>
+                                <p class="text-muted mb-0">Vehicle token may be missing or vehicle record was deleted.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="col-lg-4">
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Customer Information</h5>
+                    </div>
+
+                    <div class="card-body text-center">
+                        <img
+                            src="<%= customer.profile_image %>"
+                            class="rounded-circle mb-3"
+                            style="width:80px;height:80px;object-fit:cover;"
+                            alt="Customer"
+                        >
+
+                        <h5><%= customerName %></h5>
+                        <p class="text-muted mb-1"><%= text(customer?.contact || booking.contact) %></p>
+                        <p class="text-muted mb-1"><%= text(customer?.email) %></p>
+                        <p class="text-muted mb-0">
+                            <%= [customer?.city, customer?.state].filter(Boolean).join(', ') || 'N/A' %>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Vehicle Summary</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <% if (vehicle) { %>
+                            <% if (vehicleImages[0]) { %>
+                                <img
+                                    src="<%= vehicleImages[0] %>"
+                                    class="img-fluid rounded mb-3"
+                                    style="width:100%;height:180px;object-fit:cover;"
+                                    alt="Vehicle"
+                                >
+                            <% } %>
+
+                            <h5><%= text(vehicle.name) %></h5>
+
+                            <p class="mb-1"><strong>Type:</strong> <%= text(vehicle.type) %></p>
+                            <p class="mb-1"><strong>Seater:</strong> <%= text(vehicle.seater) %></p>
+                            <p class="mb-1"><strong>Avg/KM:</strong> <%= money(vehicle.avg_per_km) %></p>
+                            <p class="mb-1"><strong>AC:</strong> <%= boolText(vehicle.ac) %></p>
+                            <p class="mb-1"><strong>GPS:</strong> <%= boolText(vehicle.gps) %></p>
+                            <p class="mb-0">
+                                <strong>Status:</strong>
+                                <span class="badge <%= badge(vehicle.status) %>"><%= text(vehicle.status) %></span>
+                            </p>
+                        <% } else { %>
+                            <p class="text-muted mb-0">No vehicle details found.</p>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Quick Summary</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Booking Token:</strong></p>
+                        <p class="text-break small"><%= text(booking.token) %></p>
+
+                        <p class="mb-1"><strong>Customer Token:</strong></p>
+                        <p class="text-break small"><%= text(booking.customer_token) %></p>
+
+                        <p class="mb-1"><strong>Vehicle Token:</strong></p>
+                        <p class="text-break small"><%= text(booking.vehicle_token) %></p>
+
+                        <p class="mb-1"><strong>Payment:</strong></p>
+                        <p class="small">
+                            <span class="badge <%= badge(booking.payment_status) %>">
+                                <%= text(booking.payment_status) %>
+                            </span>
+                        </p>
+
+                        <p class="mb-1"><strong>Total:</strong></p>
+                        <h5 class="text-success"><%= money(booking.total_amount) %></h5>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('../shared/partials/footer') %>

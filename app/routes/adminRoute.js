@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const sequelize = require('sequelize')
-
+const { Op, Sequelize } = require('sequelize');
+const { admin_url } = require('../config/globals.js')
 const { asyncHandler } = require('../shared/utils/helper.js')
 const adminController = require('../controller/adminController.js');
 const { authMiddleware } = require('../middleware/auth.js');
@@ -9,6 +10,8 @@ const validationRule = require('../validation/admin.auth.js')
 const { uploadProfileImage, siteSlider, updateSliderMulter, aboutImage, vehicleImage } = require('../middleware/multer.js')
 const uploadVideo = require('../middleware/videoMulter.js')
 const sessMiddleware = require('../middleware/sessionMiddleware.js');
+const db = require('../models/index.js');
+const CustomerBooking = db.customerBooking
 
 // auth page
 
@@ -226,15 +229,436 @@ router.get('/customer', [authMiddleware], asyncHandler(async (req, res) => {
 }))
 
 // booking page
-router.get('/bookings', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
+router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user || null;
 
-    res.render('booking/index', {
-        title: 'LehConnect | Bookings',
-        admin: admin || null,
-        currentPage: 'bookings',
+    let {
+        page = 1,
+        limit = 10,
+        search = "",
+        status = "",
+        payment_status = "",
+        date_from = "",
+        date_to = "",
+        quick = ""
+    } = req.query;
+
+    page = parseInt(page, 10) || 1;
+    limit = parseInt(limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const whereCondition = {
+        flag: 0
+    };
+
+    if (status) {
+        whereCondition.status = String(status).toUpperCase();
+    }
+
+    if (payment_status) {
+        whereCondition.payment_status = String(payment_status).toUpperCase();
+    }
+
+    if (date_from || date_to) {
+        whereCondition.create_date = {};
+
+        if (date_from) {
+            whereCondition.create_date[Op.gte] = new Date(date_from);
+        }
+
+        if (date_to) {
+            const endDate = new Date(date_to);
+            endDate.setHours(23, 59, 59, 999);
+            whereCondition.create_date[Op.lte] = endDate;
+        }
+    }
+
+    const now = new Date();
+
+    if (quick === "today") {
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 1);
+
+        whereCondition.create_date = {
+            [Op.gte]: start,
+            [Op.lt]: end
+        };
+    }
+
+    if (quick === "week") {
+        const start = new Date(now);
+        const day = start.getDay();
+        const diffToMonday = day === 0 ? -6 : 1 - day;
+        start.setDate(start.getDate() + diffToMonday);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+
+        whereCondition.create_date = {
+            [Op.gte]: start,
+            [Op.lt]: end
+        };
+    }
+
+    if (quick === "month") {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+        whereCondition.create_date = {
+            [Op.gte]: start,
+            [Op.lt]: end
+        };
+    }
+
+    if (quick === "high_value") {
+        whereCondition.total_amount = {
+            [Op.gte]: 20000
+        };
+    }
+
+    if (quick === "urgent") {
+        whereCondition[Op.or] = [
+            { payment_status: { [Op.in]: ["PENDING", "PARTIAL", "FAILED"] } },
+            { status: { [Op.in]: ["PENDING", "CANCELLED"] } }
+        ];
+    }
+
+    if (search && String(search).trim()) {
+        const searchText = String(search).trim();
+
+        whereCondition[Op.and] = whereCondition[Op.and] || [];
+        whereCondition[Op.and].push({
+            [Op.or]: [
+                { token: { [Op.like]: `%${searchText}%` } },
+                { customer_token: { [Op.like]: `%${searchText}%` } },
+                { vehicle_token: { [Op.like]: `%${searchText}%` } },
+                { from_location: { [Op.like]: `%${searchText}%` } },
+                { to_location: { [Op.like]: `%${searchText}%` } },
+                { car_type: { [Op.like]: `%${searchText}%` } },
+                { contact: { [Op.like]: `%${searchText}%` } }
+            ]
+        });
+    }
+
+    const bookingsResult = await db.customerBooking.findAndCountAll({
+        where: whereCondition,
+        attributes: [
+            "id",
+            "token",
+            "vehicle_token",
+            "customer_token",
+            "who_posted",
+            "from_web",
+            "trip_type",
+            "from_location",
+            "to_location",
+            "departure_date",
+            "return_date",
+            "car_type",
+            "contact",
+            "total_distance",
+            "total_amount",
+            "wallet_amount_used",
+            "razorpay_amount",
+            "payment_type",
+            "payment_status",
+            "wallet_status",
+            "razorpay_order_id",
+            "razorpay_payment_id",
+            "status",
+            "create_date",
+            "update_date"
+        ],
+        include: [
+            {
+                model: db.AddVehicle,
+                as: "booking_vehicle_details",
+                required: false,
+                attributes: [
+                    "id",
+                    "token",
+                    "name",
+                    "type",
+                    "seater",
+                    "avg_per_km",
+                    "ac",
+                    "gps",
+                    "availability",
+                    [
+                        Sequelize.literal(
+                            `CASE WHEN booking_vehicle_details.image1 IS NOT NULL AND booking_vehicle_details.image1 != '' THEN CONCAT('${admin_url}', booking_vehicle_details.image1) ELSE NULL END`
+                        ),
+                        "image1"
+                    ],
+                    "status"
+                ]
+            }
+        ],
+        order: [["create_date", "DESC"]],
+        limit,
+        offset
     });
-}))
+
+    const rawBookings = bookingsResult.rows.map((item) => item.toJSON());
+
+    const customerTokens = [
+        ...new Set(rawBookings.map((item) => item.customer_token).filter(Boolean))
+    ];
+
+    let customerMap = {};
+
+    if (customerTokens.length && db.customer) {
+        const customers = await db.customer.findAll({
+            where: {
+                token: {
+                    [Op.in]: customerTokens
+                }
+            },
+            attributes: [
+                "token",
+                "first_name",
+                "last_name",
+                "contact",
+                "email",
+                "image"
+            ],
+            raw: true
+        });
+
+        customerMap = customers.reduce((acc, customer) => {
+            acc[customer.token] = customer;
+            return acc;
+        }, {});
+    }
+
+    const bookings = rawBookings.map((booking) => {
+        const customer = customerMap[booking.customer_token] || null;
+        const vehicle = booking.booking_vehicle_details || null;
+
+        return {
+            ...booking,
+            customer_details: customer
+                ? {
+                    token: customer.token,
+                    name:
+                        `${customer.first_name || ""} ${customer.last_name || ""}`.trim() ||
+                        "Customer",
+                    contact: customer.contact || booking.contact || null,
+                    email: customer.email || null,
+                    image: customer.image ? `${admin_url}${customer.image}` : null
+                }
+                : {
+                    token: booking.customer_token,
+                    name: "Customer",
+                    contact: booking.contact || null,
+                    email: null,
+                    image: null
+                },
+            vehicle_details: vehicle
+        };
+    });
+
+    const [
+        totalBookings,
+        pendingBookings,
+        confirmedBookings,
+        completedBookings,
+        cancelledBookings,
+        ongoingBookings,
+        paidBookings,
+        partialBookings,
+        failedPayments,
+        refundedPayments,
+        revenueResult,
+        avgResult
+    ] = await Promise.all([
+        CustomerBooking.count({ where: { flag: 0 } }),
+        CustomerBooking.count({ where: { flag: 0, status: "PENDING" } }),
+        CustomerBooking.count({ where: { flag: 0, status: "CONFIRMED" } }),
+        CustomerBooking.count({ where: { flag: 0, status: "COMPLETED" } }),
+        CustomerBooking.count({ where: { flag: 0, status: "CANCELLED" } }),
+        CustomerBooking.count({ where: { flag: 0, status: "ONGOING" } }),
+        CustomerBooking.count({ where: { flag: 0, payment_status: "PAID" } }),
+        CustomerBooking.count({ where: { flag: 0, payment_status: "PARTIAL" } }),
+        CustomerBooking.count({ where: { flag: 0, payment_status: "FAILED" } }),
+        CustomerBooking.count({ where: { flag: 0, payment_status: "REFUNDED" } }),
+        CustomerBooking.findOne({
+            where: { flag: 0, payment_status: "PAID" },
+            attributes: [[Sequelize.fn("SUM", Sequelize.col("total_amount")), "total_revenue"]],
+            raw: true
+        }),
+        CustomerBooking.findOne({
+            where: { flag: 0 },
+            attributes: [[Sequelize.fn("AVG", Sequelize.col("total_amount")), "avg_booking_value"]],
+            raw: true
+        })
+    ]);
+
+    const counters = {
+        total_bookings: totalBookings,
+        pending: pendingBookings,
+        confirmed: confirmedBookings,
+        completed: completedBookings,
+        cancelled: cancelledBookings,
+        ongoing: ongoingBookings,
+        paid: paidBookings,
+        partial: partialBookings,
+        failed_payments: failedPayments,
+        refunded: refundedPayments,
+        revenue: Number(revenueResult?.total_revenue || 0),
+        avg_booking_value: Number(avgResult?.avg_booking_value || 0)
+    };
+
+    const totalPages = Math.ceil(bookingsResult.count / limit);
+
+    res.render("booking/index", {
+        title: "LehConnect | Bookings",
+        admin,
+        currentPage: "bookings",
+        bookings,
+        counters,
+        pagination: {
+            total: bookingsResult.count,
+            current_page: page,
+            per_page: limit,
+            total_pages: totalPages
+        },
+        filters: {
+            search,
+            status,
+            payment_status,
+            date_from,
+            date_to,
+            quick
+        }
+    });
+}));
+
+router.get("/bookings/:booking_token", [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user || null;
+    const { booking_token } = req.params;
+
+    const CustomerBooking = db.CustomerBooking || db.customerBooking;
+    const Vehicle = db.AddVehicle;
+    const Customer = db.customer || db.Customer || db.tbl_customer;
+    const WalletHold = db.walletHold || db.WalletHold;
+    const WalletTransaction = db.wallet_transaction || db.WalletTransaction;
+
+    const booking = await CustomerBooking.findOne({
+        where: {
+            token: booking_token,
+            flag: 0
+        },
+        include: [
+            {
+                model: Vehicle,
+                as: "booking_vehicle_details",
+                required: false,
+                attributes: {
+                    include: [
+                        [
+                            Sequelize.literal(
+                                `CASE 
+                                    WHEN booking_vehicle_details.image1 IS NOT NULL 
+                                    AND booking_vehicle_details.image1 != '' 
+                                    THEN CONCAT('${admin_url}', booking_vehicle_details.image1) 
+                                    ELSE NULL 
+                                END`
+                            ),
+                            "image1_full"
+                        ],
+                        [
+                            Sequelize.literal(
+                                `CASE 
+                                    WHEN booking_vehicle_details.image2 IS NOT NULL 
+                                    AND booking_vehicle_details.image2 != '' 
+                                    THEN CONCAT('${admin_url}', booking_vehicle_details.image2) 
+                                    ELSE NULL 
+                                END`
+                            ),
+                            "image2_full"
+                        ]
+                    ]
+                }
+            }
+        ]
+    });
+
+    if (!booking) {
+        return res.status(404).render("errors/404", {
+            title: "Booking Not Found",
+            admin,
+            currentPage: "bookings"
+        });
+    }
+
+    const row = booking.toJSON();
+
+    let customer = null;
+
+    if (row.customer_token && Customer) {
+        customer = await Customer.findOne({
+            where: {
+                token: row.customer_token
+            },
+            attributes: [
+                "id",
+                "first_name",
+                "last_name",
+                "email",
+                "contact",
+                [
+                    Sequelize.literal(`
+                    CASE 
+                        WHEN profile_image IS NOT NULL AND profile_image != '' 
+                        THEN CONCAT('${admin_url}', profile_image)
+                        ELSE NULL
+                    END
+                `),
+                    "profile_image"
+                ]
+            ],
+            raw: true
+        });
+    }
+
+    const walletHold = WalletHold
+        ? await WalletHold.findOne({
+            where: {
+                reference_id: booking_token,
+                flag: false
+            },
+            raw: true
+        })
+        : null;
+
+    const walletTransactions = WalletTransaction
+        ? await WalletTransaction.findAll({
+            where: {
+                reference_id: booking_token,
+                flag: false
+            },
+            order: [["created_at", "DESC"]],
+            raw: true
+        })
+        : [];
+
+    return res.render("booking/details", {
+        title: "LehConnect | Booking Details",
+        admin,
+        currentPage: "bookings",
+        booking: row,
+        customer,
+        vehicle: row.booking_vehicle_details || null,
+        walletHold,
+        walletTransactions,
+        admin_url
+    });
+}));
 
 // bids page
 router.get('/bids', [authMiddleware], asyncHandler(async (req, res) => {

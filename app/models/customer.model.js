@@ -37,8 +37,8 @@ module.exports = (sequelize, Sequelize) => {
         },
 
         role: {
-            type: Sequelize.ENUM('VENDOR'),
-            defaultValue: 'VENDOR'
+            type: Sequelize.ENUM('CUSTOMER'),
+            defaultValue: 'CUSTOMER'
         },
 
         location: {

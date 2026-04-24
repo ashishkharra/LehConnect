@@ -9260,19 +9260,19 @@ router.get("/leads/list", [vendorMiddleware, verifiedOnly], async (req, res) => 
                 insuranceTotal
             ] = await Promise.all([
                 db.CabEnquiry.count({
-                    where: { flag: 0 }
+                    where: { flag: 0, from_web: 0 || false }
                 }),
                 FlightEnquiry.count({
-                    where: { flag: 0 }
+                    where: { flag: 0, from_web: 0 || false }
                 }),
                 HotelEnquiry.count({
-                    where: { flag: 0 }
+                    where: { flag: 0, from_web: 0 || false }
                 }),
                 HolidayPackageEnquiry.count({
-                    where: { flag: 0 }
+                    where: { flag: 0, from_web: 0 || false }
                 }),
                 InsuranceEnquiry.count({
-                    where: { flag: 0 }
+                    where: { flag: 0, from_web: 0 || false }
                 })
             ]);
 
@@ -9629,8 +9629,6 @@ router.get("/my/accepted-leads", [vendorMiddleware, verifiedOnly], async (req, r
             insurance: db.insuranceEnquiry || db.InsuranceEnquiry
         };
 
-        // SAFE attributes per table
-        // Only keep columns that actually exist in that table
         const enquiryAttributesMap = {
             cab: [
                 "id",
