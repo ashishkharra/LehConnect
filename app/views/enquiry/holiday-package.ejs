@@ -6,8 +6,8 @@
             <div class="page-header">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h3 class="page-title">Flight Enquiries</h3>
-                        <p class="text-muted mb-0">Manage customer and vendor flight enquiries</p>
+                        <h3 class="page-title">Holiday Package Enquiries</h3>
+                        <p class="text-muted mb-0">Manage customer and vendor holiday package enquiries</p>
                     </div>
                 </div>
             </div>
@@ -59,44 +59,28 @@
             </div>
 
             <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title mb-0">Create Flight Enquiry</h5>
-                        <small class="text-muted">Admin panel se enquiry create hogi as Platform</small>
-                    </div>
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Create Holiday Package Enquiry</h5>
+                    <small class="text-muted">Admin se enquiry create hogi (Platform)</small>
                 </div>
 
                 <div class="card-body">
-                    <form method="POST" action="/flight-enquiry/create">
+                    <form method="POST" action="/holiday-package-enquiry/create">
                         <div class="row g-3">
 
                             <div class="col-md-3">
-                                <label class="form-label">Trip Type <span class="text-danger">*</span></label>
-                                <select class="form-select" name="trip_type" id="trip_type" required>
-                                    <option value="oneway">One Way</option>
-                                    <option value="round">Round</option>
-                                    <option value="multi">Multi City</option>
-                                </select>
+                                <label class="form-label">From City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="from_city" required>
                             </div>
 
-                            <div class="col-md-3 normal-flight-field">
-                                <label class="form-label">From Location <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="from_location" placeholder="Delhi">
+                            <div class="col-md-3">
+                                <label class="form-label">To City <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="to_city" required>
                             </div>
 
-                            <div class="col-md-3 normal-flight-field">
-                                <label class="form-label">To Location <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="to_location" placeholder="Mumbai">
-                            </div>
-
-                            <div class="col-md-3 normal-flight-field">
+                            <div class="col-md-3">
                                 <label class="form-label">Departure Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" name="departure_date">
-                            </div>
-
-                            <div class="col-md-3 round-flight-field" style="display:none;">
-                                <label class="form-label">Return Date</label>
-                                <input type="date" class="form-control" name="return_date">
+                                <input type="date" class="form-control" name="departure_date" required>
                             </div>
 
                             <div class="col-md-2">
@@ -110,28 +94,19 @@
                             </div>
 
                             <div class="col-md-3">
-                                <label class="form-label">Class Type</label>
-                                <select class="form-select" name="class_type">
-                                    <option value="">Select Class</option>
-                                    <option value="Economy">Economy</option>
-                                    <option value="Premium Economy">Premium Economy</option>
-                                    <option value="Business">Business</option>
-                                    <option value="First Class">First Class</option>
+                                <label class="form-label">Room Type</label>
+                                <select class="form-select" name="room_type">
+                                    <option value="">Select Room</option>
+                                    <option value="single">Single</option>
+                                    <option value="double">Double</option>
+                                    <option value="triple">Triple</option>
+                                    <option value="family">Family</option>
                                 </select>
-                            </div>
-
-                            <div class="col-md-12 multi-flight-field" style="display:none;">
-                                <label class="form-label">Multi City Segments JSON</label>
-                                <textarea class="form-control" name="segments" rows="4"
-                                    placeholder='[{"from_location":"Delhi","to_location":"Mumbai","departure_date":"2026-05-10"},{"from_location":"Mumbai","to_location":"Goa","departure_date":"2026-05-12"}]'></textarea>
-                                <small class="text-muted">
-                                    Multi city ke liye valid JSON array add karein.
-                                </small>
                             </div>
 
                             <div class="col-md-12">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="ti ti-plus"></i> Create Flight Enquiry
+                                    <i class="ti ti-plus"></i> Create Enquiry
                                 </button>
                             </div>
 
@@ -146,13 +121,13 @@
                 </div>
 
                 <div class="card-body">
-                    <form method="GET" action="/flight-enquiry">
+                    <form method="GET" action="/holiday-package-enquiry">
                         <div class="row g-3">
 
                             <div class="col-md-3">
                                 <label class="form-label">Search</label>
                                 <input type="text" class="form-control" name="search"
-                                    value="<%= filters?.search || '' %>" placeholder="ID, token, from, to, class" />
+                                    value="<%= filters?.search || '' %>" placeholder="ID, token, from city, to city" />
                             </div>
 
                             <div class="col-md-2">
@@ -179,19 +154,6 @@
                             </div>
 
                             <div class="col-md-2">
-                                <label class="form-label">Trip Type</label>
-                                <select class="form-select" name="trip_type">
-                                    <option value="">All</option>
-                                    <option value="oneway" <%=filters?.trip_type==='oneway' ? 'selected' : '' %>>One Way
-                                    </option>
-                                    <option value="round" <%=filters?.trip_type==='round' ? 'selected' : '' %>>Round
-                                    </option>
-                                    <option value="multi" <%=filters?.trip_type==='multi' ? 'selected' : '' %>>Multi
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div class="col-md-3">
                                 <label class="form-label">Status</label>
                                 <select class="form-select" name="status">
                                     <option value="">All</option>
@@ -199,6 +161,18 @@
                                     </option>
                                     <option value="inactive" <%=filters?.status==='inactive' ? 'selected' : '' %>
                                         >Inactive</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Per Page</label>
+                                <select class="form-select" name="limit">
+                                    <option value="10" <%=String(filters?.limit || 10)==='10' ? 'selected' : '' %>>10
+                                    </option>
+                                    <option value="25" <%=String(filters?.limit)==='25' ? 'selected' : '' %>>25</option>
+                                    <option value="50" <%=String(filters?.limit)==='50' ? 'selected' : '' %>>50</option>
+                                    <option value="100" <%=String(filters?.limit)==='100' ? 'selected' : '' %>>100
+                                    </option>
                                 </select>
                             </div>
 
@@ -226,24 +200,12 @@
                                     value="<%= filters?.departure_to || '' %>" />
                             </div>
 
-                            <div class="col-md-3">
-                                <label class="form-label">Per Page</label>
-                                <select class="form-select" name="limit">
-                                    <option value="10" <%=String(filters?.limit || 10)==='10' ? 'selected' : '' %>>10
-                                    </option>
-                                    <option value="25" <%=String(filters?.limit)==='25' ? 'selected' : '' %>>25</option>
-                                    <option value="50" <%=String(filters?.limit)==='50' ? 'selected' : '' %>>50</option>
-                                    <option value="100" <%=String(filters?.limit)==='100' ? 'selected' : '' %>>100
-                                    </option>
-                                </select>
-                            </div>
-
                             <div class="col-md-12 d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="ti ti-filter"></i> Apply Filter
                                 </button>
 
-                                <a href="/flight-enquiry" class="btn btn-light">
+                                <a href="/holiday-package-enquiry" class="btn btn-light">
                                     Reset
                                 </a>
                             </div>
@@ -255,9 +217,9 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h5 class="card-title">Flight Enquiry List</h5>
+                    <h5 class="card-title">Holiday Package Enquiry List</h5>
                     <p class="card-text mb-0">
-                        Showing <%= flightEnquiries?.length || 0 %> of <%= pagination?.total || 0 %> enquiries
+                        Showing <%= holidayPackageEnquiries?.length || 0 %> of <%= pagination?.total || 0 %> enquiries
                     </p>
                 </div>
 
@@ -272,13 +234,11 @@
                                     <th>Name</th>
                                     <th>Contact</th>
                                     <th>Email</th>
-                                    <th>Trip</th>
-                                    <th>From</th>
-                                    <th>To</th>
+                                    <th>From City</th>
+                                    <th>To City</th>
                                     <th>Departure</th>
-                                    <th>Return</th>
-                                    <th>Passengers</th>
-                                    <th>Class</th>
+                                    <th>Guests</th>
+                                    <th>Room Type</th>
                                     <th>Status</th>
                                     <th>Created</th>
                                     <th>Action</th>
@@ -286,8 +246,8 @@
                             </thead>
 
                             <tbody>
-                                <% if (flightEnquiries && flightEnquiries.length> 0) { %>
-                                    <% flightEnquiries.forEach((enquiry)=> { %>
+                                <% if (holidayPackageEnquiries && holidayPackageEnquiries.length> 0) { %>
+                                    <% holidayPackageEnquiries.forEach((enquiry)=> { %>
                                         <tr>
                                             <td>
                                                 <strong>
@@ -342,28 +302,13 @@
                                             </td>
 
                                             <td>
-                                                <% if (enquiry?.trip_type==='oneway' ) { %>
-                                                    <span class="badge bg-secondary">One Way</span>
-                                                    <% } else if (enquiry?.trip_type==='round' ) { %>
-                                                        <span class="badge bg-info">Round</span>
-                                                        <% } else if (enquiry?.trip_type==='multi' ) { %>
-                                                            <span class="badge bg-primary">Multi</span>
-                                                            <% } else { %>
-                                                                <span class="badge bg-light text-dark">N/A</span>
-                                                                <% } %>
-                                            </td>
-
-                                            <td>
-                                                <%= enquiry?.from_location || 'N/A' %>
+                                                <%= enquiry?.from_city || 'N/A' %>
                                             </td>
                                             <td>
-                                                <%= enquiry?.to_location || 'N/A' %>
+                                                <%= enquiry?.to_city || 'N/A' %>
                                             </td>
                                             <td>
                                                 <%= enquiry?.departureDate || 'N/A' %>
-                                            </td>
-                                            <td>
-                                                <%= enquiry?.returnDate || 'N/A' %>
                                             </td>
 
                                             <td>
@@ -372,9 +317,7 @@
                                             </td>
 
                                             <td>
-                                                <span class="badge bg-info">
-                                                    <%= enquiry?.class_type || 'N/A' %>
-                                                </span>
+                                                <%= enquiry?.room_type || 'N/A' %>
                                             </td>
 
                                             <td>
@@ -392,7 +335,7 @@
                                             </td>
 
                                             <td>
-                                                <a href="/flight-enquiry/<%= enquiry?.id %>" class="btn btn-sm btn-outline-primary">
+                                                <a href="/holiday-package-enquiry/<%= enquiry?.id %>" class="btn btn-sm btn-info">
                                                     <i class="ti ti-eye"></i> View
                                                 </a>
                                             </td>
@@ -400,9 +343,9 @@
                                         <% }) %>
                                             <% } else { %>
                                                 <tr>
-                                                    <td colspan="15" class="text-center py-5">
-                                                        <i class="ti ti-plane fs-48 text-muted mb-3 d-block"></i>
-                                                        <h5>No flight enquiries found</h5>
+                                                    <td colspan="13" class="text-center py-5">
+                                                        <i class="ti ti-map fs-48 text-muted mb-3 d-block"></i>
+                                                        <h5>No holiday package enquiries found</h5>
                                                     </td>
                                                 </tr>
                                                 <% } %>
@@ -414,14 +357,14 @@
                         <% const queryParams=new URLSearchParams(); if (filters?.search) queryParams.set('search',
                             filters.search); if (filters?.who_posted) queryParams.set('who_posted', filters.who_posted);
                             if (filters?.posted_from) queryParams.set('posted_from', filters.posted_from); if
-                            (filters?.trip_type) queryParams.set('trip_type', filters.trip_type); if (filters?.status)
-                            queryParams.set('status', filters.status); if (filters?.date_from)
+                            (filters?.status) queryParams.set('status', filters.status); if (filters?.date_from)
                             queryParams.set('date_from', filters.date_from); if (filters?.date_to)
                             queryParams.set('date_to', filters.date_to); if (filters?.departure_from)
                             queryParams.set('departure_from', filters.departure_from); if (filters?.departure_to)
                             queryParams.set('departure_to', filters.departure_to); if (filters?.limit)
                             queryParams.set('limit', filters.limit); const queryString=queryParams.toString(); const
-                            makePageUrl=(page)=> `/flight-enquiry?page=${page}${queryString ? '&' + queryString : ''}`;
+                            makePageUrl=(page)=> `/holiday-package-enquiry?page=${page}${queryString ? '&' + queryString
+                            : ''}`;
                             %>
 
                             <div class="d-flex justify-content-between align-items-center mt-4">
@@ -464,33 +407,5 @@
 
         </div>
     </div>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const tripType = document.getElementById("trip_type");
-            const normalFields = document.querySelectorAll(".normal-flight-field");
-            const roundFields = document.querySelectorAll(".round-flight-field");
-            const multiFields = document.querySelectorAll(".multi-flight-field");
-
-            function handleTripTypeChange() {
-                const value = tripType.value;
-
-                normalFields.forEach(el => {
-                    el.style.display = value === "multi" ? "none" : "";
-                });
-
-                roundFields.forEach(el => {
-                    el.style.display = value === "round" ? "" : "none";
-                });
-
-                multiFields.forEach(el => {
-                    el.style.display = value === "multi" ? "" : "none";
-                });
-            }
-
-            tripType.addEventListener("change", handleTripTypeChange);
-            handleTripTypeChange();
-        });
-    </script>
 
     <%- include('../shared/partials/footer') %>

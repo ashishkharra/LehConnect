@@ -439,53 +439,86 @@
                                 </li>
 
                                 <!-- Enquiry Management -->
-                                <li
-                                    class="submenu 
-                        <%= (currentPage === 'taxi-enquiry' || currentPage === 'hotel-enquiry' || currentPage === 'flight-enquiry' || currentPage === 'insurance') ? 'active' : '' %>">
-                                    <a href="javascript:void(0);">
-                                        <i class="ti ti-message-question fs-16 me-2"></i>
-                                        <span>Enquiry Management</span>
-                                        <span class="menu-arrow"></span>
-                                    </a>
-                                    <ul>
-                                        <li class="<%= currentPage === 'taxi-enquiry' ? 'active' : '' %>">
-                                            <a href="/taxi-enquiry">
-                                                <i class="ti ti-taxi fs-14 me-2"></i>
-                                                Taxi Booking
-                                                <% if (currentPage==='taxi-enquiry' ) { %>
-                                                    <span class="menu-dot"></span>
-                                                    <% } %>
-                                            </a>
-                                        </li>
-                                        <li class="<%= currentPage === 'hotel-enquiry' ? 'active' : '' %>">
-                                            <a href="/hotel-enquiry">
-                                                <i class="ti ti-building-hotel fs-14 me-2"></i>
-                                                Hotel Booking
-                                                <% if (currentPage==='hotel-enquiry' ) { %>
-                                                    <span class="menu-dot"></span>
-                                                    <% } %>
-                                            </a>
-                                        </li>
-                                        <li class="<%= currentPage === 'flight-enquiry' ? 'active' : '' %>">
-                                            <a href="/flight-enquiry">
-                                                <i class="ti ti-plane fs-14 me-2"></i>
-                                                Flight Booking
-                                                <% if (currentPage==='flight-enquiry' ) { %>
-                                                    <span class="menu-dot"></span>
-                                                    <% } %>
-                                            </a>
-                                        </li>
-                                        <li class="<%= currentPage === 'insurance' ? 'active' : '' %>">
-                                            <a href="/insurance">
-                                                <i class="ti ti-shield-check fs-14 me-2"></i>
-                                                Insurance
-                                                <% if (currentPage==='insurance' ) { %>
-                                                    <span class="menu-dot"></span>
-                                                    <% } %>
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
+<%
+    const enquiryPages = [
+        'holiday-package-enquiry',
+        'hotel-enquiry',
+        'flight-enquiry',
+        'insurance',
+        'cab-enquiry',
+        'enquiries'
+    ];
+%>
+
+<li class="submenu <%= enquiryPages.includes(currentPage) ? 'active' : '' %>">
+    <a href="javascript:void(0);">
+        <i class="ti ti-message-question fs-16 me-2"></i>
+        <span>Enquiry Management</span>
+        <span class="menu-arrow"></span>
+    </a>
+
+    <ul>
+        <li class="<%= currentPage === 'enquiries' ? 'active' : '' %>">
+            <a href="/enquiries">
+                <i class="ti ti-user fs-14 me-2"></i>
+                Customer Enquiry
+                <% if (currentPage === 'enquiries') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+
+        <li class="<%= currentPage === 'holiday-package-enquiry' ? 'active' : '' %>">
+            <a href="/holiday-package-enquiry">
+                <i class="ti ti-gift fs-14 me-2"></i>
+                Holiday Package
+                <% if (currentPage === 'holiday-package-enquiry') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+
+        <li class="<%= currentPage === 'hotel-enquiry' ? 'active' : '' %>">
+            <a href="/hotel-enquiry">
+                <i class="ti ti-building fs-14 me-2"></i>
+                Hotel Booking
+                <% if (currentPage === 'hotel-enquiry') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+
+        <li class="<%= currentPage === 'flight-enquiry' ? 'active' : '' %>">
+            <a href="/flight-enquiry">
+                <i class="ti ti-plane fs-14 me-2"></i>
+                Flight Booking
+                <% if (currentPage === 'flight-enquiry') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+
+        <li class="<%= currentPage === 'insurance' ? 'active' : '' %>">
+            <a href="/insurance">
+                <i class="ti ti-shield-check fs-14 me-2"></i>
+                Insurance
+                <% if (currentPage === 'insurance') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+
+        <li class="<%= currentPage === 'cab-enquiry' ? 'active' : '' %>">
+            <a href="/cab-enquiry">
+                <i class="ti ti-car fs-14 me-2"></i>
+                Cab Booking
+                <% if (currentPage === 'cab-enquiry') { %>
+                    <span class="menu-dot"></span>
+                <% } %>
+            </a>
+        </li>
+    </ul>
+</li>
 
                                 <!-- Referral Management -->
                                 <li

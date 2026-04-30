@@ -1,0 +1,778 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Customer Enquiries</h3>
+                    <p class="text-muted mb-0">Manage customer enquiries and upload them to app enquiries</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Enquiries</p>
+                        <h4><%= counters?.total || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Posted / Pending</p>
+                        <h4><%= counters?.posted_count || 0 %> / <%= counters?.not_posted_count || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">New / In Progress</p>
+                        <h4><%= counters?.new_count || 0 %> / <%= counters?.in_progress_count || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Converted / Closed</p>
+                        <h4><%= counters?.converted_count || 0 %> / <%= counters?.closed_count || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+
+            <div class="card-body">
+                <form method="GET" action="/enquiries">
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Search</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="search"
+                                value="<%= filters?.search || '' %>"
+                                placeholder="Name, mobile, email, token, location"
+                            />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Requirement Type</label>
+                            <select class="form-select" name="requirement_type">
+                                <option value="">All</option>
+                                <% ['hotel','flight','insurance','cab','tour','package','event','other'].forEach((type) => { %>
+                                    <option value="<%= type %>" <%= filters?.requirement_type === type ? 'selected' : '' %>>
+                                        <%= type.replace('_', ' ').toUpperCase() %>
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Posted Status</label>
+                            <select class="form-select" name="posted">
+                                <option value="">All</option>
+                                <option value="true" <%= String(filters?.posted) === 'true' ? 'selected' : '' %>>
+                                    Posted
+                                </option>
+                                <option value="false" <%= String(filters?.posted) === 'false' ? 'selected' : '' %>>
+                                    Not Posted
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="">All</option>
+                                <% ['new','contacted','in_progress','converted','closed','cancelled'].forEach((status) => { %>
+                                    <option value="<%= status %>" <%= filters?.status === status ? 'selected' : '' %>>
+                                        <%= status.replace('_', ' ').toUpperCase() %>
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Source</label>
+                            <select class="form-select" name="source">
+                                <option value="">All</option>
+                                <% ['web','app','whatsapp','admin'].forEach((source) => { %>
+                                    <option value="<%= source %>" <%= filters?.source === source ? 'selected' : '' %>>
+                                        <%= source.toUpperCase() %>
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Flag</label>
+                            <select class="form-select" name="flag">
+                                <option value="">All</option>
+                                <option value="0" <%= String(filters?.flag) === '0' ? 'selected' : '' %>>Normal</option>
+                                <option value="1" <%= String(filters?.flag) === '1' ? 'selected' : '' %>>Important</option>
+                                <option value="2" <%= String(filters?.flag) === '2' ? 'selected' : '' %>>Spam</option>
+                                <option value="3" <%= String(filters?.flag) === '3' ? 'selected' : '' %>>Archived</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Adults</label>
+                            <select class="form-select" name="adults">
+                                <option value="">All</option>
+                                <% [1,2,3,4,5,6,7,8,9,10].forEach((adult) => { %>
+                                    <option value="<%= adult %>" <%= String(filters?.adults) === String(adult) ? 'selected' : '' %>>
+                                        <%= adult %>
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Children</label>
+                            <select class="form-select" name="children">
+                                <option value="">All</option>
+                                <% [0,1,2,3,4,5,6,7,8,9,10].forEach((child) => { %>
+                                    <option value="<%= child %>" <%= String(filters?.children) === String(child) ? 'selected' : '' %>>
+                                        <%= child %>
+                                    </option>
+                                <% }) %>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Per Page</label>
+                            <select class="form-select" name="limit">
+                                <option value="10" <%= String(filters?.limit || 10) === '10' ? 'selected' : '' %>>10</option>
+                                <option value="25" <%= String(filters?.limit) === '25' ? 'selected' : '' %>>25</option>
+                                <option value="50" <%= String(filters?.limit) === '50' ? 'selected' : '' %>>50</option>
+                                <option value="100" <%= String(filters?.limit) === '100' ? 'selected' : '' %>>100</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Sort By</label>
+                            <select class="form-select" name="sort_by">
+                                <option value="create_date" <%= (filters?.sort_by || 'create_date') === 'create_date' ? 'selected' : '' %>>Created Date</option>
+                                <option value="enquiry_date" <%= filters?.sort_by === 'enquiry_date' ? 'selected' : '' %>>Enquiry Date</option>
+                                <option value="name" <%= filters?.sort_by === 'name' ? 'selected' : '' %>>Name</option>
+                                <option value="status" <%= filters?.sort_by === 'status' ? 'selected' : '' %>>Status</option>
+                                <option value="requirement_type" <%= filters?.sort_by === 'requirement_type' ? 'selected' : '' %>>Requirement</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Sort Order</label>
+                            <select class="form-select" name="sort_order">
+                                <option value="DESC" <%= (filters?.sort_order || 'DESC') === 'DESC' ? 'selected' : '' %>>DESC</option>
+                                <option value="ASC" <%= filters?.sort_order === 'ASC' ? 'selected' : '' %>>ASC</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Enquiry Date From</label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                name="enquiry_date_from"
+                                value="<%= filters?.enquiry_date_from || '' %>"
+                            />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Enquiry Date To</label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                name="enquiry_date_to"
+                                value="<%= filters?.enquiry_date_to || '' %>"
+                            />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Created From</label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                name="date_from"
+                                value="<%= filters?.date_from || '' %>"
+                            />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Created To</label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                name="date_to"
+                                value="<%= filters?.date_to || '' %>"
+                            />
+                        </div>
+
+                        <div class="col-md-12 d-flex flex-wrap gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-filter"></i> Apply Filter
+                            </button>
+
+                            <a href="/enquiries" class="btn btn-light">
+                                Reset
+                            </a>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Customer Enquiry List</h5>
+                <p class="card-text mb-0">
+                    Showing <%= enquiries?.length || 0 %> of <%= pagination?.total || 0 %> enquiries
+                </p>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Posted</th>
+                                <th>Customer</th>
+                                <th>Contact</th>
+                                <th>Email</th>
+                                <th>Requirement</th>
+                                <th>Enquiry Date</th>
+                                <th>Location</th>
+                                <th>Members</th>
+                                <th>Source</th>
+                                <th>Flag</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (enquiries && enquiries.length > 0) { %>
+                                <% enquiries.forEach((enquiry) => { %>
+                                    <tr>
+                                        <td>
+                                            <strong><%= enquiry?.id || '-' %></strong>
+                                        </td>
+
+                                        <td>
+                                            <% if (enquiry?.posted === true || enquiry?.posted === 1 || String(enquiry?.posted) === 'true') { %>
+                                                <span class="badge bg-success">Posted</span>
+                                            <% } else { %>
+                                                <span class="badge bg-info">Not Posted</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img
+                                                    src=""
+                                                    alt="Profile"
+                                                    class="rounded-circle me-2"
+                                                    style="width: 35px; height: 35px; object-fit: cover;"
+                                                >
+                                                <div>
+                                                    <strong><%= enquiry?.name || 'N/A' %></strong>
+                                                    <br>
+                                                    <small class="text-muted">Customer</small>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td><%= enquiry?.mobile || 'N/A' %></td>
+
+                                        <td><%= enquiry?.email || 'N/A' %></td>
+
+                                        <td>
+                                            <% if (enquiry?.requirement_type === 'hotel') { %>
+                                                <span class="badge bg-info">Hotel</span>
+                                            <% } else if (enquiry?.requirement_type === 'flight') { %>
+                                                <span class="badge bg-primary">Flight</span>
+                                            <% } else if (enquiry?.requirement_type === 'insurance') { %>
+                                                <span class="badge bg-warning">Insurance</span>
+                                            <% } else if (enquiry?.requirement_type === 'cab') { %>
+                                                <span class="badge bg-success">Cab</span>
+                                            <% } else if (enquiry?.requirement_type === 'tour') { %>
+                                                <span class="badge bg-secondary">Tour</span>
+                                            <% } else if (enquiry?.requirement_type === 'package') { %>
+                                                <span class="badge bg-dark">Package</span>
+                                            <% } else if (enquiry?.requirement_type === 'event') { %>
+                                                <span class="badge bg-danger">Event</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark"><%= enquiry?.requirement_type || 'Other' %></span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <%= enquiry?.enquiry_date || 'N/A' %>
+                                            <br>
+                                            <small class="text-muted"><%= enquiry?.enquiry_time || '' %></small>
+                                        </td>
+
+                                        <td><%= enquiry?.location || 'N/A' %></td>
+
+                                        <td>
+                                            <span class="badge bg-light text-dark">
+                                                Adults: <%= enquiry?.adults || 0 %>
+                                            </span>
+                                            <br>
+                                            <span class="badge bg-light text-dark mt-1">
+                                                Children: <%= enquiry?.children || 0 %>
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <% if (enquiry?.source === 'web') { %>
+                                                <span class="badge bg-info">Web</span>
+                                            <% } else if (enquiry?.source === 'app') { %>
+                                                <span class="badge bg-success">App</span>
+                                            <% } else if (enquiry?.source === 'whatsapp') { %>
+                                                <span class="badge bg-success">WhatsApp</span>
+                                            <% } else if (enquiry?.source === 'admin') { %>
+                                                <span class="badge bg-secondary">Admin</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (Number(enquiry?.flag) === 1) { %>
+                                                <span class="badge bg-warning">Important</span>
+                                            <% } else if (Number(enquiry?.flag) === 2) { %>
+                                                <span class="badge bg-danger">Spam</span>
+                                            <% } else if (Number(enquiry?.flag) === 3) { %>
+                                                <span class="badge bg-secondary">Archived</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark">Normal</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (enquiry?.status === 'new') { %>
+                                                <span class="badge bg-info">New</span>
+                                            <% } else if (enquiry?.status === 'contacted') { %>
+                                                <span class="badge bg-warning">Contacted</span>
+                                            <% } else if (enquiry?.status === 'in_progress') { %>
+                                                <span class="badge bg-primary">In Progress</span>
+                                            <% } else if (enquiry?.status === 'converted') { %>
+                                                <span class="badge bg-success">Converted</span>
+                                            <% } else if (enquiry?.status === 'closed') { %>
+                                                <span class="badge bg-secondary">Closed</span>
+                                            <% } else if (enquiry?.status === 'cancelled') { %>
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <%= enquiry?.createdDate || enquiry?.create_date || 'N/A' %>
+                                        </td>
+
+                                        <td class="text-end">
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                    Action
+                                                </button>
+
+                                                <ul class="dropdown-menu dropdown-menu-end">
+
+                                                    <% if (enquiry?.posted === true || enquiry?.posted === 1 || String(enquiry?.posted) === 'true') { %>
+                                                        <li>
+                                                            <a class="dropdown-item" href="/enquiries/<%= enquiry?.token %>/posted">
+                                                                <i class="ti ti-link me-1"></i> View Posted Enquiry
+                                                            </a>
+                                                        </li>
+                                                    <% } else { %>
+                                                        <li>
+                                                            <button
+                                                                type="button"
+                                                                class="dropdown-item text-primary open-upload-modal"
+                                                                data-token="<%= enquiry?.token || '' %>"
+                                                                data-type="<%= enquiry?.requirement_type || '' %>"
+                                                                data-name="<%= enquiry?.name || '' %>"
+                                                                data-mobile="<%= enquiry?.mobile || '' %>"
+                                                                data-email="<%= enquiry?.email || '' %>"
+                                                                data-location="<%= enquiry?.location || '' %>"
+                                                                data-date="<%= enquiry?.enquiry_date || '' %>"
+                                                                data-adults="<%= enquiry?.adults || 1 %>"
+                                                                data-children="<%= enquiry?.children || 0 %>"
+                                                            >
+                                                                <i class="ti ti-plus me-1"></i> Add / Upload
+                                                            </button>
+                                                        </li>
+                                                    <% } %>
+                                                </ul>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <% if (enquiry?.comments) { %>
+                                        <tr>
+                                            <td colspan="15" class="bg-light">
+                                                <strong>Comments:</strong>
+                                                <span class="text-muted"><%= enquiry.comments %></span>
+                                            </td>
+                                        </tr>
+                                    <% } %>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="15" class="text-center py-5">
+                                        <i class="ti ti-message-question fs-48 text-muted mb-3 d-block"></i>
+                                        <h5>No enquiries found</h5>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <% if (pagination && pagination.total_pages > 1) { %>
+                    <%
+                        const queryParams = new URLSearchParams();
+
+                        if (filters?.search) queryParams.set('search', filters.search);
+                        if (filters?.requirement_type) queryParams.set('requirement_type', filters.requirement_type);
+                        if (filters?.posted !== undefined && filters?.posted !== '') queryParams.set('posted', filters.posted);
+                        if (filters?.status) queryParams.set('status', filters.status);
+                        if (filters?.source) queryParams.set('source', filters.source);
+                        if (filters?.flag !== undefined && filters?.flag !== '') queryParams.set('flag', filters.flag);
+                        if (filters?.adults) queryParams.set('adults', filters.adults);
+                        if (filters?.children !== undefined && filters?.children !== '') queryParams.set('children', filters.children);
+                        if (filters?.sort_by) queryParams.set('sort_by', filters.sort_by);
+                        if (filters?.sort_order) queryParams.set('sort_order', filters.sort_order);
+                        if (filters?.enquiry_date_from) queryParams.set('enquiry_date_from', filters.enquiry_date_from);
+                        if (filters?.enquiry_date_to) queryParams.set('enquiry_date_to', filters.enquiry_date_to);
+                        if (filters?.date_from) queryParams.set('date_from', filters.date_from);
+                        if (filters?.date_to) queryParams.set('date_to', filters.date_to);
+                        if (filters?.limit) queryParams.set('limit', filters.limit);
+
+                        const queryString = queryParams.toString();
+                        const makePageUrl = (page) => `/enquiries?page=${page}${queryString ? '&' + queryString : ''}`;
+                    %>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mt-4 gap-2">
+                        <div class="text-muted">
+                            Showing
+                            <%= ((pagination.current_page - 1) * pagination.per_page) + 1 %>
+                            to
+                            <%= Math.min(pagination.current_page * pagination.per_page, pagination.total) %>
+                            of
+                            <%= pagination.total %>
+                            enquiries
+                        </div>
+
+                        <nav>
+                            <ul class="pagination mb-0">
+                                <li class="page-item <%= pagination.current_page <= 1 ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page - 1) %>">Previous</a>
+                                </li>
+
+                                <% for (let i = 1; i <= pagination.total_pages; i++) { %>
+                                    <li class="page-item <%= pagination.current_page === i ? 'active' : '' %>">
+                                        <a class="page-link" href="<%= makePageUrl(i) %>"><%= i %></a>
+                                    </li>
+                                <% } %>
+
+                                <li class="page-item <%= pagination.current_page >= pagination.total_pages ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page + 1) %>">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal fade" id="uploadEnquiryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <form method="POST" action="/enquiries/upload-to-app" id="uploadEnquiryForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadModalTitle">Upload Enquiry</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="main_enquiry_token" id="main_enquiry_token">
+                    <input type="hidden" name="requirement_type" id="modal_requirement_type">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="modal_name" name="name">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Customer Mobile</label>
+                            <input type="text" class="form-control" id="modal_mobile" name="mobile">
+                        </div>
+
+                        <div class="col-md-4 common-field">
+                            <label class="form-label">Adults</label>
+                            <input type="number" class="form-control" id="modal_adults" name="adults" min="0">
+                        </div>
+
+                        <div class="col-md-4 common-field">
+                            <label class="form-label">Children</label>
+                            <input type="number" class="form-control" id="modal_children" name="children" min="0">
+                        </div>
+
+                        <div class="col-md-4 common-field">
+                            <label class="form-label">Posted From</label>
+                            <select class="form-select" name="from_web">
+                                <option value="false">App</option>
+                                <option value="true">Web</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field hotel-field">
+                            <label class="form-label">Area</label>
+                            <input type="text" class="form-control" id="hotel_area" name="hotel_area">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field hotel-field">
+                            <label class="form-label">Check In</label>
+                            <input type="date" class="form-control" id="hotel_check_in" name="hotel_check_in">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field hotel-field">
+                            <label class="form-label">Check Out</label>
+                            <input type="date" class="form-control" name="hotel_check_out">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field hotel-field">
+                            <label class="form-label">Room Type</label>
+                            <input type="text" class="form-control" name="hotel_room_type">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">Trip Type</label>
+                            <select class="form-select" name="flight_trip_type">
+                                <option value="oneway">One Way</option>
+                                <option value="round">Round</option>
+                                <option value="multi">Multi City</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">From Location</label>
+                            <input type="text" class="form-control" id="flight_from_location" name="flight_from_location">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">To Location</label>
+                            <input type="text" class="form-control" name="flight_to_location">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">Departure Date</label>
+                            <input type="date" class="form-control" id="flight_departure_date" name="flight_departure_date">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">Return Date</label>
+                            <input type="date" class="form-control" name="flight_return_date">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field flight-field">
+                            <label class="form-label">Class Type</label>
+                            <input type="text" class="form-control" name="flight_class_type" placeholder="Economy / Business">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field package-field">
+                            <label class="form-label">From City</label>
+                            <input type="text" class="form-control" id="package_from_city" name="package_from_city">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field package-field">
+                            <label class="form-label">To City</label>
+                            <input type="text" class="form-control" name="package_to_city">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field package-field">
+                            <label class="form-label">Departure Date</label>
+                            <input type="date" class="form-control" id="package_departure_date" name="package_departure_date">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field package-field">
+                            <label class="form-label">Room Type</label>
+                            <input type="text" class="form-control" name="package_room_type">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field insurance-field">
+                            <label class="form-label">Car Number</label>
+                            <input type="text" class="form-control" name="insurance_car_number">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field insurance-field">
+                            <label class="form-label">Insurance Name</label>
+                            <input type="text" class="form-control" id="insurance_name" name="insurance_name">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field insurance-field">
+                            <label class="form-label">Contact</label>
+                            <input type="text" class="form-control" id="insurance_contact" name="insurance_contact">
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field insurance-field">
+                            <label class="form-label">Agree Policy</label>
+                            <select class="form-select" name="insurance_agree_policy">
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 enquiry-type-field insurance-field">
+                            <label class="form-label">WhatsApp</label>
+                            <select class="form-select" name="insurance_whatsapp">
+                                <option value="false">No</option>
+                                <option value="true">Yes</option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-upload"></i> Upload To App
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const uploadModalEl = document.getElementById("uploadEnquiryModal");
+        const uploadModal = new bootstrap.Modal(uploadModalEl);
+
+        const title = document.getElementById("uploadModalTitle");
+        const mainToken = document.getElementById("main_enquiry_token");
+        const requirementType = document.getElementById("modal_requirement_type");
+
+        const modalName = document.getElementById("modal_name");
+        const modalMobile = document.getElementById("modal_mobile");
+        
+        const modalAdults = document.getElementById("modal_adults");
+        const modalChildren = document.getElementById("modal_children");
+
+        const allTypeFields = document.querySelectorAll(".enquiry-type-field");
+
+        function hideAllTypeFields() {
+            allTypeFields.forEach(function (field) {
+                field.style.display = "none";
+
+                field.querySelectorAll("input, select, textarea").forEach(function (input) {
+                    input.disabled = true;
+                });
+            });
+        }
+
+        function showFields(type) {
+            hideAllTypeFields();
+
+            let selector = "";
+
+            if (type === "hotel") {
+                selector = ".hotel-field";
+                title.innerText = "Upload Hotel Enquiry";
+            } else if (type === "flight") {
+                selector = ".flight-field";
+                title.innerText = "Upload Flight Enquiry";
+            } else if (type === "package" || type === "tour") {
+                selector = ".package-field";
+                title.innerText = "Upload Package Enquiry";
+            } else if (type === "insurance") {
+                selector = ".insurance-field";
+                title.innerText = "Upload Insurance Enquiry";
+            } else {
+                title.innerText = "Upload Enquiry";
+            }
+
+            if (selector) {
+                document.querySelectorAll(selector).forEach(function (field) {
+                    field.style.display = "block";
+
+                    field.querySelectorAll("input, select, textarea").forEach(function (input) {
+                        input.disabled = false;
+                    });
+                });
+            }
+        }
+
+        document.querySelectorAll(".open-upload-modal").forEach(function (button) {
+            button.addEventListener("click", function () {
+                const token = this.dataset.token || "";
+                const type = this.dataset.type || "";
+                const name = this.dataset.name || "";
+                const mobile = this.dataset.mobile || "";
+                const email = this.dataset.email || "";
+                const location = this.dataset.location || "";
+                const date = this.dataset.date || "";
+                const adults = this.dataset.adults || 1;
+                const children = this.dataset.children || 0;
+
+                mainToken.value = token;
+                requirementType.value = type;
+
+                modalName.value = name;
+                modalMobile.value = mobile;
+                
+                modalAdults.value = adults;
+                modalChildren.value = children;
+
+                document.getElementById("hotel_area").value = location;
+                document.getElementById("hotel_check_in").value = date;
+
+                document.getElementById("flight_from_location").value = location;
+                document.getElementById("flight_departure_date").value = date;
+
+                document.getElementById("package_from_city").value = location;
+                document.getElementById("package_departure_date").value = date;
+
+                document.getElementById("insurance_name").value = name;
+                document.getElementById("insurance_contact").value = mobile;
+
+                showFields(type);
+                uploadModal.show();
+            });
+        });
+    });
+</script>
+
+<%- include('../shared/partials/footer') %>

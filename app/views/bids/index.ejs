@@ -1,1348 +1,362 @@
 <%- include('../shared/partials/header', { admin : admin, title: title }) %>
-        <!-- Page Wrapper -->
-        <div class="page-wrapper">
-            <div class="content container-fluid">
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div class="row align-items-center">
-                        <div class="col">
-                            <h3 class="page-title">Bids Management</h3>
-                        </div>
-                        <div class="col-auto">
-                            <button class="btn btn-success btn-md ms-2" id="exportBids">
-                                <i class="ti ti-download me-2"></i>Export
-                            </button>
-                        </div>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Bid Bookings</h3>
+                    <p class="text-muted mb-0">Manage BID type bookings and vendor bids</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Bid Bookings</p>
+                        <h4><%= counters?.total_bid_bookings || 0 %></h4>
                     </div>
                 </div>
-                <!-- /Page Header -->
+            </div>
 
-                <!-- Statistics Cards -->
-                <div class="row mb-4">
-                    <div class="col-md-3 col-sm-6">
-                        <div class="stats-card bg-primary text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h3 class="mb-1">186</h3>
-                                    <p class="mb-0">Total Bids</p>
-                                </div>
-                                <div class="stats-icon bg-white text-primary">
-                                    <i class="ti ti-gavel"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="stats-card bg-warning text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h3 class="mb-1">42</h3>
-                                    <p class="mb-0">Open Bids</p>
-                                </div>
-                                <div class="stats-icon bg-white text-warning">
-                                    <i class="ti ti-clock"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="stats-card bg-success text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h3 class="mb-1">98</h3>
-                                    <p class="mb-0">Awarded</p>
-                                </div>
-                                <div class="stats-icon bg-white text-success">
-                                    <i class="ti ti-check"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6">
-                        <div class="stats-card bg-info text-white">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h3 class="mb-1">₹85.2L</h3>
-                                    <p class="mb-0">Total Value</p>
-                                </div>
-                                <div class="stats-icon bg-white text-info">
-                                    <i class="ti ti-currency-rupee"></i>
-                                </div>
-                            </div>
-                        </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Bids</p>
+                        <h4><%= counters?.total_bids || 0 %></h4>
                     </div>
                 </div>
-                <!-- /Statistics Cards -->
+            </div>
 
-                <!-- Detailed Statistics -->
-                <div class="row mb-4">
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Under Review</h6>
-                                    <h4 class="mb-0 text-info">28</h4>
-                                </div>
-                                <div class="icon-bg bg-info">
-                                    <i class="ti ti-search"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Negotiating</h6>
-                                    <h4 class="mb-0 text-purple">15</h4>
-                                </div>
-                                <div class="icon-bg bg-purple">
-                                    <i class="ti ti-messages"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Rejected</h6>
-                                    <h4 class="mb-0 text-danger">23</h4>
-                                </div>
-                                <div class="icon-bg bg-danger">
-                                    <i class="ti ti-x"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Expired</h6>
-                                    <h4 class="mb-0 text-secondary">8</h4>
-                                </div>
-                                <div class="icon-bg bg-secondary">
-                                    <i class="ti ti-alert-circle"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Withdrawn</h6>
-                                    <h4 class="mb-0 text-orange">12</h4>
-                                </div>
-                                <div class="icon-bg bg-orange">
-                                    <i class="ti ti-arrow-back"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-4">
-                        <div class="stats-small-card">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-1">Avg Response</h6>
-                                    <h4 class="mb-0 text-success">2.4 days</h4>
-                                </div>
-                                <div class="icon-bg bg-success">
-                                    <i class="ti ti-clock"></i>
-                                </div>
-                            </div>
-                        </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Open / Accepted</p>
+                        <h4><%= counters?.open_count || 0 %> / <%= counters?.accepted_count || 0 %></h4>
                     </div>
                 </div>
-                <!-- /Detailed Statistics -->
+            </div>
 
-                <!-- Filter & Search Section -->
-                <div class="filter-section">
-                    <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Value</p>
+                        <h4><%= counters?.total_value || '₹0.00' %></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">In Progress</p>
+                        <h5><%= counters?.in_progress_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Completed</p>
+                        <h5><%= counters?.completed_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Cancelled</p>
+                        <h5><%= counters?.cancelled_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Expired</p>
+                        <h5><%= counters?.expired_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Paid</p>
+                        <h5><%= counters?.paid_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-2 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Unpaid</p>
+                        <h5><%= counters?.unpaid_count || 0 %></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+
+            <div class="card-body">
+                <form method="GET" action="/bids">
+                    <div class="row g-3">
+
                         <div class="col-md-3">
-                            <div class="search-box">
-                                <i class="ti ti-search"></i>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Search bids...">
-                            </div>
+                            <label class="form-label">Search</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="search"
+                                value="<%= filters?.search || '' %>"
+                                placeholder="Token, vehicle, city, location"
+                            />
                         </div>
+
                         <div class="col-md-2">
-                            <select class="form-control select2" id="statusFilter">
-                                <option value="">All Status</option>
-                                <option value="open">Open</option>
-                                <option value="under-review">Under Review</option>
-                                <option value="negotiating">Negotiating</option>
-                                <option value="awarded">Awarded</option>
-                                <option value="rejected">Rejected</option>
-                                <option value="expired">Expired</option>
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="">All</option>
+                                <% ['OPEN','ACCEPTED','IN_PROGRESS','COMPLETED','CANCELLED','EXPIRED','REJECTED'].forEach(st => { %>
+                                    <option value="<%= st %>" <%= filters?.status === st ? 'selected' : '' %>><%= st %></option>
+                                <% }) %>
                             </select>
                         </div>
+
                         <div class="col-md-2">
-                            <select class="form-control select2" id="serviceFilter">
-                                <option value="">All Services</option>
-                                <option value="hotel">Hotel Services</option>
-                                <option value="taxi">Transportation</option>
-                                <option value="tour">Tour Packages</option>
-                                <option value="event">Event Planning</option>
-                                <option value="catering">Catering</option>
-                                <option value="construction">Construction</option>
+                            <label class="form-label">Payment</label>
+                            <select class="form-select" name="payment_status">
+                                <option value="">All</option>
+                                <option value="PAID" <%= filters?.payment_status === 'PAID' ? 'selected' : '' %>>Paid</option>
+                                <option value="UNPAID" <%= filters?.payment_status === 'UNPAID' ? 'selected' : '' %>>Unpaid</option>
                             </select>
                         </div>
+
                         <div class="col-md-2">
-                            <select class="form-control select2" id="priorityFilter">
-                                <option value="">All Priority</option>
-                                <option value="high">High</option>
-                                <option value="medium">Medium</option>
-                                <option value="low">Low</option>
+                            <label class="form-label">Trip Type</label>
+                            <select class="form-select" name="trip_type">
+                                <option value="">All</option>
+                                <option value="ONE_WAY" <%= filters?.trip_type === 'ONE_WAY' ? 'selected' : '' %>>One Way</option>
+                                <option value="ROUND_TRIP" <%= filters?.trip_type === 'ROUND_TRIP' ? 'selected' : '' %>>Round Trip</option>
                             </select>
                         </div>
+
                         <div class="col-md-3">
-                            <input type="text" class="form-control datepicker" id="dateRange" placeholder="Select Date Range">
+                            <label class="form-label">Per Page</label>
+                            <select class="form-select" name="limit">
+                                <option value="10" <%= String(filters?.limit || 10) === '10' ? 'selected' : '' %>>10</option>
+                                <option value="25" <%= String(filters?.limit) === '25' ? 'selected' : '' %>>25</option>
+                                <option value="50" <%= String(filters?.limit) === '50' ? 'selected' : '' %>>50</option>
+                                <option value="100" <%= String(filters?.limit) === '100' ? 'selected' : '' %>>100</option>
+                            </select>
                         </div>
-                    </div>
-                    <div class="row mt-3">
+
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100" id="applyFilter">
-                                <i class="ti ti-filter me-2"></i>Apply Filters
+                            <label class="form-label">Created From</label>
+                            <input type="date" class="form-control" name="date_from" value="<%= filters?.date_from || '' %>">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Created To</label>
+                            <input type="date" class="form-control" name="date_to" value="<%= filters?.date_to || '' %>">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Pickup From</label>
+                            <input type="date" class="form-control" name="pickup_from" value="<%= filters?.pickup_from || '' %>">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Pickup To</label>
+                            <input type="date" class="form-control" name="pickup_to" value="<%= filters?.pickup_to || '' %>">
+                        </div>
+
+                        <div class="col-md-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-filter"></i> Apply Filter
                             </button>
+
+                            <a href="/bids" class="btn btn-light">Reset</a>
                         </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-outline-secondary w-100" id="clearFilters">
-                                <i class="ti ti-x me-2"></i>Clear All
-                            </button>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                <button class="btn btn-outline-primary btn-sm active">All Bids</button>
-                                <button class="btn btn-outline-primary btn-sm">My Bids</button>
-                                <button class="btn btn-outline-primary btn-sm">High Value</button>
-                                <button class="btn btn-outline-primary btn-sm">Urgent</button>
-                                <button class="btn btn-outline-primary btn-sm">Closing Soon</button>
-                            </div>
-                        </div>
+
                     </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">BID Booking List</h5>
+                <p class="card-text mb-0">
+                    Showing <%= bidBookings?.length || 0 %> of <%= pagination?.total || 0 %> bookings
+                </p>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Booking Info</th>
+                                <th>Vehicle</th>
+                                <th>Route</th>
+                                <th>Pickup</th>
+                                <th>Bids</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (bidBookings && bidBookings.length > 0) { %>
+                                <% bidBookings.forEach((booking) => { %>
+                                    <tr>
+                                        <td>
+                                            <strong>#<%= booking.id %></strong>
+                                        </td>
+
+                                        <td>                                          
+                                            <small class="text-muted">
+                                                <%= booking.trip_type %> | <%= booking.visibility %>
+                                            </small>
+                                            <% if (booking.secure_booking) { %>
+                                                <br><span class="badge bg-success">Secure</span>
+                                            <% } %>
+                                            <% if (booking.is_negotiable) { %>
+                                                <span class="badge bg-warning text-dark">Negotiable</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <strong class="text-muted"><%= booking.vehicle_type %></strong>
+                                        </td>
+
+                                        <td>
+                                            <div><strong>From:</strong> <%= booking.pickup_location %></div>
+                                            <div><strong>To:</strong> <%= booking.drop_location %></div>
+                                            <small class="text-muted"><%= booking.city %>, <%= booking.state %></small>
+                                        </td>
+
+                                        <td>
+                                            <%= booking.pickup_datetime %>
+                                            <% if (booking.trip_type === 'ROUND_TRIP') { %>
+                                                <br>
+                                                <small class="text-muted">Return: <%= booking.return_datetime %></small>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge bg-primary"><%= booking.total_bids %> Bids</span>
+                                            <br>
+                                            <small class="text-muted">Low: <%= booking.lowest_bid %></small>
+                                            <br>
+                                            <small class="text-muted">High: <%= booking.highest_bid %></small>
+                                            <% if (booking.accepted_bids > 0) { %>
+                                                <br>
+                                                <span class="badge bg-success"><%= booking.accepted_bids %> Accepted</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% 
+                                                let statusClass = 'bg-secondary';
+                                                if (booking.status === 'OPEN') statusClass = 'bg-warning text-dark';
+                                                if (booking.status === 'ACCEPTED') statusClass = 'bg-info';
+                                                if (booking.status === 'IN_PROGRESS') statusClass = 'bg-primary';
+                                                if (booking.status === 'COMPLETED') statusClass = 'bg-success';
+                                                if (booking.status === 'CANCELLED' || booking.status === 'REJECTED') statusClass = 'bg-danger';
+                                            %>
+                                            <span class="badge <%= statusClass %>"><%= booking.status %></span>
+                                        </td>
+
+                                        <td><%= booking.created_at %></td>
+
+                                        <td class="text-end">
+                                            <a href="/bids/<%= booking.token %>" class="btn btn-sm btn-primary">
+                                                <i class="ti ti-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="11" class="text-center py-5">
+                                        <i class="ti ti-gavel fs-48 text-muted mb-3 d-block"></i>
+                                        <h5>No BID bookings found</h5>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
                 </div>
-                <!-- /Filter & Search Section -->
 
-                <!-- Bids Table -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="table-responsive">
-                                    <table class="table table-hover table-center mb-0" id="bidsTable">
-                                        <thead>
-                                            <tr>
-                                                <th>Bid ID</th>
-                                                <th>Project/Service Details</th>
-                                                <th>Customer</th>
-                                                <th>Vendor Bids</th>
-                                                <th>Bid Amount</th>
-                                                <th>Timeline</th>
-                                                <th>Status</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- Bid 1 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230501</strong>
-                                                    <div class="text-muted small">Created: 05/01/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Hotel Renovation Project</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Mountain View Hotel - Leh
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Construction & Renovation
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Complete renovation of 25 hotel rooms
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-01.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Rajesh Kumar</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Mountain View Hotel
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-10.png" alt="Vendor">
-                                                            </div>
-                                                            <span class="fw-bold">Ladakh Builders</span>
-                                                            <span class="badge bg-success ms-2">Best Bid</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-11.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Himalayan Construct</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-12.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Snow Peak Builders</span>
-                                                        </div>
-                                                        <a href="#" class="text-primary small">+3 more vendors</a>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-success">₹18,50,000</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            Lowest: ₹15,75,000
-                                                        </p>
-                                                        <p class="text-muted small">
-                                                            Highest: ₹22,00,000
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-success mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Due: May 20, 2024
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            Duration: 45 days
-                                                        </div>
-                                                        <div class="text-warning small">
-                                                            <i class="ti ti-alert-circle me-1"></i>
-                                                            Closing in 5 days
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-warning">Open</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-users me-1"></i>
-                                                        6 vendors bidding
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-users me-2"></i>View All Bids
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-message-circle me-2"></i>Negotiate
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-success" href="#">
-                                                                <i class="ti ti-check me-2"></i>Award Bid
-                                                            </a>
-                                                            <a class="dropdown-item text-danger" href="#">
-                                                                <i class="ti ti-x me-2"></i>Reject All
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                <% if (pagination && pagination.total_pages > 1) { %>
+                    <%
+                        const queryParams = new URLSearchParams();
 
-                                            <!-- Bid 2 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230502</strong>
-                                                    <div class="text-muted small">Created: 05/02/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Annual Staff Training Program</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Snow Lion Restaurant - Leh
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Training & Development
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Hospitality training for 25 staff members
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-02.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Priya Sharma</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Snow Lion Restaurant
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-13.png" alt="Vendor">
-                                                            </div>
-                                                            <span class="fw-bold">Hospitality Experts</span>
-                                                            <span class="badge bg-success ms-2">Selected</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-14.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Skill Development Inc</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-success">₹2,75,000</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            Awarded: ₹2,50,000
-                                                        </p>
-                                                        <p class="text-success small">
-                                                            <i class="ti ti-discount me-1"></i>
-                                                            9% below budget
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-success mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Completed: May 15, 2024
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            Duration: 30 days
-                                                        </div>
-                                                        <div class="text-success small">
-                                                            <i class="ti ti-star me-1"></i>
-                                                            Rating: 4.8/5
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-success">Awarded</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-check me-1"></i>
-                                                        Project started
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-file-text me-2"></i>View Contract
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-clipboard-check me-2"></i>Track Progress
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-warning" href="#">
-                                                                <i class="ti ti-edit me-2"></i>Modify Terms
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                        if (filters?.search) queryParams.set('search', filters.search);
+                        if (filters?.status) queryParams.set('status', filters.status);
+                        if (filters?.payment_status) queryParams.set('payment_status', filters.payment_status);
+                        if (filters?.trip_type) queryParams.set('trip_type', filters.trip_type);
+                        if (filters?.date_from) queryParams.set('date_from', filters.date_from);
+                        if (filters?.date_to) queryParams.set('date_to', filters.date_to);
+                        if (filters?.pickup_from) queryParams.set('pickup_from', filters.pickup_from);
+                        if (filters?.pickup_to) queryParams.set('pickup_to', filters.pickup_to);
+                        if (filters?.limit) queryParams.set('limit', filters.limit);
 
-                                            <!-- Bid 3 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230503</strong>
-                                                    <div class="text-muted small">Created: 05/03/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Fleet Vehicle Maintenance</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Ladakh Taxi Service
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Maintenance Services
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Annual maintenance contract for 15 vehicles
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-03.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Amit Patel</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Ladakh Taxi Service
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-15.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Auto Care Solutions</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-16.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Vehicle Maintenance Co</span>
-                                                        </div>
-                                                        <a href="#" class="text-primary small">+2 more vendors</a>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-success">₹4,20,000</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            Budget: ₹5,00,000
-                                                        </p>
-                                                        <p class="text-success small">
-                                                            <i class="ti ti-discount me-1"></i>
-                                                            16% below budget
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-info mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Under Review
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            Review ends: May 18
-                                                        </div>
-                                                        <div class="text-primary small">
-                                                            <i class="ti ti-message-circle me-1"></i>
-                                                            Negotiation active
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-info">Under Review</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-search me-1"></i>
-                                                        Technical evaluation
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-message-circle me-2"></i>Start Negotiation
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-file-analytics me-2"></i>Compare Bids
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-success" href="#">
-                                                                <i class="ti ti-check me-2"></i>Select Vendor
-                                                            </a>
-                                                            <a class="dropdown-item text-danger" href="#">
-                                                                <i class="ti ti-x me-2"></i>Reject All
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                        const queryString = queryParams.toString();
+                        const makePageUrl = (page) => `/bids?page=${page}${queryString ? '&' + queryString : ''}`;
+                    %>
 
-                                            <!-- Bid 4 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230504</strong>
-                                                    <div class="text-muted small">Created: 05/04/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Website Development & SEO</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Himalayan Trek Guides
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Digital Services
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Complete website redesign with booking system
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-04.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Sneha Reddy</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Himalayan Trek Guides
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-17.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Digital Solutions Ltd</span>
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            No other bids received
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-success">₹1,85,000</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            Single bid received
-                                                        </p>
-                                                        <p class="text-warning small">
-                                                            <i class="ti ti-alert-circle me-1"></i>
-                                                            Above budget by 12%
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-purple mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Negotiating
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            Last offer: May 12
-                                                        </div>
-                                                        <div class="text-purple small">
-                                                            <i class="ti ti-message-circle me-1"></i>
-                                                            Counter offer sent
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-purple">Negotiating</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-message-circle me-1"></i>
-                                                        Price negotiation
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-message-circle me-2"></i>Continue Negotiation
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-bell me-2"></i>Send Reminder
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-success" href="#">
-                                                                <i class="ti ti-check me-2"></i>Accept Offer
-                                                            </a>
-                                                            <a class="dropdown-item text-warning" href="#">
-                                                                <i class="ti ti-arrow-back me-2"></i>Withdraw
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Bid 5 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230505</strong>
-                                                    <div class="text-muted small">Created: 05/05/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Restaurant Supply Contract</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Tibetan Kitchen
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Supply Chain
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Monthly supply of fresh vegetables & meat
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-05.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Rohit Verma</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Tibetan Kitchen
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-18.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Fresh Farm Produce</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-19.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Organic Suppliers Ltd</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-20.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Local Farmers Co-op</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-danger">₹0</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            All bids rejected
-                                                        </p>
-                                                        <p class="text-danger small">
-                                                            <i class="ti ti-x me-1"></i>
-                                                            Quality concerns
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-danger mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Closed: May 10, 2024
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            Duration: 30 days
-                                                        </div>
-                                                        <div class="text-danger small">
-                                                            <i class="ti ti-x me-1"></i>
-                                                            No suitable vendor
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-danger">Rejected</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-file-alert me-1"></i>
-                                                        Quality issues
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-file-analytics me-2"></i>View Evaluation
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-success" href="#">
-                                                                <i class="ti ti-refresh me-2"></i>Re-open Bid
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-plus me-2"></i>Create New RFP
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-
-                                            <!-- Bid 6 -->
-                                            <tr>
-                                                <td>
-                                                    <strong>#BID230506</strong>
-                                                    <div class="text-muted small">Created: 05/06/24</div>
-                                                </td>
-                                                <td>
-                                                    <h6 class="mb-1">Marketing Campaign</h6>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-building me-1"></i>
-                                                        Pashmina Paradise
-                                                    </p>
-                                                    <p class="text-muted small mb-0">
-                                                        <i class="ti ti-tag me-1"></i>
-                                                        Category: Marketing
-                                                    </p>
-                                                    <p class="text-muted small">
-                                                        <i class="ti ti-file-description me-1"></i>
-                                                        Summer marketing campaign for local products
-                                                    </p>
-                                                </td>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-sm me-2">
-                                                            <img src="/assets/img/profiles/avatar-06.jpg" alt="Customer" class="img-fluid rounded-circle">
-                                                        </div>
-                                                        <div>
-                                                            <h6 class="mb-1">Michael Smith</h6>
-                                                            <p class="text-muted small mb-0">
-                                                                <i class="ti ti-building-store me-1"></i>
-                                                                Pashmina Paradise
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="vendor-bids">
-                                                        <div class="d-flex align-items-center mb-1">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-21.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Creative Ads Agency</span>
-                                                        </div>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar avatar-xs me-2">
-                                                                <img src="/assets/img/store/store-22.png" alt="Vendor">
-                                                            </div>
-                                                            <span>Digital Marketing Pro</span>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="bid-amount">
-                                                        <h6 class="mb-1 text-success">₹3,50,000</h6>
-                                                        <p class="text-muted small mb-0">
-                                                            Budget: ₹4,00,000
-                                                        </p>
-                                                        <p class="text-success small">
-                                                            <i class="ti ti-discount me-1"></i>
-                                                            12.5% below budget
-                                                        </p>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="timeline-info">
-                                                        <div class="text-secondary mb-1">
-                                                            <i class="ti ti-calendar me-1"></i>
-                                                            Expired: May 8, 2024
-                                                        </div>
-                                                        <div class="text-muted small">
-                                                            <i class="ti ti-clock me-1"></i>
-                                                            No action taken
-                                                        </div>
-                                                        <div class="text-secondary small">
-                                                            <i class="ti ti-alert-circle me-1"></i>
-                                                            Auto-expired
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-secondary">Expired</span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-clock me-1"></i>
-                                                        No response
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <div class="dropdown">
-                                                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                            <i class="ti ti-settings"></i>
-                                                        </button>
-                                                        <div class="dropdown-menu dropdown-menu-end">
-                                                            <a class="dropdown-item" href="bid-details.html">
-                                                                <i class="ti ti-eye me-2"></i>View Details
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-file-analytics me-2"></i>View Proposals
-                                                            </a>
-                                                            <div class="dropdown-divider"></div>
-                                                            <a class="dropdown-item text-success" href="#">
-                                                                <i class="ti ti-refresh me-2"></i>Extend Deadline
-                                                            </a>
-                                                            <a class="dropdown-item" href="#">
-                                                                <i class="ti ti-plus me-2"></i>Create New Bid
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing
+                            <%= ((pagination.current_page - 1) * pagination.per_page) + 1 %>
+                            to
+                            <%= Math.min(pagination.current_page * pagination.per_page, pagination.total) %>
+                            of
+                            <%= pagination.total %>
+                            bookings
                         </div>
-                    </div>
-                </div>
-                <!-- /Bids Table -->
 
-                <!-- Pagination -->
-                <div class="row">
-                    <div class="col-12">
-                        <nav aria-label="Page navigation">
-                            <ul class="pagination justify-content-center">
-                                <li class="page-item disabled">
-                                    <a class="page-link" href="#">
-                                        <i class="ti ti-chevron-left"></i>
-                                    </a>
+                        <nav>
+                            <ul class="pagination mb-0">
+                                <li class="page-item <%= pagination.current_page <= 1 ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page - 1) %>">Previous</a>
                                 </li>
-                                
-                                <li class="page-item active">
-                                    <a class="page-link" href="?page=1">1</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=2">2</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=3">3</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=4">4</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=5">5</a>
-                                </li>
-                                
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=2">
-                                        <i class="ti ti-chevron-right"></i>
-                                    </a>
+
+                                <% for (let i = 1; i <= pagination.total_pages; i++) { %>
+                                    <li class="page-item <%= pagination.current_page === i ? 'active' : '' %>">
+                                        <a class="page-link" href="<%= makePageUrl(i) %>"><%= i %></a>
+                                    </li>
+                                <% } %>
+
+                                <li class="page-item <%= pagination.current_page >= pagination.total_pages ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page + 1) %>">Next</a>
                                 </li>
                             </ul>
                         </nav>
                     </div>
-                </div>
-                <!-- /Pagination -->
-
-                <!-- Summary & Actions -->
-                <div class="row mt-4">
-                    <div class="col-md-8">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Bidding Insights</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Avg. Bids per Project</h6>
-                                            <h4 class="text-primary">3.2</h4>
-                                            <p class="text-muted small">Competitive bidding</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Avg. Savings</h6>
-                                            <h4 class="text-success">14.5%</h4>
-                                            <p class="text-muted small">Below budget</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Award Rate</h6>
-                                            <h4 class="text-info">52.7%</h4>
-                                            <p class="text-muted small">Bids converted</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Avg. Response Time</h6>
-                                            <h4 class="text-warning">2.1 days</h4>
-                                            <p class="text-muted small">Vendor response</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Top Category</h6>
-                                            <h4 class="text-purple">Services</h4>
-                                            <p class="text-muted small">35% of all bids</p>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="insight-item">
-                                            <h6 class="mb-1">Customer Satisfaction</h6>
-                                            <h4 class="text-success">4.5/5.0</h4>
-                                            <p class="text-muted small">Based on feedback</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">Quick Actions</h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-primary" id="sendReminders">
-                                        <i class="ti ti-bell me-2"></i>Send Bid Reminders
-                                    </button>
-                                    <button class="btn btn-outline-success" id="generateReport">
-                                        <i class="ti ti-chart-bar me-2"></i>Generate Report
-                                    </button>
-                                    <button class="btn btn-outline-warning" id="evaluateBids">
-                                        <i class="ti ti-file-analytics me-2"></i>Evaluate All Bids
-                                    </button>
-                                    <button class="btn btn-outline-info" id="viewCalendar">
-                                        <i class="ti ti-calendar me-2"></i>View Bid Calendar
-                                    </button>
-                                    <button class="btn btn-outline-danger" id="closeExpired">
-                                        <i class="ti ti-alert-circle me-2"></i>Close Expired Bids
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- /Summary & Actions -->
+                <% } %>
             </div>
         </div>
-        <!-- /Page Wrapper -->
 
-        <!-- Bid Evaluation Modal -->
-        <div class="modal fade" id="evaluationModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Bid Evaluation - #BID230501</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <h6 class="mb-3">Project: Hotel Renovation Project</h6>
-                                <div class="table-responsive">
-                                    <table class="table table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th>Vendor</th>
-                                                <th>Bid Amount</th>
-                                                <th>Timeline</th>
-                                                <th>Quality Score</th>
-                                                <th>Experience</th>
-                                                <th>Payment Terms</th>
-                                                <th>Total Score</th>
-                                                <th>Rank</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="table-success">
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-xs me-2">
-                                                            <img src="/assets/img/store/store-10.png" alt="Vendor">
-                                                        </div>
-                                                        <span>Ladakh Builders</span>
-                                                    </div>
-                                                </td>
-                                                <td>₹18,50,000</td>
-                                                <td>45 days</td>
-                                                <td>9/10</td>
-                                                <td>8/10</td>
-                                                <td>40% advance</td>
-                                                <td>8.7/10</td>
-                                                <td><span class="badge bg-success">1st</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-xs me-2">
-                                                            <img src="/assets/img/store/store-11.png" alt="Vendor">
-                                                        </div>
-                                                        <span>Himalayan Construct</span>
-                                                    </div>
-                                                </td>
-                                                <td>₹19,20,000</td>
-                                                <td>50 days</td>
-                                                <td>8/10</td>
-                                                <td>9/10</td>
-                                                <td>30% advance</td>
-                                                <td>8.4/10</td>
-                                                <td><span class="badge bg-warning">2nd</span></td>
-                                            </tr>
-                                            <tr>
-                                                <td>
-                                                    <div class="d-flex align-items-center">
-                                                        <div class="avatar avatar-xs me-2">
-                                                            <img src="/assets/img/store/store-12.png" alt="Vendor">
-                                                        </div>
-                                                        <span>Snow Peak Builders</span>
-                                                    </div>
-                                                </td>
-                                                <td>₹17,80,000</td>
-                                                <td>60 days</td>
-                                                <td>7/10</td>
-                                                <td>7/10</td>
-                                                <td>50% advance</td>
-                                                <td>7.2/10</td>
-                                                <td><span class="badge bg-info">3rd</span></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row mt-4">
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">Recommendation</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p><strong>Recommended Vendor:</strong> Ladakh Builders</p>
-                                        <p><strong>Reason:</strong> Best value for money with high quality score</p>
-                                        <p><strong>Savings:</strong> ₹2,50,000 below highest bid</p>
-                                        <p><strong>Risk Level:</strong> Low</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h6 class="card-title mb-0">Next Steps</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <ol class="mb-0">
-                                            <li>Notify selected vendor</li>
-                                            <li>Prepare contract agreement</li>
-                                            <li>Schedule kick-off meeting</li>
-                                            <li>Set up payment schedule</li>
-                                            <li>Monitor project milestones</li>
-                                        </ol>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary">Award to Selected Vendor</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- /Bid Evaluation Modal -->
     </div>
-    <!-- /Main Wrapper -->
+</div>
 
-    <!-- Bids Management Custom JS -->
-    <script>
-        $(document).ready(function() {
-            // Initialize Select2
-            $('.select2').select2({
-                width: '100%'
-            });
-
-            // Initialize Date Range Picker
-            $('#dateRange').daterangepicker({
-                opens: 'left',
-                locale: {
-                    format: 'YYYY-MM-DD'
-                }
-            });
-
-            // Search functionality
-            $('#searchInput').on('keyup', function() {
-                var value = $(this).val().toLowerCase();
-                $('#bidsTable tbody tr').filter(function() {
-                    $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
-                });
-            });
-
-            // Filter functionality
-            $('#applyFilter').on('click', function() {
-                applyFilters();
-            });
-
-            // Clear filters
-            $('#clearFilters').on('click', function() {
-                $('#searchInput').val('');
-                $('#statusFilter').val('').trigger('change');
-                $('#serviceFilter').val('').trigger('change');
-                $('#priorityFilter').val('').trigger('change');
-                $('#dateRange').val('');
-                $('#bidsTable tbody tr').show();
-            });
-
-            // Export functionality
-            $('#exportBids').on('click', function() {
-                alert('Exporting bid data to Excel (demo)');
-            });
-
-            // Quick action buttons
-            $('#sendReminders').on('click', function() {
-                alert('Sending reminders to vendors about open bids (demo)');
-            });
-
-            $('#generateReport').on('click', function() {
-                alert('Generating bidding analytics report (demo)');
-            });
-
-            $('#evaluateBids').on('click', function() {
-                $('#evaluationModal').modal('show');
-            });
-
-            $('#viewCalendar').on('click', function() {
-                alert('Opening bid deadline calendar (demo)');
-            });
-
-            $('#closeExpired').on('click', function() {
-                if (confirm('Close all expired bids?')) {
-                    alert('Expired bids closed (demo)');
-                }
-            });
-
-            // Row click for quick view
-            $('#bidsTable tbody tr').on('click', function(e) {
-                if (!$(e.target).closest('.dropdown, .dropdown-toggle, .dropdown-menu').length) {
-                    var bidId = $(this).find('strong').text();
-                    alert('Opening bid details for ' + bidId + ' (demo)');
-                }
-            });
-
-            // Apply filters function
-            function applyFilters() {
-                var status = $('#statusFilter').val();
-                var service = $('#serviceFilter').val();
-                var priority = $('#priorityFilter').val();
-                var searchTerm = $('#searchInput').val().toLowerCase();
-                
-                $('#bidsTable tbody tr').each(function() {
-                    var row = $(this);
-                    var rowStatus = row.find('td:nth-child(7) .badge').first().text().toLowerCase();
-                    var rowService = row.find('td:nth-child(2)').text().toLowerCase();
-                    var rowPriority = row.find('td:nth-child(5)').text().toLowerCase();
-                    var rowText = row.text().toLowerCase();
-                    
-                    var show = true;
-                    
-                    if (status && !rowStatus.includes(status)) {
-                        show = false;
-                    }
-                    
-                    if (service && !rowService.includes(service)) {
-                        show = false;
-                    }
-                    
-                    if (priority && !rowText.includes(priority)) {
-                        show = false;
-                    }
-                    
-                    if (searchTerm && rowText.indexOf(searchTerm) === -1) {
-                        show = false;
-                    }
-                    
-                    if (show) {
-                        row.show();
-                    } else {
-                        row.hide();
-                    }
-                });
-            }
-
-            // Quick filter buttons
-            $('.btn-outline-primary.btn-sm').on('click', function() {
-                $('.btn-outline-primary.btn-sm').removeClass('active');
-                $(this).addClass('active');
-                
-                var filterType = $(this).text().trim();
-                $('#bidsTable tbody tr').each(function() {
-                    var row = $(this);
-                    var show = true;
-                    
-                    switch(filterType) {
-                        case 'My Bids':
-                            var customer = row.find('td:nth-child(3)').text();
-                            show = customer.includes('Rajesh') || customer.includes('Priya');
-                            break;
-                        case 'High Value':
-                            var amount = parseFloat(row.find('td:nth-child(5) h6').text().replace('₹', '').replace(',', ''));
-                            show = amount > 1000000;
-                            break;
-                        case 'Urgent':
-                            var timeline = row.find('td:nth-child(6)').text();
-                            show = timeline.includes('Closing in') || timeline.includes('Today');
-                            break;
-                        case 'Closing Soon':
-                            var status = row.find('td:nth-child(7)').text();
-                            show = status.includes('Open') || status.includes('Under Review');
-                            break;
-                        case 'All Bids':
-                            show = true;
-                            break;
-                    }
-                    
-                    if (show) {
-                        row.show();
-                    } else {
-                        row.hide();
-                    }
-                });
-            });
-
-            // Initialize tooltips
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        });
-    </script>
 <%- include('../shared/partials/footer') %>

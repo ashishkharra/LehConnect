@@ -178,7 +178,58 @@ module.exports = (sequelize, Sequelize) => {
             tableName: "tbl_customer_booking",
             timestamps: true,
             createdAt: "create_date",
-            updatedAt: "update_date"
+            updatedAt: "update_date",
+
+            indexes: [
+                {
+                    name: "idx_booking_token",
+                    fields: ["token"]
+                },
+                {
+                    name: "idx_booking_vendor",
+                    fields: ["vendor_token"]
+                },
+                {
+                    name: "idx_booking_customer",
+                    fields: ["customer_token"]
+                },
+                {
+                    name: "idx_booking_vehicle",
+                    fields: ["vehicle_token"]
+                },
+                {
+                    name: "idx_booking_status",
+                    fields: ["status"]
+                },
+                {
+                    name: "idx_booking_payment_status",
+                    fields: ["payment_status"]
+                },
+                {
+                    name: "idx_booking_flag",
+                    fields: ["flag"]
+                },
+                {
+                    name: "idx_booking_created",
+                    fields: ["create_date"]
+                },
+                {
+                    name: "idx_vendor_status_flag",
+                    fields: ["vendor_token", "status", "flag"]
+                },
+                {
+                    name: "idx_customer_status_flag",
+                    fields: ["customer_token", "status", "flag"]
+                },
+                {
+                    name: "idx_status_flag_created",
+                    fields: ["status", "flag", "create_date"]
+                },
+                {
+                    name: "idx_payment_flag",
+                    fields: ["payment_status", "flag"]
+                }
+            ]
         }
     );
 

@@ -935,14 +935,14 @@ router.post("/holiday/package/enquiry", [customerValidation.validate('post-holid
             from_web = false
         } = req.body;
 
-        await registerCustomerIfNotExists(req, {
+        const result = await registerCustomerIfNotExists(req, {
             contact,
             location: from_city || null
         });
 
         const enquiry = await HolidayPackageEnquiry.create({
             token: randomstring(64),
-            customer_token: contact,
+            customer_token: result?.token,
             from_city,
             to_city,
             departure_date,
@@ -997,14 +997,14 @@ router.post("/insurance/enquiry", [customerValidation.validate('post-insurance-e
             from_web = false
         } = req.body;
 
-        await registerCustomerIfNotExists(req, {
+        const result = await registerCustomerIfNotExists(req, {
             contact,
             name
         });
 
         const enquiry = await InsuranceEnquiry.create({
             token: randomstring(64),
-            customer_token: contact,
+            customer_token: result?.token,
             car_number,
             name,
             contact,
@@ -1058,14 +1058,14 @@ router.post("/hotel/enquiry", [customerValidation.validate('post-hotel-enquiry')
             from_web = false
         } = req.body;
 
-        await registerCustomerIfNotExists(req, {
+        const result = await registerCustomerIfNotExists(req, {
             contact,
             location: area || null
         });
 
         const enquiry = await HotelEnquiry.create({
             token: randomstring(64),
-            customer_token: contact,
+            customer_token: result?.token,
             area,
             check_in,
             check_out,
@@ -1125,14 +1125,14 @@ router.post("/flight/enquiry", [customerValidation.validate('post-flight-enquiry
             from_web = false
         } = req.body;
 
-        await registerCustomerIfNotExists(req, {
+        const result = await registerCustomerIfNotExists(req, {
             contact,
             location: from_location || null
         });
 
         const payload = {
             token: randomstring(64),
-            customer_token: contact,
+            customer_token: result?.token,
             trip_type,
             adults: adults || 1,
             children: children || 0,
@@ -1213,14 +1213,14 @@ router.post("/cab/enquiry", [customerValidation.validate('post-cab-enquiry')], a
             from_web = false
         } = req.body;
 
-        await registerCustomerIfNotExists(req, {
+        const result = await registerCustomerIfNotExists(req, {
             contact,
             location: from_location || null
         });
 
         const cabEnquiry = await CabEnquiry.create({
             token: randomstring(64),
-            vendor_token: contact,
+            customer_token: result?.token,
             trip_type,
             from_location,
             to_location: ['oneway', 'round_trip'].includes(trip_type) ? to_location : null,
@@ -1302,6 +1302,11 @@ router.post('/enquiry', async (req, res) => {
             const cabInfo = `Pickup: ${pickup || 'N/A'} | Drop: ${drop || 'N/A'}`;
             finalComments = finalComments ? `${cabInfo}\n${finalComments}` : cabInfo;
         }
+
+        const contact = mobile
+        await registerCustomerIfNotExists(req, {
+            contact
+        });
 
         await Enquiry.create({
             token: randomstring(64),
@@ -2131,7 +2136,7 @@ router.post("/booking", [customerMiddleware], async (req, res) => {
                 wallet_amount_used: walletAmountUsed,
                 razorpay_amount: razorpayAmount,
 
-                payment_status: razorpayAmount > 0 ? "PENDING" : "SUCCESS",
+                payment_status: razorpayAmount > 0 ? "PENDING" : "PAID",
                 wallet_status:
                     walletAmountUsed > 0
                         ? razorpayAmount > 0
@@ -2207,11 +2212,11 @@ router.post("/booking", [customerMiddleware], async (req, res) => {
                             : "NONE",
                     razorpay_order: razorpayOrder
                         ? {
-                              id: razorpayOrder.id,
-                              amount: razorpayOrder.amount,
-                              currency: razorpayOrder.currency,
-                              key_id: RAZORPAY_KEY_ID
-                          }
+                            id: razorpayOrder.id,
+                            amount: razorpayOrder.amount,
+                            currency: razorpayOrder.currency,
+                            key_id: RAZORPAY_KEY_ID
+                        }
                         : null
                 },
                 req,

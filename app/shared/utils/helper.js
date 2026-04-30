@@ -1030,7 +1030,7 @@ const registerCustomerIfNotExists = async (req, data = {}) => {
             alt_contact: null,
             email: email || null,
             password: null,
-            role: 'customer',
+            role: 'CUSTOMER',
             create_date: new Date(),
             location: location || null,
             address: address || null,

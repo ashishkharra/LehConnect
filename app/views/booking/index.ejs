@@ -134,95 +134,9 @@
             </div>
         </div>
 
-        <div class="row mb-4">
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Completed</h6>
-                            <h4 class="mb-0 text-success"><%= counters.completed || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-success">
-                            <i class="ti ti-checkbox"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Cancelled</h6>
-                            <h4 class="mb-0 text-danger"><%= counters.cancelled || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-danger">
-                            <i class="ti ti-x"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Ongoing</h6>
-                            <h4 class="mb-0 text-info"><%= counters.ongoing || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-info">
-                            <i class="ti ti-refresh"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Paid</h6>
-                            <h4 class="mb-0 text-success"><%= counters.paid || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-success">
-                            <i class="ti ti-wallet"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Partial</h6>
-                            <h4 class="mb-0 text-warning"><%= counters.partial || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-warning">
-                            <i class="ti ti-credit-card"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-2 col-sm-4">
-                <div class="stats-small-card">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Refunded</h6>
-                            <h4 class="mb-0 text-purple"><%= counters.refunded || 0 %></h4>
-                        </div>
-                        <div class="icon-bg bg-purple">
-                            <i class="ti ti-currency-rupee"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <form method="GET" action="/bookings" class="filter-section">
             <div class="row">
-                <div class="col-md-3">
+                <div class="col-md-5">
                     <div class="search-box">
                         <i class="ti ti-search"></i>
                         <input type="text" class="form-control" name="search" value="<%= filters.search || '' %>" placeholder="Search booking, location, contact...">
@@ -232,17 +146,8 @@
                 <div class="col-md-2">
                     <select class="form-control select2" name="status">
                         <option value="">All Status</option>
-                        <% ['PENDING','CONFIRMED','ONGOING','COMPLETED','CANCELLED','REJECTED','EXPIRED'].forEach((s) => { %>
+                        <% ['PENDING','CONFIRMED'].forEach((s) => { %>
                             <option value="<%= s %>" <%= filters.status === s ? 'selected' : '' %>><%= s %></option>
-                        <% }) %>
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <select class="form-control select2" name="payment_status">
-                        <option value="">Payment Status</option>
-                        <% ['PENDING','PARTIAL','PAID','FAILED','REFUNDED'].forEach((s) => { %>
-                            <option value="<%= s %>" <%= filters.payment_status === s ? 'selected' : '' %>><%= s %></option>
                         <% }) %>
                     </select>
                 </div>
@@ -275,8 +180,6 @@
                         <a class="btn btn-outline-primary btn-sm <%= filters.quick === 'today' ? 'active' : '' %>" href="<%= buildQuery({ quick: 'today', page: 1 }) %>">Today</a>
                         <a class="btn btn-outline-primary btn-sm <%= filters.quick === 'week' ? 'active' : '' %>" href="<%= buildQuery({ quick: 'week', page: 1 }) %>">This Week</a>
                         <a class="btn btn-outline-primary btn-sm <%= filters.quick === 'month' ? 'active' : '' %>" href="<%= buildQuery({ quick: 'month', page: 1 }) %>">This Month</a>
-                        <a class="btn btn-outline-primary btn-sm <%= filters.quick === 'high_value' ? 'active' : '' %>" href="<%= buildQuery({ quick: 'high_value', page: 1 }) %>">High Value</a>
-                        <a class="btn btn-outline-primary btn-sm <%= filters.quick === 'urgent' ? 'active' : '' %>" href="<%= buildQuery({ quick: 'urgent', page: 1 }) %>">Urgent</a>
                     </div>
                 </div>
             </div>
@@ -295,7 +198,6 @@
                                         <th>Trip</th>
                                         <th>Booking Date</th>
                                         <th>Amount</th>
-                                        <th>Payment</th>
                                         <th>Status</th>
                                         <th>Actions</th>
                                     </tr>
@@ -307,9 +209,6 @@
                                             <tr>
                                                 <td>
                                                     <strong>#<%= booking.id %></strong>
-                                                    <div class="text-muted small">
-                                                        <%= booking.token ? booking.token.slice(0, 10) + '...' : 'N/A' %>
-                                                    </div>
                                                     <div class="text-muted small">
                                                         Created: <%= formatDate(booking.create_date) %>
                                                     </div>
@@ -376,19 +275,6 @@
                                                     <p class="text-muted small mb-0">
                                                         Razorpay: <%= formatMoney(booking.razorpay_amount) %>
                                                     </p>
-                                                </td>
-
-                                                <td>
-                                                    <span class="badge <%= paymentBadge(booking.payment_status) %>">
-                                                        <%= booking.payment_status || 'PENDING' %>
-                                                    </span>
-                                                    <div class="text-muted small mt-1">
-                                                        <i class="ti ti-wallet me-1"></i>
-                                                        <%= booking.payment_type || 'N/A' %>
-                                                    </div>
-                                                    <div class="text-muted small">
-                                                        Wallet: <%= booking.wallet_status || 'NONE' %>
-                                                    </div>
                                                 </td>
 
                                                 <td>

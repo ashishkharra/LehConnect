@@ -1,0 +1,528 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+
+<%
+    const userBlock = (user) => {
+        if (!user) return 'N/A';
+
+        const name = user.full_name || 'N/A';
+        const contact = user.contact || 'N/A';
+        const role = user.role || 'VENDOR';
+        const token = user.token || 'N/A';
+
+        return `
+            <strong>${name}</strong>
+            <br>
+            <small class="text-muted">${contact}</small>
+            <br>
+            <span class="badge bg-info">${role}</span>
+            <br>
+            <small class="text-muted">${token}</small>
+        `;
+    };
+%>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">BID Booking Details</h3>
+                    <p class="text-muted mb-0"><%= data.booking?.token || 'N/A' %></p>
+                </div>
+                <div class="col-auto">
+                    <a href="/bids" class="btn btn-light">
+                        <i class="ti ti-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Bids</p>
+                        <h4><%= data.summary?.total_bids || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Accepted Bids</p>
+                        <h4><%= data.summary?.accepted_bids || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Lowest / Highest</p>
+                        <h5><%= data.summary?.lowest_bid || 'N/A' %> / <%= data.summary?.highest_bid || 'N/A' %></h5>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Paid / Refunded</p>
+                        <h5><%= data.summary?.total_paid || '₹0.00' %> / <%= data.summary?.total_refunded || '₹0.00' %></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Booking Information</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row">
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Booking ID</label>
+                        <h6>#<%= data.booking?.id || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Booking Token</label>
+                        <h6><%= data.booking?.token || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Status</label>
+                        <h6><span class="badge bg-primary"><%= data.booking?.status || 'N/A' %></span></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Accept Type</label>
+                        <h6><%= data.booking?.accept_type || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Trip Type</label>
+                        <h6><%= data.booking?.trip_type || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Payment Status</label>
+                        <h6>
+                            <% if (data.booking?.payment_status === 'PAID') { %>
+                                <span class="badge bg-success">PAID</span>
+                            <% } else { %>
+                                <span class="badge bg-danger"><%= data.booking?.payment_status || 'N/A' %></span>
+                            <% } %>
+                        </h6>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted">Owner Vendor</label>
+                        <div><%- userBlock(data.booking?.owner_vendor) %></div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted">Assigned Vendor</label>
+                        <div><%- userBlock(data.booking?.assigned_vendor) %></div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Visibility</label>
+                        <h6><%= data.booking?.visibility || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Negotiable</label>
+                        <h6><%= data.booking?.is_negotiable ? 'Yes' : 'No' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Secure Booking</label>
+                        <h6><%= data.booking?.secure_booking ? 'Yes' : 'No' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Created At</label>
+                        <h6><%= data.booking?.created_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Updated At</label>
+                        <h6><%= data.booking?.updated_at_display || 'N/A' %></h6>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Vehicle & Route</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <p><strong>Vehicle Type:</strong> <%= data.booking?.vehicle_type || 'N/A' %></p>
+                        <p><strong>Vehicle Name:</strong> <%= data.booking?.vehicle_name || 'N/A' %></p>
+                        <p><strong>Pickup:</strong> <%= data.booking?.pickup_location || 'N/A' %></p>
+                        <p><strong>Drop:</strong> <%= data.booking?.drop_location || 'N/A' %></p>
+                        <p><strong>City:</strong> <%= data.booking?.city || 'N/A' %></p>
+                        <p><strong>State:</strong> <%= data.booking?.state || 'N/A' %></p>
+                        <p><strong>Pickup Date:</strong> <%= data.booking?.pickup_datetime_display || 'N/A' %></p>
+                        <p><strong>Return Date:</strong> <%= data.booking?.return_datetime_display || 'N/A' %></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Amount Details</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <p><strong>Booking Amount:</strong> <%= data.booking?.booking_amount_display || '₹0.00' %></p>
+                        <p><strong>Commission:</strong> <%= data.booking?.commission_display || '₹0.00' %></p>
+                        <p><strong>Total Amount:</strong> <%= data.booking?.total_amount_display || '₹0.00' %></p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Completion Details</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted">Requested By</label>
+                        <div><%- userBlock(data.booking?.completion_requested_by_user) %></div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-muted">Confirmed By</label>
+                        <div><%- userBlock(data.booking?.completion_confirmed_by_user) %></div>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Requested At</label>
+                        <h6><%= data.booking?.completion_requested_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Confirmed At</label>
+                        <h6><%= data.booking?.completion_confirmed_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Rejected At</label>
+                        <h6><%= data.booking?.completion_rejected_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Auto Complete At</label>
+                        <h6><%= data.booking?.auto_complete_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted">Completed At</label>
+                        <h6><%= data.booking?.completed_at_display || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label class="text-muted">Rejection Reason</label>
+                        <h6><%= data.booking?.completion_rejection_reason || 'N/A' %></h6>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="text-muted">Extra Requirements</label>
+                        <pre class="bg-light p-3 rounded"><%= data.booking?.extra_requirements_display || 'N/A' %></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <% if (data.cancelInfo) { %>
+            <div class="card mb-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0 text-white">Cancellation Information</h5>
+                </div>
+
+                <div class="card-body">
+                    <p><strong>Cancel Token:</strong> <%= data.cancelInfo.token || 'N/A' %></p>
+                    <p><strong>Cancelled By:</strong></p>
+                    <div class="mb-2"><%- userBlock(data.cancelInfo.cancelled_by) %></div>
+                    <p><strong>Role:</strong> <%= data.cancelInfo.cancelled_by_role || 'N/A' %></p>
+                    <p><strong>Reason:</strong> <%= data.cancelInfo.reason || 'N/A' %></p>
+                </div>
+            </div>
+        <% } %>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Vendor Bid Requests</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Request Token</th>
+                                <th>Requested Vendor</th>
+                                <th>Owner Vendor</th>
+                                <th>Bid Amount</th>
+                                <th>Chat</th>
+                                <th>Attempts</th>
+                                <th>Status</th>
+                                <th>Valid Till</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (data.bookingRequests && data.bookingRequests.length > 0) { %>
+                                <% data.bookingRequests.forEach((item) => { %>
+                                    <tr>
+                                        <td>#<%= item.id %></td>
+                                        <td><%= item.token || 'N/A' %></td>
+                                        <td><%- userBlock(item.requested_by_vendor) %></td>
+                                        <td><%- userBlock(item.owner_vendor) %></td>
+                                        <td><%= item.bid_amount_display || 'N/A' %></td>
+                                        <td>
+                                            <% if (item.chat_unlocked) { %>
+                                                <span class="badge bg-success">Unlocked</span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary">Locked</span>
+                                            <% } %>
+                                        </td>
+                                        <td><%= item.bid_attempt_count || 0 %></td>
+                                        <td><span class="badge bg-primary"><%= item.status || 'N/A' %></span></td>
+                                        <td><%= item.bid_valid_till_display || 'N/A' %></td>
+                                        <td><%= item.created_at_display || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">No bid requests found</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Advance Requests</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Token</th>
+                                <th>Owner</th>
+                                <th>Bidder</th>
+                                <th>Requested</th>
+                                <th>Responded</th>
+                                <th>Final</th>
+                                <th>Status</th>
+                                <th>Payment</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (data.advanceRequests && data.advanceRequests.length > 0) { %>
+                                <% data.advanceRequests.forEach((item) => { %>
+                                    <tr>
+                                        <td>#<%= item.id %></td>
+                                        <td><%= item.token || 'N/A' %></td>
+                                        <td><%- userBlock(item.owner_vendor) %></td>
+                                        <td><%- userBlock(item.bidder_vendor) %></td>
+                                        <td><%= item.requested_advance_amount_display || 'N/A' %></td>
+                                        <td><%= item.responded_advance_amount_display || 'N/A' %></td>
+                                        <td><%= item.final_advance_amount_display || 'N/A' %></td>
+                                        <td><span class="badge bg-primary"><%= item.status || 'N/A' %></span></td>
+                                        <td><span class="badge bg-info"><%= item.payment_status || 'N/A' %></span></td>
+                                        <td><%= item.created_at_display || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">No advance requests found</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Payments</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Token</th>
+                                <th>Payer</th>
+                                <th>Payee Vendor</th>
+                                <th>Amount</th>
+                                <th>Order ID</th>
+                                <th>Payment ID</th>
+                                <th>Order Status</th>
+                                <th>Refund Status</th>
+                                <th>Paid At</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (data.payments && data.payments.length > 0) { %>
+                                <% data.payments.forEach((item) => { %>
+                                    <tr>
+                                        <td>#<%= item.id %></td>
+                                        <td><%= item.token || 'N/A' %></td>
+                                        <td><%- userBlock(item.payer) %></td>
+                                        <td><%- userBlock(item.payee_vendor) %></td>
+                                        <td><%= item.amount_display || 'N/A' %></td>
+                                        <td><%= item.razorpay_order_id || 'N/A' %></td>
+                                        <td><%= item.razorpay_payment_id || 'N/A' %></td>
+                                        <td><span class="badge bg-primary"><%= item.order_status || 'N/A' %></span></td>
+                                        <td><span class="badge bg-warning text-dark"><%= item.refund_status || 'N/A' %></span></td>
+                                        <td><%= item.paid_at_display || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">No payments found</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Refunds</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Token</th>
+                                <th>Payment Token</th>
+                                <th>Refunded By</th>
+                                <th>Refund To</th>
+                                <th>Amount</th>
+                                <th>Razorpay Refund</th>
+                                <th>Status</th>
+                                <th>Reason</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (data.refunds && data.refunds.length > 0) { %>
+                                <% data.refunds.forEach((item) => { %>
+                                    <tr>
+                                        <td>#<%= item.id %></td>
+                                        <td><%= item.token || 'N/A' %></td>
+                                        <td><%= item.payment_token || 'N/A' %></td>
+                                        <td><%- userBlock(item.refunded_by) %></td>
+                                        <td><%- userBlock(item.refund_to) %></td>
+                                        <td><%= item.refund_amount_display || 'N/A' %></td>
+                                        <td><%= item.razorpay_refund_id || 'N/A' %></td>
+                                        <td><span class="badge bg-primary"><%= item.refund_status || 'N/A' %></span></td>
+                                        <td><%= item.reason || 'N/A' %></td>
+                                        <td><%= item.created_at_display || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">No refunds found</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Advance Request History</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Token</th>
+                                <th>Advance Token</th>
+                                <th>Actor</th>
+                                <th>Action</th>
+                                <th>Previous Amount</th>
+                                <th>Amount</th>
+                                <th>Message</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (data.advanceHistory && data.advanceHistory.length > 0) { %>
+                                <% data.advanceHistory.forEach((item) => { %>
+                                    <tr>
+                                        <td>#<%= item.id %></td>
+                                        <td><%= item.token || 'N/A' %></td>
+                                        <td><%= item.advance_request_token || 'N/A' %></td>
+                                        <td><%- userBlock(item.actor) %></td>
+                                        <td><%= item.action || 'N/A' %></td>
+                                        <td><%= item.previous_amount_display || 'N/A' %></td>
+                                        <td><%= item.amount_display || 'N/A' %></td>
+                                        <td><%= item.message || 'N/A' %></td>
+                                        <td><%= item.created_at_display || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">No advance history found</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<%- include('../shared/partials/footer') %>

@@ -1,0 +1,413 @@
+<%- include('../shared/partials/header', { admin : admin, title: title}) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Cab Enquiries</h3>
+                    <p class="text-muted mb-0">Manage cab enquiries</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Total Enquiries</p>
+                        <h4><%= counters?.total || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Web / App</p>
+                        <h4><%= counters?.web_posted || 0 %> / <%= counters?.app_posted || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">One Way</p>
+                        <h4><%= counters?.oneway_count || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <p class="text-muted mb-1">Round / Local</p>
+                        <h4><%= counters?.round_trip_count || 0 %> / <%= counters?.local_count || 0 %></h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Create Cab Enquiry</h5>
+                <small class="text-muted">Admin se enquiry create hogi (Platform)</small>
+            </div>
+
+            <div class="card-body">
+                <form method="POST" action="/cab-enquiry/create">
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Trip Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="trip_type" id="cab_trip_type" required>
+                                <option value="oneway">One Way</option>
+                                <option value="round_trip">Round Trip</option>
+                                <option value="local">Local</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 cab-from-field">
+                            <label class="form-label">From Location</label>
+                            <input type="text" class="form-control" name="from_location">
+                        </div>
+
+                        <div class="col-md-3 cab-to-field">
+                            <label class="form-label">To Location</label>
+                            <input type="text" class="form-control" name="to_location">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Departure Date <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" name="departure_date" required>
+                        </div>
+
+                        <div class="col-md-3 cab-return-field" style="display:none;">
+                            <label class="form-label">Return Date</label>
+                            <input type="datetime-local" class="form-control" name="return_date">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Car Type</label>
+                            <input type="text" class="form-control" name="car_type" placeholder="Sedan, SUV">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Contact</label>
+                            <input type="text" class="form-control" name="contact">
+                        </div>
+
+                        <div class="col-md-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-plus"></i> Create Enquiry
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Filters</h5>
+            </div>
+
+            <div class="card-body">
+                <form method="GET" action="/cab-enquiry">
+                    <div class="row g-3">
+
+                        <div class="col-md-3">
+                            <label class="form-label">Search</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                name="search"
+                                value="<%= filters?.search || '' %>"
+                                placeholder="ID, token, location, car type"
+                            />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Posted From</label>
+                            <select class="form-select" name="posted_from">
+                                <option value="">All</option>
+                                <option value="WEB" <%= filters?.posted_from === 'WEB' ? 'selected' : '' %>>Web</option>
+                                <option value="APP" <%= filters?.posted_from === 'APP' ? 'selected' : '' %>>App</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Trip Type</label>
+                            <select class="form-select" name="trip_type">
+                                <option value="">All</option>
+                                <option value="oneway" <%= filters?.trip_type === 'oneway' ? 'selected' : '' %>>One Way</option>
+                                <option value="round_trip" <%= filters?.trip_type === 'round_trip' ? 'selected' : '' %>>Round Trip</option>
+                                <option value="local" <%= filters?.trip_type === 'local' ? 'selected' : '' %>>Local</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="">All</option>
+                                <option value="active" <%= filters?.status === 'active' ? 'selected' : '' %>>Active</option>
+                                <option value="inactive" <%= filters?.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Per Page</label>
+                            <select class="form-select" name="limit">
+                                <option value="10" <%= String(filters?.limit || 10) === '10' ? 'selected' : '' %>>10</option>
+                                <option value="25" <%= String(filters?.limit) === '25' ? 'selected' : '' %>>25</option>
+                                <option value="50" <%= String(filters?.limit) === '50' ? 'selected' : '' %>>50</option>
+                                <option value="100" <%= String(filters?.limit) === '100' ? 'selected' : '' %>>100</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Created From</label>
+                            <input type="date" class="form-control" name="date_from" value="<%= filters?.date_from || '' %>" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Created To</label>
+                            <input type="date" class="form-control" name="date_to" value="<%= filters?.date_to || '' %>" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Departure From</label>
+                            <input type="date" class="form-control" name="departure_from" value="<%= filters?.departure_from || '' %>" />
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Departure To</label>
+                            <input type="date" class="form-control" name="departure_to" value="<%= filters?.departure_to || '' %>" />
+                        </div>
+
+                        <div class="col-md-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="ti ti-filter"></i> Apply Filter
+                            </button>
+
+                            <a href="/cab-enquiry" class="btn btn-light">Reset</a>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title">Cab Enquiry List</h5>
+                <p class="card-text mb-0">
+                    Showing <%= cabEnquiries?.length || 0 %> of <%= pagination?.total || 0 %> enquiries
+                </p>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Posted By</th>
+                                <th>Posted From</th>
+                                <th>Customer</th>
+                                <th>Contact</th>
+                                <th>Email</th>
+                                <th>Trip</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Departure</th>
+                                <th>Return</th>
+                                <th>Car Type</th>
+                                <th>Form Contact</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (cabEnquiries && cabEnquiries.length > 0) { %>
+                                <% cabEnquiries.forEach((enquiry) => { %>
+                                    <tr>
+                                        <td>
+                                            <strong><%= enquiry?.id || '-' %></strong>
+                                        </td>
+
+                                        <td>
+                                            <% if (enquiry?.who_posted === 'CUSTOMER') { %>
+                                                <span class="badge bg-primary">Customer</span>
+                                            <% } else if (enquiry?.who_posted === 'VENDOR') { %>
+                                                <span class="badge bg-warning text-dark">Vendor</span>
+                                            <% } else if (enquiry?.who_posted === 'PLATFORM') { %>
+                                                <span class="badge bg-dark">Platform</span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (enquiry?.posted_from === 'Web') { %>
+                                                <span class="badge bg-info">Web</span>
+                                            <% } else if (enquiry?.posted_from === 'App') { %>
+                                                <span class="badge bg-success">App</span>
+                                            <% } else { %>
+                                                <span class="text-muted">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img
+                                                    src="<%= enquiry?.customer?.profileImage || '/assets/img/profiles/avatar-02.jpg' %>"
+                                                    alt="Profile"
+                                                    class="rounded-circle me-2"
+                                                    style="width: 35px; height: 35px; object-fit: cover;"
+                                                >
+                                                <div>
+                                                    <strong><%= enquiry?.customer?.name || (enquiry?.who_posted === 'PLATFORM' ? 'Platform' : 'N/A') %></strong>
+                                                    <br>
+                                                    <small class="text-muted"><%= enquiry?.who_posted === 'PLATFORM' ? 'Platform' : 'Customer' %></small>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td><%= enquiry?.customer?.contact || 'N/A' %></td>
+                                        <td><%= enquiry?.customer?.email || 'N/A' %></td>
+
+                                        <td>
+                                            <% if (enquiry?.trip_type === 'oneway') { %>
+                                                <span class="badge bg-secondary">One Way</span>
+                                            <% } else if (enquiry?.trip_type === 'round_trip') { %>
+                                                <span class="badge bg-info">Round Trip</span>
+                                            <% } else if (enquiry?.trip_type === 'local') { %>
+                                                <span class="badge bg-primary">Local</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td><%= enquiry?.from_location || 'N/A' %></td>
+                                        <td><%= enquiry?.to_location || 'N/A' %></td>
+                                        <td><%= enquiry?.departureDate || 'N/A' %></td>
+                                        <td><%= enquiry?.returnDate || 'N/A' %></td>
+                                        <td><%= enquiry?.car_type || 'N/A' %></td>
+                                        <td><%= enquiry?.contact || 'N/A' %></td>
+
+                                        <td>
+                                            <% if (enquiry?.status === 'active') { %>
+                                                <span class="badge bg-success">Active</span>
+                                            <% } else { %>
+                                                <span class="badge bg-danger"><%= enquiry?.status || 'Inactive' %></span>
+                                            <% } %>
+                                        </td>
+
+                                        <td><%= enquiry?.createdDate || 'N/A' %></td>
+
+                                        <td>
+                                            <a href="/cab-enquiry/<%= enquiry?.id %>" class="btn btn-sm btn-info">
+                                                <i class="ti ti-eye"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="15" class="text-center py-5">
+                                        <i class="ti ti-car fs-48 text-muted mb-3 d-block"></i>
+                                        <h5>No cab enquiries found</h5>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <% if (pagination && pagination.total_pages > 1) { %>
+                    <%
+                        const queryParams = new URLSearchParams();
+
+                        if (filters?.search) queryParams.set('search', filters.search);
+                        if (filters?.posted_from) queryParams.set('posted_from', filters.posted_from);
+                        if (filters?.trip_type) queryParams.set('trip_type', filters.trip_type);
+                        if (filters?.status) queryParams.set('status', filters.status);
+                        if (filters?.date_from) queryParams.set('date_from', filters.date_from);
+                        if (filters?.date_to) queryParams.set('date_to', filters.date_to);
+                        if (filters?.departure_from) queryParams.set('departure_from', filters.departure_from);
+                        if (filters?.departure_to) queryParams.set('departure_to', filters.departure_to);
+                        if (filters?.limit) queryParams.set('limit', filters.limit);
+
+                        const queryString = queryParams.toString();
+                        const makePageUrl = (page) => `/cab-enquiry?page=${page}${queryString ? '&' + queryString : ''}`;
+                    %>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="text-muted">
+                            Showing
+                            <%= ((pagination.current_page - 1) * pagination.per_page) + 1 %>
+                            to
+                            <%= Math.min(pagination.current_page * pagination.per_page, pagination.total) %>
+                            of
+                            <%= pagination.total %>
+                            enquiries
+                        </div>
+
+                        <nav>
+                            <ul class="pagination mb-0">
+                                <li class="page-item <%= pagination.current_page <= 1 ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page - 1) %>">Previous</a>
+                                </li>
+
+                                <% for (let i = 1; i <= pagination.total_pages; i++) { %>
+                                    <li class="page-item <%= pagination.current_page === i ? 'active' : '' %>">
+                                        <a class="page-link" href="<%= makePageUrl(i) %>"><%= i %></a>
+                                    </li>
+                                <% } %>
+
+                                <li class="page-item <%= pagination.current_page >= pagination.total_pages ? 'disabled' : '' %>">
+                                    <a class="page-link" href="<%= makePageUrl(pagination.current_page + 1) %>">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const tripType = document.getElementById("cab_trip_type");
+
+        if (!tripType) return;
+
+        const toFields = document.querySelectorAll(".cab-to-field");
+        const returnFields = document.querySelectorAll(".cab-return-field");
+
+        function handleCabTripType() {
+            const value = tripType.value;
+
+            toFields.forEach(function (el) {
+                el.style.display = value === "local" ? "none" : "";
+            });
+
+            returnFields.forEach(function (el) {
+                el.style.display = value === "round_trip" ? "" : "none";
+            });
+        }
+
+        tripType.addEventListener("change", handleCabTripType);
+        handleCabTripType();
+    });
+</script>
+
+<%- include('../shared/partials/footer') %>

@@ -1,0 +1,275 @@
+<%- include('../shared/partials/header', { admin : admin, title: title }) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Customer Details</h3>
+                    <p class="text-muted mb-0">View customer full profile information</p>
+                </div>
+                <div class="col-auto">
+                    <a href="/customer" class="btn btn-light">
+                        <i class="ti ti-arrow-left"></i> Back
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body d-flex align-items-center gap-4">
+                <img
+                    src="<%= customer.profile_image %>"
+                    class="rounded-circle"
+                    style="width: 90px; height: 90px; object-fit: cover;"
+                    alt="Customer"
+                >
+
+                <div>
+                    <h4 class="mb-1"><%= customer.full_name %></h4>
+                    <p class="text-muted mb-1">
+                        <i class="ti ti-phone me-1"></i> <%= customer.contact %>
+                        |
+                        <i class="ti ti-mail me-1"></i> <%= customer.email %>
+                    </p>
+
+                    <% if (customer.status === 'active') { %>
+                        <span class="badge bg-success">Active</span>
+                    <% } else { %>
+                        <span class="badge bg-danger">Inactive</span>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Basic Information</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Customer ID</div>
+                            <div class="col-7"><strong>#<%= customer.id %></strong></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Token</div>
+                            <div class="col-7"><%= customer.token || 'N/A' %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">First Name</div>
+                            <div class="col-7"><%= customer.first_name %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Last Name</div>
+                            <div class="col-7"><%= customer.last_name %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Role</div>
+                            <div class="col-7"><%= customer.role %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Joined At</div>
+                            <div class="col-7"><%= customer.joined %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-5 text-muted">Updated At</div>
+                            <div class="col-7"><%= customer.updated %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Contact Information</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Email</div>
+                            <div class="col-7"><%= customer.email %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Contact</div>
+                            <div class="col-7"><%= customer.contact %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-5 text-muted">Alt Contact</div>
+                            <div class="col-7"><%= customer.alt_contact %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Address & Location</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Location</div>
+                            <div class="col-7"><%= customer.location %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Address</div>
+                            <div class="col-7"><%= customer.address %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">City</div>
+                            <div class="col-7"><%= customer.city %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">State</div>
+                            <div class="col-7"><%= customer.state %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Country</div>
+                            <div class="col-7"><%= customer.country %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-5 text-muted">Pincode</div>
+                            <div class="col-7"><%= customer.pincode %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Preferences</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Preferred State</div>
+                            <div class="col-7"><%= customer.preferred_state %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Preferred Cities</div>
+                            <div class="col-7"><%= customer.preferred_cities %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Car Alert</div>
+                            <div class="col-7"><%= customer.car_alert %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-5 text-muted">Location Alert</div>
+                            <div class="col-7"><%= customer.location_alert %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Notification Settings</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6 text-muted">Booking Notification</div>
+                            <div class="col-6">
+                                <% if (customer.booking_notification_enabled) { %>
+                                    <span class="badge bg-success">Enabled</span>
+                                <% } else { %>
+                                    <span class="badge bg-danger">Disabled</span>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6 text-muted">Customer Notification</div>
+                            <div class="col-6">
+                                <% if (customer.customer_notification_enabled) { %>
+                                    <span class="badge bg-success">Enabled</span>
+                                <% } else { %>
+                                    <span class="badge bg-danger">Disabled</span>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6 text-muted">Trip Type</div>
+                            <div class="col-6"><%= customer.notification_trip_type %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6 text-muted">Vehicle Type</div>
+                            <div class="col-6"><%= customer.notification_vehicle_type %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6 text-muted">Notification City</div>
+                            <div class="col-6"><%= customer.notification_city %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6 text-muted">Notification State</div>
+                            <div class="col-6"><%= customer.notification_state %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Other Information</h5>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Referral Code</div>
+                            <div class="col-7"><%= customer.ref_code %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">Referer Used</div>
+                            <div class="col-7"><%= customer.referer_code_used %></div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-5 text-muted">About</div>
+                            <div class="col-7"><%= customer.about_me %></div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-5 text-muted">Feedback</div>
+                            <div class="col-7"><%= customer.feedback %></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<%- include('../shared/partials/footer') %>

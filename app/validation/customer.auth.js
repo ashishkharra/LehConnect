@@ -167,8 +167,7 @@ module.exports.validate = (method) => {
 
                 body("rooms")
                     .optional()
-                    .isInt({ min: 1, max: 6 })
-                    .withMessage("Rooms must be between 1 and 6"),
+                    .isInt({ min: 1, max: 6 }),
 
                 body('contact')
                     .optional(),
@@ -373,8 +372,7 @@ module.exports.validate = (method) => {
                     .isInt({ min: 0, max: 10 }).withMessage('Children must be between 0 and 10'),
 
                 body('rooms')
-                    .optional()
-                    .isInt({ min: 1, max: 10 }).withMessage('Rooms must be between 1 and 10'),
+                    .optional(),
 
                 body('contact')
                     .optional(),

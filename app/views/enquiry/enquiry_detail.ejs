@@ -1,0 +1,202 @@
+<%- include('../shared/partials/header', { admin: admin, title: title }) %>
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title"><%= pageTitle || 'Enquiry Details' %></h3>
+                    <p class="text-muted mb-0">
+                        Enquiry ID: <strong><%= enquiry?.id || 'N/A' %></strong>
+                    </p>
+                </div>
+                <div class="col-auto">
+                    <a href="<%= backUrl || '#' %>" class="btn btn-light">Back</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <% Object.keys(requestCounters || {}).forEach((key) => { %>
+                <div class="col-md-2 col-sm-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <p class="text-muted mb-1 text-capitalize"><%= key.replace('_', ' ') %></p>
+                            <h4><%= requestCounters[key] || 0 %></h4>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Enquiry Information</h5>
+            </div>
+
+            <div class="card-body">
+                <div class="row">
+                    <% (fields || []).forEach((field) => { %>
+                        <div class="col-md-4 mb-3">
+                            <label class="text-muted d-block"><%= field.label %></label>
+                            <strong>
+                                <%= enquiry?.[field.key] || 'N/A' %>
+                            </strong>
+                        </div>
+                    <% }) %>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted d-block">Posted By</label>
+                        <% if (enquiry?.who_posted === 'CUSTOMER') { %>
+                            <span class="badge bg-primary">Customer</span>
+                        <% } else if (enquiry?.who_posted === 'VENDOR') { %>
+                            <span class="badge bg-warning text-dark">Vendor</span>
+                        <% } else if (enquiry?.who_posted === 'PLATFORM') { %>
+                            <span class="badge bg-dark">Platform</span>
+                        <% } else { %>
+                            <span class="badge bg-secondary">N/A</span>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted d-block">Posted From</label>
+                        <% if (enquiry?.from_web) { %>
+                            <span class="badge bg-info">Web</span>
+                        <% } else { %>
+                            <span class="badge bg-success">App</span>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="text-muted d-block">Status</label>
+                        <% if (enquiry?.status === 'active') { %>
+                            <span class="badge bg-success">Active</span>
+                        <% } else { %>
+                            <span class="badge bg-danger"><%= enquiry?.status || 'Inactive' %></span>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Requests</h5>
+                <p class="text-muted mb-0">
+                    Total Requests: <%= enquiryRequests?.length || 0 %>
+                </p>
+            </div>
+
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-center mb-0">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Requester</th>
+                                <th>Role</th>
+                                <th>Contact</th>
+                                <th>Email</th>
+                                <th>Vendor</th>
+                                <th>Amount</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <% if (enquiryRequests && enquiryRequests.length > 0) { %>
+                                <% enquiryRequests.forEach((request) => { %>
+                                    <tr>
+                                        <td><strong><%= request?.id || '-' %></strong></td>
+
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img
+                                                    src="<%= request?.requester?.profile_image || '/assets/img/profiles/avatar-02.jpg' %>"
+                                                    onerror="this.src='/assets/img/profiles/avatar-02.jpg'"
+                                                    class="rounded-circle me-2"
+                                                    style="width: 38px; height: 38px; object-fit: cover;"
+                                                >
+                                                <div>
+                                                    <strong><%= request?.requester?.name || 'N/A' %></strong>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <%= request?.requester?.token || 'N/A' %>
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <% if (request?.requester?.role === 'CUSTOMER') { %>
+                                                <span class="badge bg-primary">Customer</span>
+                                            <% } else if (request?.requester?.role === 'VENDOR') { %>
+                                                <span class="badge bg-warning text-dark">Vendor</span>
+                                            <% } else { %>
+                                                <span class="badge bg-secondary"><%= request?.requester?.role || 'N/A' %></span>
+                                            <% } %>
+                                        </td>
+
+                                        <td><%= request?.requester?.contact || request?.contact || 'N/A' %></td>
+                                        <td><%= request?.requester?.email || 'N/A' %></td>
+
+                                        <td>
+                                            <% if (request?.vendor) { %>
+                                                <strong><%= request.vendor.name || 'N/A' %></strong><br>
+                                                <small class="text-muted"><%= request.vendor.contact || 'N/A' %></small>
+                                            <% } else { %>
+                                                <span class="text-muted">N/A</span>
+                                            <% } %>
+                                        </td>
+
+                                        <td>
+                                            <% if (request?.amount) { %>
+                                                ₹<%= request.amount %>
+                                            <% } else { %>
+                                                N/A
+                                            <% } %>
+                                        </td>
+
+                                        <td style="max-width: 220px;">
+                                            <%= request?.message || 'N/A' %>
+                                        </td>
+
+                                        <td>
+                                            <% if (request?.status === 'PENDING') { %>
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                            <% } else if (request?.status === 'ACCEPTED') { %>
+                                                <span class="badge bg-success">Accepted</span>
+                                            <% } else if (request?.status === 'REJECTED') { %>
+                                                <span class="badge bg-danger">Rejected</span>
+                                            <% } else if (request?.status === 'CANCELLED') { %>
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                            <% } else if (request?.status === 'BOOKED') { %>
+                                                <span class="badge bg-primary">Booked</span>
+                                            <% } else { %>
+                                                <span class="badge bg-light text-dark"><%= request?.status || 'N/A' %></span>
+                                            <% } %>
+                                        </td>
+
+                                        <td><%= request?.createdDate || request?.created_at || 'N/A' %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="10" class="text-center py-5">
+                                        <h5>No requests found</h5>
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<%- include('../shared/partials/footer') %>

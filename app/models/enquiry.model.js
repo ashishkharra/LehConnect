@@ -71,6 +71,12 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: 0
         },
 
+        posted: {
+            type: Sequelize.BOOLEAN,
+            allowNull: true,
+            defaultValue: false
+        },
+
         comments: {
             type: Sequelize.TEXT,
             allowNull: true

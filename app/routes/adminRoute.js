@@ -219,14 +219,39 @@ router.post('/process-delete-request', [authMiddleware, validationRule.validate(
 
 // customer page
 router.get('/customer', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllCustomers(req, res);
 
     res.render('customer/index', {
         title: 'LehConnect | Customers',
         admin: admin || null,
+        customers: result.results?.customers || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
         currentPage: 'customer',
     });
-}))
+}));
+
+router.get('/customer/:token', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+    const { token } = req.params;
+
+    const result = await adminController.getCustomerDetails(token);
+
+    if (!result.success) {
+        req.setFlash('Customer not found', 'error');
+        return res.redirect('/customer');
+    }
+
+    res.render('customer/detail', {
+        title: 'LehConnect | Customer Details',
+        admin: admin || null,
+        customer: result.results || {},
+        currentPage: 'customer',
+    });
+}));
 
 // booking page
 router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
@@ -312,19 +337,6 @@ router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
             [Op.gte]: start,
             [Op.lt]: end
         };
-    }
-
-    if (quick === "high_value") {
-        whereCondition.total_amount = {
-            [Op.gte]: 20000
-        };
-    }
-
-    if (quick === "urgent") {
-        whereCondition[Op.or] = [
-            { payment_status: { [Op.in]: ["PENDING", "PARTIAL", "FAILED"] } },
-            { status: { [Op.in]: ["PENDING", "CANCELLED"] } }
-        ];
     }
 
     if (search && String(search).trim()) {
@@ -419,12 +431,22 @@ router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
                 }
             },
             attributes: [
+                'id',
                 "token",
                 "first_name",
                 "last_name",
                 "contact",
                 "email",
-                "image"
+                [
+                    Sequelize.literal(`
+                CASE 
+                    WHEN profile_image IS NOT NULL AND profile_image != '' 
+                    THEN CONCAT('${admin_url}', profile_image)
+                    ELSE NULL
+                END
+            `),
+                    "profile_image"
+                ]
             ],
             raw: true
         });
@@ -487,8 +509,21 @@ router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
         CustomerBooking.count({ where: { flag: 0, payment_status: "FAILED" } }),
         CustomerBooking.count({ where: { flag: 0, payment_status: "REFUNDED" } }),
         CustomerBooking.findOne({
-            where: { flag: 0, payment_status: "PAID" },
-            attributes: [[Sequelize.fn("SUM", Sequelize.col("total_amount")), "total_revenue"]],
+            where: {
+                flag: 0,
+                status: "CONFIRMED",
+                payment_status: "PAID"
+            },
+            attributes: [
+                [
+                    Sequelize.fn(
+                        "COALESCE",
+                        Sequelize.fn("SUM", Sequelize.col("total_amount")),
+                        0
+                    ),
+                    "total_revenue"
+                ]
+            ],
             raw: true
         }),
         CustomerBooking.findOne({
@@ -497,6 +532,8 @@ router.get("/bookings", [authMiddleware], asyncHandler(async (req, res) => {
             raw: true
         })
     ]);
+
+    console.log('rsvd ->>>>>>> ', revenueResult)
 
     const counters = {
         total_bookings: totalBookings,
@@ -662,16 +699,59 @@ router.get("/bookings/:booking_token", [authMiddleware], asyncHandler(async (req
 
 // bids page
 router.get('/bids', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllBidBookings(req, res);
 
     res.render('bids/index', {
         title: 'LehConnect | Bids',
         admin: admin || null,
-        currentPage: 'bids',
+        bidBookings: result.results?.bidBookings || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
+        currentPage: 'bids'
     });
-}))
+}));
+
+router.get('/bids/:token', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+    const { token } = req.params;
+
+    const result = await adminController.getBidBookingDetails(token);
+
+    if (!result.success) {
+        req.setFlash('error', result.message || 'Booking not found');
+        return res.redirect('/bids');
+    }
+
+    res.render('bids/detail', {
+        title: 'LehConnect | Bid Booking Details',
+        admin: admin || null,
+        data: result.results || {},
+        currentPage: 'bids'
+    });
+}));
 
 // enquiry page
+router.get('/enquiries', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllCustomerEnquiries(req, res);
+
+    res.render('enquiry/customer_enquiry', {
+        title: 'LehConnect | Customer Enquiries',
+        admin: admin || null,
+        enquiries: result.results?.enquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
+        currentPage: 'enquiries'
+    });
+}));
+
+router.post('/enquiries/upload-to-app', [authMiddleware], adminController.uploadCustomerEnquiryToApp);
+
 router.get('/taxi-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
     const admin = req?.session?.user
 
@@ -684,38 +764,99 @@ router.get('/taxi-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
 }))
 
 router.get('/hotel-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
-    const result = await adminController.getAllHotelEnquiries();
-    req.setFlash(result.success ? 'success' : 'error', result.message)
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllHotelEnquiries(req, res);
+
     res.render('enquiry/hotel', {
         title: 'LehConnect | Hotel-enquiry',
         admin: admin || null,
-        hotelEnquiries: result.results || [],
+        hotelEnquiries: result.results?.hotelEnquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
         currentPage: 'hotel-enquiry'
     });
-}))
+}));
+router.get("/hotel-enquiry/:id",[authMiddleware],adminController.getHotelEnquiry);
+router.post("/hotel-enquiry/create",[authMiddleware],adminController.createPlatformHotelEnquiry);
+
 
 router.get('/flight-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllFlightEnquiries(req, res);
 
     res.render('enquiry/flight', {
-        title: 'LehConnect | flight-enquiry',
+        title: 'LehConnect | Flight-enquiry',
         admin: admin || null,
-        flightEnquiries: [],
+        flightEnquiries: result.results?.flightEnquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
         currentPage: 'flight-enquiry'
     });
-}))
+}));
+router.get('/flight-enquiry/:id', [authMiddleware], adminController.getFlightEnquiry)
+router.post('/flight-enquiry/create', [authMiddleware], adminController.createPlatformFlightEnquiry);
+
 
 router.get('/insurance', [authMiddleware], asyncHandler(async (req, res) => {
-    const admin = req?.session?.user
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllInsuranceEnquiries(req, res);
 
     res.render('enquiry/insurance', {
         title: 'LehConnect | Insurance',
         admin: admin || null,
-        insuranceEnquiries: [],
+        insuranceEnquiries: result.results?.insuranceEnquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
         currentPage: 'insurance'
     });
-}))
+}));
+router.get("/insurance-enquiry/:id",[authMiddleware],adminController.getInsuranceEnquiry);
+router.post("/insurance/create",[authMiddleware],adminController.createPlatformInsuranceEnquiry);
+
+
+router.get('/holiday-package-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllHolidayPackageEnquiries(req, res);
+
+    res.render('enquiry/holiday-package', {
+        title: 'LehConnect | Holiday Package Enquiry',
+        admin: admin || null,
+        holidayPackageEnquiries: result.results?.holidayPackageEnquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
+        currentPage: 'holiday-package-enquiry'
+    });
+}));
+router.get("/holiday-package-enquiry/:id",[authMiddleware],adminController.getHolidayPackageEnquiry);
+router.post("/holiday-package-enquiry/create",[authMiddleware],adminController.createPlatformHolidayEnquiry);
+
+
+router.get('/cab-enquiry', [authMiddleware], asyncHandler(async (req, res) => {
+    const admin = req?.session?.user;
+
+    const result = await adminController.getAllCabEnquiries(req, res);
+
+    res.render('enquiry/cab', {
+        title: 'LehConnect | Cab Enquiry',
+        admin: admin || null,
+        cabEnquiries: result.results?.cabEnquiries || [],
+        counters: result.results?.counters || {},
+        pagination: result.results?.pagination || {},
+        filters: result.results?.filters || {},
+        currentPage: 'cab-enquiry'
+    });
+}));
+router.get("/cab-enquiry/:id",[authMiddleware],adminController.getCabEnquiry);
+router.post("/cab-enquiry/create",[authMiddleware],adminController.createPlatformCabEnquiry);
+
 
 // referral page
 router.get('/customer-referral', [authMiddleware], asyncHandler(async (req, res) => {
@@ -741,6 +882,7 @@ router.get('/vendor-referral', [authMiddleware], asyncHandler(async (req, res) =
         data: data.results
     });
 }))
+
 router.get('/vendor-referral-details/:id', [authMiddleware], asyncHandler(async (req, res) => {
     const admin = req?.session?.user;
     const page = parseInt(req.query.page) || 1;
@@ -1543,6 +1685,7 @@ router.get('/about', [authMiddleware], asyncHandler(async (req, res) => {
         currentPage: 'about'
     });
 }));
+
 router.post('/update/about', [authMiddleware, aboutImage, validationRule.validate('add-about')], adminController.updateAbout)
 
 // faqs

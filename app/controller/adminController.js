@@ -39,11 +39,231 @@ const VendorPayout = db.vendorPayout
 const BookingRefund = db.bookingRefund
 const BookingPayment = db.bookingPayment
 const Vehicle = db.AddVehicle
+const FlightEnquiry = db.flightEnquiry
+const InsuranceEnquiry = db.insuranceEnquiry
+const HolidayPackageEnquiry = db.holydaypackageEnquiry
+const CabEnquiry = db.CabEnquiry
+const Customer = db.customer
+const Enquiry = db.enquiry
 
 
 const vendorDeleteQueue = require('../queues/vendor/vendor_delete.queue.js');
 const message = require('../sockets/message.js');
+const { body } = require('express-validator');
 
+
+const getSequelizeLib = () => {
+    return db.Sequelize || require("sequelize");
+};
+
+const imageLiteral = (SequelizeLib, column = "profile_image") => {
+    const admin_url = getAdminUrl();
+
+    return [
+        SequelizeLib.literal(`
+            CASE 
+                WHEN ${column} IS NOT NULL AND ${column} != '' 
+                THEN CONCAT('${admin_url}', ${column})
+                ELSE NULL
+            END
+        `),
+        "profile_image"
+    ];
+};
+
+const formatDateTime = (date) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleString("en-IN");
+};
+
+async function getEnquiryDetail({
+    req,
+    res,
+    model,
+    enquiryType,
+    redirectUrl,
+    renderTitle,
+    pageTitle,
+    currentPage,
+    fields
+}) {
+    try {
+        const { id } = req.params;
+
+        const EnquiryRequest = db.EnquiryRequest || db.enquiryRequest;
+        const Customer = db.customer || db.Customer || db.tbl_customer;
+        const Vendor = db.vendor || db.Vendor || db.tbl_vendor;
+        const SequelizeLib = getSequelizeLib();
+
+        const enquiry = await model.findOne({
+            where: {
+                id,
+                flag: 0
+            },
+            raw: true
+        });
+
+        if (!enquiry) {
+            req.setFlash("error", "Enquiry not found");
+            return res.redirect(redirectUrl);
+        }
+
+        const enquiryRequests = await EnquiryRequest.findAll({
+            where: {
+                enquiry_type: enquiryType,
+                enquiry_token: enquiry.token,
+                flag: 0
+            },
+            order: [["created_at", "DESC"]],
+            raw: true
+        });
+
+        const requesterTokens = [
+            ...new Set(enquiryRequests.map(item => item.requester_token).filter(Boolean))
+        ];
+
+        const vendorTokens = [
+            ...new Set(enquiryRequests.map(item => item.vendor_token).filter(Boolean))
+        ];
+
+        const allTokens = [...new Set([...requesterTokens, ...vendorTokens])];
+
+        let customers = [];
+        let vendors = [];
+
+        if (allTokens.length > 0) {
+            customers = await Customer.findAll({
+                where: {
+                    token: {
+                        [Op.in]: allTokens
+                    }
+                },
+                attributes: [
+                    "token",
+                    "first_name",
+                    "last_name",
+                    "contact",
+                    "email",
+                    imageLiteral(SequelizeLib, "profile_image")
+                ],
+                raw: true
+            });
+
+            vendors = await Vendor.findAll({
+                where: {
+                    token: {
+                        [Op.in]: allTokens
+                    }
+                },
+                attributes: [
+                    "token",
+                    "first_name",
+                    "last_name",
+                    "contact",
+                    "email",
+                    imageLiteral(SequelizeLib, "profile_image")
+                ],
+                raw: true
+            });
+        }
+
+        const customerMap = {};
+        customers.forEach(customer => {
+            customerMap[customer.token] = customer;
+        });
+
+        const vendorMap = {};
+        vendors.forEach(vendor => {
+            vendorMap[vendor.token] = vendor;
+        });
+
+        const formattedRequests = enquiryRequests.map(request => {
+            const requester =
+                customerMap[request.requester_token] ||
+                vendorMap[request.requester_token] ||
+                null;
+
+            const vendor = vendorMap[request.vendor_token] || null;
+
+            const requesterRole = customerMap[request.requester_token]
+                ? "CUSTOMER"
+                : vendorMap[request.requester_token]
+                    ? "VENDOR"
+                    : request.who_posted || "N/A";
+
+            return {
+                ...request,
+
+                requester: requester
+                    ? {
+                        token: requester.token,
+                        first_name: requester.first_name || "",
+                        last_name: requester.last_name || "",
+                        name: `${requester.first_name || ""} ${requester.last_name || ""}`.trim() || "N/A",
+                        contact: requester.contact || request.contact || "N/A",
+                        email: requester.email || "N/A",
+                        profile_image: requester.profile_image || null,
+                        role: requesterRole
+                    }
+                    : {
+                        token: request.requester_token || "N/A",
+                        first_name: "",
+                        last_name: "",
+                        name: "N/A",
+                        contact: request.contact || "N/A",
+                        email: "N/A",
+                        profile_image: null,
+                        role: requesterRole
+                    },
+
+                vendor: vendor
+                    ? {
+                        token: vendor.token,
+                        first_name: vendor.first_name || "",
+                        last_name: vendor.last_name || "",
+                        name: `${vendor.first_name || ""} ${vendor.last_name || ""}`.trim() || "N/A",
+                        contact: vendor.contact || "N/A",
+                        email: vendor.email || "N/A",
+                        profile_image: vendor.profile_image || null,
+                        role: "VENDOR"
+                    }
+                    : null,
+
+                createdDate: formatDateTime(request.created_at)
+            };
+        });
+
+        const requestCounters = {
+            total: formattedRequests.length,
+            pending: formattedRequests.filter(item => item.status === "PENDING").length,
+            accepted: formattedRequests.filter(item => item.status === "ACCEPTED").length,
+            rejected: formattedRequests.filter(item => item.status === "REJECTED").length,
+            cancelled: formattedRequests.filter(item => item.status === "CANCELLED").length,
+            booked: formattedRequests.filter(item => item.status === "BOOKED").length
+        };
+
+        return res.render("enquiry/enquiry_detail", {
+            title: renderTitle,
+            admin: req?.session?.user || null,
+            currentPage,
+
+            pageTitle,
+            backUrl: redirectUrl,
+
+            enquiryType,
+            enquiry,
+
+            enquiryRequests: formattedRequests,
+            requestCounters,
+            fields
+        });
+
+    } catch (error) {
+        console.log(`${enquiryType} enquiry detail error:`, error);
+        req.setFlash("error", "Server Error");
+        return res.redirect(redirectUrl);
+    }
+}
 
 const adminController = {
 
@@ -2271,16 +2491,6 @@ const adminController = {
         }
     },
 
-    // updateVideo: async (req, res) => {
-    //     try {
-    //         const id = req.params.id;
-    //         await Video.update(req.body, { where: { id } });
-    //         res.json({ success: true });
-    //     } catch (err) {
-    //         res.status(500).json({ success: false, message: err.message });
-    //     }
-    // },
-
     removeVideo: async (req, res) => {
         try {
             const video = await Video.findOne(req.params.token);
@@ -3384,80 +3594,1445 @@ const adminController = {
 
     getAllHotelEnquiries: async (req, res) => {
         try {
-            const hotelEnquiries = await HotelEnquiry.findAll({
-                where: {
-                    flag: 0
-                },
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                who_posted = "",
+                posted_from = "",
+                status = "",
+                date_from = "",
+                date_to = "",
+                check_in_from = "",
+                check_in_to = ""
+            } = req.query;
+
+            const where = {
+                flag: 0
+            };
+
+            if (who_posted) {
+                where.who_posted = who_posted;
+            }
+
+            if (status) {
+                where.status = status;
+            }
+
+            if (posted_from === "WEB") {
+                where.from_web = true;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (posted_from === "APP") {
+                where.from_web = false;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (check_in_from || check_in_to) {
+                where.check_in = {};
+
+                if (check_in_from) {
+                    where.check_in[Sequelize.Op.gte] = new Date(`${check_in_from} 00:00:00`);
+                }
+
+                if (check_in_to) {
+                    where.check_in[Sequelize.Op.lte] = new Date(`${check_in_to} 23:59:59`);
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { area: { [Sequelize.Op.like]: `%${search}%` } },
+                    { room_type: { [Sequelize.Op.like]: `%${search}%` } },
+                    { customer_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vendor_token: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await HotelEnquiry.findAndCountAll({
+                where,
                 attributes: [
-                    'id',
-                    'token',
-                    'vendor_token',
-                    'area',
-                    'check_in',
-                    'check_out',
-                    'rooms',
-                    'status',
-                    'create_date',
-                    [sequelize.literal(`(
-                    SELECT CONCAT(v.first_name, ' ', v.last_name) 
-                    FROM tbl_vendor v 
-                    WHERE v.token = HotelEnquiry.vendor_token
-                )`), 'vendor_name'],
-                    [sequelize.literal(`(
-                    SELECT v.profile_image 
-                    FROM tbl_vendor v 
-                    WHERE v.token = HotelEnquiry.vendor_token
-                )`), 'vendor_profile_image'],
-                    [sequelize.literal(`(
-                    SELECT 
+                    "id",
+                    "token",
+                    "customer_token",
+                    "vendor_token",
+                    "who_posted",
+                    "from_web",
+                    "area",
+                    "check_in",
+                    "check_out",
+                    "adults",
+                    "children",
+                    "room_type",
+                    "status",
+                    "create_date",
+
+                    [
+                        sequelize.literal(`
                         CASE 
-                            WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
-                            THEN CONCAT('${admin_url}/', v.profile_image) 
-                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg') 
+                            WHEN HotelEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT TRIM(CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')))
+                                FROM tbl_vendor v
+                                WHERE v.token = HotelEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HotelEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) != ''
+                                        THEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')))
+                                        ELSE c.contact
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = HotelEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
                         END
-                    FROM tbl_vendor v 
-                    WHERE v.token = HotelEnquiry.vendor_token
-                )`), 'vendor_profile_image_url']
+                    `),
+                        "posted_by_name"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HotelEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.contact
+                                FROM tbl_vendor v
+                                WHERE v.token = HotelEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HotelEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.contact
+                                FROM tbl_customer c
+                                WHERE c.token = HotelEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_contact"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HotelEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.email
+                                FROM tbl_vendor v
+                                WHERE v.token = HotelEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HotelEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.email
+                                FROM tbl_customer c
+                                WHERE c.token = HotelEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_email"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HotelEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', v.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_vendor v
+                                WHERE v.token = HotelEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HotelEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN c.profile_image IS NOT NULL AND c.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', c.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = HotelEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                        END
+                    `),
+                        "posted_by_profile_image"
+                    ]
                 ],
-                order: [['create_date', 'DESC']]
+                order: [["create_date", "DESC"]],
+                limit,
+                offset
             });
 
-            const formattedEnquiries = hotelEnquiries.map(enquiry => ({
-                id: enquiry.id,
-                token: enquiry.token,
-                vendor_token: enquiry.vendor_token,
-                area: enquiry.area,
-                checkInDate: enquiry.check_in ? new Date(enquiry.check_in).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                }) : 'N/A',
-                checkOutDate: enquiry.check_out ? new Date(enquiry.check_out).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                }) : 'N/A',
-                rooms: enquiry.rooms,
-                status: enquiry.status,
-                createdDate: enquiry.create_date ? new Date(enquiry.create_date).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                }) : 'N/A',
-                vendor: {
-                    name: enquiry.dataValues.vendor_name || 'N/A',
-                    profileImage: enquiry.dataValues.vendor_profile_image,
-                    profileImageUrl: enquiry.dataValues.vendor_profile_image_url
-                }
-            }));
+            const formattedEnquiries = rows.map(enquiry => {
+                const item = enquiry.get({ plain: true });
 
-            return responseData_('Fetched hotel enquiries', formattedEnquiries, true);
+                return {
+                    id: item.id,
+                    token: item.token,
+                    customer_token: item.customer_token,
+                    vendor_token: item.vendor_token,
+                    who_posted: item.who_posted,
+                    from_web: item.from_web,
+
+                    posted_by: {
+                        type: item.who_posted || "N/A",
+                        name: item.posted_by_name || item.posted_by_contact || "N/A",
+                        contact: item.posted_by_contact || "N/A",
+                        email: item.posted_by_email || "N/A",
+                        profileImage: item.posted_by_profile_image
+                    },
+
+                    posted_from: item.who_posted === "CUSTOMER"
+                        ? item.from_web
+                            ? "Web"
+                            : "App"
+                        : "N/A",
+
+                    area: item.area || "N/A",
+
+                    checkInDate: item.check_in
+                        ? new Date(item.check_in).toLocaleDateString("en-IN")
+                        : "N/A",
+
+                    checkOutDate: item.check_out
+                        ? new Date(item.check_out).toLocaleDateString("en-IN")
+                        : "N/A",
+
+                    adults: item.adults || 0,
+                    children: item.children || 0,
+                    room_type: item.room_type || "N/A",
+                    status: item.status,
+
+                    createdDate: item.create_date
+                        ? new Date(item.create_date).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const counterRows = await HotelEnquiry.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' THEN 1 ELSE 0 END)`),
+                        "customer_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'VENDOR' THEN 1 ELSE 0 END)`),
+                        "vendor_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 1 THEN 1 ELSE 0 END)`),
+                        "web_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 0 THEN 1 ELSE 0 END)`),
+                        "app_posted"
+                    ]
+                ],
+                raw: true
+            });
+
+            const counters = {
+                total: Number(counterRows?.[0]?.total || 0),
+                customer_posted: Number(counterRows?.[0]?.customer_posted || 0),
+                vendor_posted: Number(counterRows?.[0]?.vendor_posted || 0),
+                web_posted: Number(counterRows?.[0]?.web_posted || 0),
+                app_posted: Number(counterRows?.[0]?.app_posted || 0)
+            };
+
+            return responseData_("Fetched hotel enquiries", {
+                hotelEnquiries: formattedEnquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    who_posted,
+                    posted_from,
+                    status,
+                    date_from,
+                    date_to,
+                    check_in_from,
+                    check_in_to,
+                    limit
+                }
+            }, true);
 
         } catch (error) {
-            console.error('Error fetching hotel enquiries:', error);
-            return responseData_('Internal server error', { error: error.message }, false);
+            console.error("Error fetching hotel enquiries:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getAllFlightEnquiries: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                who_posted = "",
+                posted_from = "",
+                trip_type = "",
+                status = "",
+                date_from = "",
+                date_to = "",
+                departure_from = "",
+                departure_to = ""
+            } = req.query;
+
+            const where = {
+                flag: 0
+            };
+
+            if (who_posted) where.who_posted = who_posted;
+            if (trip_type) where.trip_type = trip_type;
+            if (status) where.status = status;
+
+            if (posted_from === "WEB") {
+                where.from_web = true;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (posted_from === "APP") {
+                where.from_web = false;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (departure_from || departure_to) {
+                where.departure_date = {};
+
+                if (departure_from) {
+                    where.departure_date[Sequelize.Op.gte] = departure_from;
+                }
+
+                if (departure_to) {
+                    where.departure_date[Sequelize.Op.lte] = departure_to;
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { from_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { to_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { class_type: { [Sequelize.Op.like]: `%${search}%` } },
+                    { customer_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vendor_token: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await FlightEnquiry.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "customer_token",
+                    "vendor_token",
+                    "who_posted",
+                    "from_web",
+                    "trip_type",
+                    "from_location",
+                    "to_location",
+                    "departure_date",
+                    "return_date",
+                    "adults",
+                    "children",
+                    "class_type",
+                    "segments",
+                    "status",
+                    "create_date",
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN FlightEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT TRIM(CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')))
+                                FROM tbl_vendor v
+                                WHERE v.token = FlightEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN FlightEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) != ''
+                                        THEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')))
+                                        ELSE c.contact
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = FlightEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_name"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN FlightEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.contact
+                                FROM tbl_vendor v
+                                WHERE v.token = FlightEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN FlightEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.contact
+                                FROM tbl_customer c
+                                WHERE c.token = FlightEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_contact"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN FlightEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.email
+                                FROM tbl_vendor v
+                                WHERE v.token = FlightEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN FlightEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.email
+                                FROM tbl_customer c
+                                WHERE c.token = FlightEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_email"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN FlightEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', v.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_vendor v
+                                WHERE v.token = FlightEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN FlightEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN c.profile_image IS NOT NULL AND c.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', c.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = FlightEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                        END
+                    `),
+                        "posted_by_profile_image"
+                    ]
+                ],
+                order: [["create_date", "DESC"]],
+                limit,
+                offset
+            });
+
+            const formattedEnquiries = rows.map(enquiry => {
+                const item = enquiry.get({ plain: true });
+
+                return {
+                    id: item.id,
+                    token: item.token,
+                    customer_token: item.customer_token,
+                    vendor_token: item.vendor_token,
+                    who_posted: item.who_posted,
+                    from_web: item.from_web,
+
+                    posted_by: {
+                        type: item.who_posted || "N/A",
+                        name: item.posted_by_name || item.posted_by_contact || "N/A",
+                        contact: item.posted_by_contact || "N/A",
+                        email: item.posted_by_email || "N/A",
+                        profileImage: item.posted_by_profile_image
+                    },
+
+                    posted_from: item.who_posted === "CUSTOMER"
+                        ? item.from_web
+                            ? "Web"
+                            : "App"
+                        : "N/A",
+
+                    trip_type: item.trip_type || "N/A",
+                    from_location: item.from_location || "N/A",
+                    to_location: item.to_location || "N/A",
+
+                    departureDate: item.departure_date
+                        ? new Date(item.departure_date).toLocaleDateString("en-IN")
+                        : "N/A",
+
+                    returnDate: item.return_date
+                        ? new Date(item.return_date).toLocaleDateString("en-IN")
+                        : "N/A",
+
+                    adults: item.adults || 0,
+                    children: item.children || 0,
+                    totalPassengers: Number(item.adults || 0) + Number(item.children || 0),
+
+                    class_type: item.class_type || "N/A",
+                    segments: item.segments || null,
+                    status: item.status || "inactive",
+
+                    createdDate: item.create_date
+                        ? new Date(item.create_date).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const counterRows = await FlightEnquiry.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' THEN 1 ELSE 0 END)`),
+                        "customer_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'VENDOR' THEN 1 ELSE 0 END)`),
+                        "vendor_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 1 THEN 1 ELSE 0 END)`),
+                        "web_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 0 THEN 1 ELSE 0 END)`),
+                        "app_posted"
+                    ]
+                ],
+                raw: true
+            });
+
+            const counters = {
+                total: Number(counterRows?.[0]?.total || 0),
+                customer_posted: Number(counterRows?.[0]?.customer_posted || 0),
+                vendor_posted: Number(counterRows?.[0]?.vendor_posted || 0),
+                web_posted: Number(counterRows?.[0]?.web_posted || 0),
+                app_posted: Number(counterRows?.[0]?.app_posted || 0)
+            };
+
+            return responseData_("Fetched flight enquiries", {
+                flightEnquiries: formattedEnquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    who_posted,
+                    posted_from,
+                    trip_type,
+                    status,
+                    date_from,
+                    date_to,
+                    departure_from,
+                    departure_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("Error fetching flight enquiries:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getAllInsuranceEnquiries: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                who_posted = "",
+                posted_from = "",
+                status = "",
+                whatsapp = "",
+                agree_policy = "",
+                date_from = "",
+                date_to = ""
+            } = req.query;
+
+            const where = { flag: 0 };
+
+            if (who_posted) where.who_posted = who_posted;
+            if (status) where.status = status;
+
+            if (whatsapp === "YES") where.whatsapp = true;
+            if (whatsapp === "NO") where.whatsapp = false;
+
+            if (agree_policy === "YES") where.agree_policy = true;
+            if (agree_policy === "NO") where.agree_policy = false;
+
+            if (posted_from === "WEB") {
+                where.from_web = true;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (posted_from === "APP") {
+                where.from_web = false;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { customer_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vendor_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { car_number: { [Sequelize.Op.like]: `%${search}%` } },
+                    { name: { [Sequelize.Op.like]: `%${search}%` } },
+                    { contact: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await InsuranceEnquiry.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "customer_token",
+                    "vendor_token",
+                    "from_web",
+                    "who_posted",
+                    "car_number",
+                    "name",
+                    "contact",
+                    "agree_policy",
+                    "whatsapp",
+                    "status",
+                    "create_date",
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN InsuranceEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT TRIM(CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')))
+                                FROM tbl_vendor v
+                                WHERE v.token = InsuranceEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN InsuranceEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) != ''
+                                        THEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')))
+                                        ELSE c.contact
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = InsuranceEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_name"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN InsuranceEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.contact
+                                FROM tbl_vendor v
+                                WHERE v.token = InsuranceEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN InsuranceEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.contact
+                                FROM tbl_customer c
+                                WHERE c.token = InsuranceEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_contact"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN InsuranceEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.email
+                                FROM tbl_vendor v
+                                WHERE v.token = InsuranceEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN InsuranceEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.email
+                                FROM tbl_customer c
+                                WHERE c.token = InsuranceEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_email"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN InsuranceEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', v.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_vendor v
+                                WHERE v.token = InsuranceEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN InsuranceEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN c.profile_image IS NOT NULL AND c.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', c.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = InsuranceEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                        END
+                    `),
+                        "posted_by_profile_image"
+                    ]
+                ],
+                order: [["create_date", "DESC"]],
+                limit,
+                offset
+            });
+
+            const formattedEnquiries = rows.map(enquiry => {
+                const item = enquiry.get({ plain: true });
+
+                return {
+                    id: item.id,
+                    token: item.token,
+                    customer_token: item.customer_token,
+                    vendor_token: item.vendor_token,
+                    from_web: item.from_web,
+                    who_posted: item.who_posted,
+
+                    posted_by: {
+                        type: item.who_posted || "N/A",
+                        name: item.posted_by_name || item.posted_by_contact || "N/A",
+                        contact: item.posted_by_contact || "N/A",
+                        email: item.posted_by_email || "N/A",
+                        profileImage: item.posted_by_profile_image
+                    },
+
+                    posted_from: item.who_posted === "CUSTOMER"
+                        ? item.from_web
+                            ? "Web"
+                            : "App"
+                        : "N/A",
+
+                    car_number: item.car_number || "N/A",
+                    name: item.name || "N/A",
+                    contact: item.contact || "N/A",
+                    agree_policy: item.agree_policy,
+                    whatsapp: item.whatsapp,
+                    status: item.status || "inactive",
+
+                    createdDate: item.create_date
+                        ? new Date(item.create_date).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const counterRows = await InsuranceEnquiry.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' THEN 1 ELSE 0 END)`),
+                        "customer_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'VENDOR' THEN 1 ELSE 0 END)`),
+                        "vendor_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 1 THEN 1 ELSE 0 END)`),
+                        "web_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 0 THEN 1 ELSE 0 END)`),
+                        "app_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN whatsapp = 1 THEN 1 ELSE 0 END)`),
+                        "whatsapp_count"
+                    ]
+                ],
+                raw: true
+            });
+
+            const counters = {
+                total: Number(counterRows?.[0]?.total || 0),
+                customer_posted: Number(counterRows?.[0]?.customer_posted || 0),
+                vendor_posted: Number(counterRows?.[0]?.vendor_posted || 0),
+                web_posted: Number(counterRows?.[0]?.web_posted || 0),
+                app_posted: Number(counterRows?.[0]?.app_posted || 0),
+                whatsapp_count: Number(counterRows?.[0]?.whatsapp_count || 0)
+            };
+
+            return responseData_("Fetched insurance enquiries", {
+                insuranceEnquiries: formattedEnquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    who_posted,
+                    posted_from,
+                    status,
+                    whatsapp,
+                    agree_policy,
+                    date_from,
+                    date_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("Error fetching insurance enquiries:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getAllHolidayPackageEnquiries: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                who_posted = "",
+                posted_from = "",
+                status = "",
+                date_from = "",
+                date_to = "",
+                departure_from = "",
+                departure_to = ""
+            } = req.query;
+
+            const where = { flag: 0 };
+
+            if (who_posted) where.who_posted = who_posted;
+            if (status) where.status = status;
+
+            if (posted_from === "WEB") {
+                where.from_web = true;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (posted_from === "APP") {
+                where.from_web = false;
+                where.who_posted = "CUSTOMER";
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (departure_from || departure_to) {
+                where.departure_date = {};
+
+                if (departure_from) {
+                    where.departure_date[Sequelize.Op.gte] = departure_from;
+                }
+
+                if (departure_to) {
+                    where.departure_date[Sequelize.Op.lte] = departure_to;
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { customer_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vendor_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { from_city: { [Sequelize.Op.like]: `%${search}%` } },
+                    { to_city: { [Sequelize.Op.like]: `%${search}%` } },
+                    { room_type: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await HolidayPackageEnquiry.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "customer_token",
+                    "vendor_token",
+                    "who_posted",
+                    "from_web",
+                    "from_city",
+                    "to_city",
+                    "departure_date",
+                    "adults",
+                    "children",
+                    "room_type",
+                    "status",
+                    "create_date",
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HolidayPackageEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT TRIM(CONCAT(COALESCE(v.first_name, ''), ' ', COALESCE(v.last_name, '')))
+                                FROM tbl_vendor v
+                                WHERE v.token = HolidayPackageEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HolidayPackageEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) != ''
+                                        THEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')))
+                                        ELSE c.contact
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = HolidayPackageEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_name"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HolidayPackageEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.contact
+                                FROM tbl_vendor v
+                                WHERE v.token = HolidayPackageEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HolidayPackageEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.contact
+                                FROM tbl_customer c
+                                WHERE c.token = HolidayPackageEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_contact"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HolidayPackageEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT v.email
+                                FROM tbl_vendor v
+                                WHERE v.token = HolidayPackageEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HolidayPackageEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT c.email
+                                FROM tbl_customer c
+                                WHERE c.token = HolidayPackageEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE NULL
+                        END
+                    `),
+                        "posted_by_email"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        CASE 
+                            WHEN HolidayPackageEnquiry.who_posted = 'VENDOR' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN v.profile_image IS NOT NULL AND v.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', v.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_vendor v
+                                WHERE v.token = HolidayPackageEnquiry.vendor_token
+                                LIMIT 1
+                            )
+                            WHEN HolidayPackageEnquiry.who_posted = 'CUSTOMER' THEN (
+                                SELECT 
+                                    CASE 
+                                        WHEN c.profile_image IS NOT NULL AND c.profile_image != '' 
+                                        THEN CONCAT('${admin_url}/', c.profile_image)
+                                        ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                    END
+                                FROM tbl_customer c
+                                WHERE c.token = HolidayPackageEnquiry.customer_token
+                                LIMIT 1
+                            )
+                            ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                        END
+                    `),
+                        "posted_by_profile_image"
+                    ]
+                ],
+                order: [["create_date", "DESC"]],
+                limit,
+                offset
+            });
+
+            const formattedEnquiries = rows.map(enquiry => {
+                const item = enquiry.get({ plain: true });
+
+                return {
+                    id: item.id,
+                    token: item.token,
+                    customer_token: item.customer_token,
+                    vendor_token: item.vendor_token,
+                    who_posted: item.who_posted,
+                    from_web: item.from_web,
+
+                    posted_by: {
+                        type: item.who_posted || "N/A",
+                        name: item.posted_by_name || item.posted_by_contact || "N/A",
+                        contact: item.posted_by_contact || "N/A",
+                        email: item.posted_by_email || "N/A",
+                        profileImage: item.posted_by_profile_image
+                    },
+
+                    posted_from: item.who_posted === "CUSTOMER"
+                        ? item.from_web
+                            ? "Web"
+                            : "App"
+                        : "N/A",
+
+                    from_city: item.from_city || "N/A",
+                    to_city: item.to_city || "N/A",
+
+                    departureDate: item.departure_date
+                        ? new Date(item.departure_date).toLocaleDateString("en-IN")
+                        : "N/A",
+
+                    adults: item.adults || 0,
+                    children: item.children || 0,
+                    room_type: item.room_type || "N/A",
+                    status: item.status || "inactive",
+
+                    createdDate: item.create_date
+                        ? new Date(item.create_date).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const counterRows = await HolidayPackageEnquiry.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' THEN 1 ELSE 0 END)`),
+                        "customer_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'VENDOR' THEN 1 ELSE 0 END)`),
+                        "vendor_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 1 THEN 1 ELSE 0 END)`),
+                        "web_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN who_posted = 'CUSTOMER' AND from_web = 0 THEN 1 ELSE 0 END)`),
+                        "app_posted"
+                    ]
+                ],
+                raw: true
+            });
+
+            const counters = {
+                total: Number(counterRows?.[0]?.total || 0),
+                customer_posted: Number(counterRows?.[0]?.customer_posted || 0),
+                vendor_posted: Number(counterRows?.[0]?.vendor_posted || 0),
+                web_posted: Number(counterRows?.[0]?.web_posted || 0),
+                app_posted: Number(counterRows?.[0]?.app_posted || 0)
+            };
+
+            return responseData_("Fetched holiday package enquiries", {
+                holidayPackageEnquiries: formattedEnquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    who_posted,
+                    posted_from,
+                    status,
+                    date_from,
+                    date_to,
+                    departure_from,
+                    departure_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("Error fetching holiday package enquiries:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getAllCabEnquiries: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                posted_from = "",
+                trip_type = "",
+                status = "",
+                date_from = "",
+                date_to = "",
+                departure_from = "",
+                departure_to = ""
+            } = req.query;
+
+            const where = {
+                flag: 0
+            };
+
+            if (trip_type) where.trip_type = trip_type;
+            if (status) where.status = status;
+
+            if (posted_from === "WEB") {
+                where.from_web = true;
+            }
+
+            if (posted_from === "APP") {
+                where.from_web = false;
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (departure_from || departure_to) {
+                where.departure_date = {};
+
+                if (departure_from) {
+                    where.departure_date[Sequelize.Op.gte] = new Date(`${departure_from} 00:00:00`);
+                }
+
+                if (departure_to) {
+                    where.departure_date[Sequelize.Op.lte] = new Date(`${departure_to} 23:59:59`);
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { customer_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vehicle_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { from_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { to_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { car_type: { [Sequelize.Op.like]: `%${search}%` } },
+                    { contact: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await CabEnquiry.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "vehicle_token",
+                    "customer_token",
+                    "who_posted",
+                    "from_web",
+                    "trip_type",
+                    "from_location",
+                    "to_location",
+                    "departure_date",
+                    "return_date",
+                    "car_type",
+                    "contact",
+                    "status",
+                    "create_date",
+
+                    [
+                        sequelize.literal(`
+                        (
+                            SELECT 
+                                CASE 
+                                    WHEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) != ''
+                                    THEN TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, '')))
+                                    ELSE c.contact
+                                END
+                            FROM tbl_customer c
+                            WHERE c.token = CabEnquiry.customer_token
+                            LIMIT 1
+                        )
+                    `),
+                        "customer_name"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        (
+                            SELECT c.contact
+                            FROM tbl_customer c
+                            WHERE c.token = CabEnquiry.customer_token
+                            LIMIT 1
+                        )
+                    `),
+                        "customer_contact"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        (
+                            SELECT c.email
+                            FROM tbl_customer c
+                            WHERE c.token = CabEnquiry.customer_token
+                            LIMIT 1
+                        )
+                    `),
+                        "customer_email"
+                    ],
+
+                    [
+                        sequelize.literal(`
+                        (
+                            SELECT 
+                                CASE 
+                                    WHEN c.profile_image IS NOT NULL AND c.profile_image != '' 
+                                    THEN CONCAT('${admin_url}/', c.profile_image)
+                                    ELSE CONCAT('${admin_url}/assets/img/profiles/avatar-02.jpg')
+                                END
+                            FROM tbl_customer c
+                            WHERE c.token = CabEnquiry.customer_token
+                            LIMIT 1
+                        )
+                    `),
+                        "customer_profile_image"
+                    ]
+                ],
+                order: [["create_date", "DESC"]],
+                limit,
+                offset
+            });
+
+            const cabEnquiries = rows.map(enquiry => {
+                const item = enquiry.get({ plain: true });
+
+                return {
+                    id: item.id,
+                    token: item.token,
+                    vehicle_token: item.vehicle_token,
+                    customer_token: item.customer_token,
+                    who_posted: item.who_posted || "CUSTOMER",
+                    from_web: item.from_web,
+
+                    customer: {
+                        name: item.customer_name || item.customer_contact || "N/A",
+                        contact: item.customer_contact || item.contact || "N/A",
+                        email: item.customer_email || "N/A",
+                        profileImage: item.customer_profile_image
+                    },
+
+                    posted_from: item.from_web ? "Web" : "App",
+
+                    trip_type: item.trip_type || "N/A",
+                    from_location: item.from_location || "N/A",
+                    to_location: item.to_location || "N/A",
+
+                    departureDate: item.departure_date
+                        ? new Date(item.departure_date).toLocaleString("en-IN")
+                        : "N/A",
+
+                    returnDate: item.return_date
+                        ? new Date(item.return_date).toLocaleString("en-IN")
+                        : "N/A",
+
+                    car_type: item.car_type || "N/A",
+                    contact: item.contact || "N/A",
+                    status: item.status || "inactive",
+
+                    createdDate: item.create_date
+                        ? new Date(item.create_date).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const counterRows = await CabEnquiry.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN from_web = 1 THEN 1 ELSE 0 END)`),
+                        "web_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN from_web = 0 THEN 1 ELSE 0 END)`),
+                        "app_posted"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN trip_type = 'oneway' THEN 1 ELSE 0 END)`),
+                        "oneway_count"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN trip_type = 'round_trip' THEN 1 ELSE 0 END)`),
+                        "round_trip_count"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN trip_type = 'local' THEN 1 ELSE 0 END)`),
+                        "local_count"
+                    ]
+                ],
+                raw: true
+            });
+
+            const counters = {
+                total: Number(counterRows?.[0]?.total || 0),
+                customer_posted: Number(counterRows?.[0]?.total || 0),
+                web_posted: Number(counterRows?.[0]?.web_posted || 0),
+                app_posted: Number(counterRows?.[0]?.app_posted || 0),
+                oneway_count: Number(counterRows?.[0]?.oneway_count || 0),
+                round_trip_count: Number(counterRows?.[0]?.round_trip_count || 0),
+                local_count: Number(counterRows?.[0]?.local_count || 0)
+            };
+
+            return responseData_("Fetched cab enquiries", {
+                cabEnquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    posted_from,
+                    trip_type,
+                    status,
+                    date_from,
+                    date_to,
+                    departure_from,
+                    departure_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("Error fetching cab enquiries:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
         }
     },
 
@@ -4696,6 +6271,1792 @@ const adminController = {
             req.setFlash('Error toggling vehicle status', 'error');
             return res.redirect('/manage-vehicles');
         }
+    },
+
+    getAllCustomers: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                status = "",
+                date_from = "",
+                date_to = ""
+            } = req.query;
+
+            const where = { flag: 0 };
+
+            if (status) {
+                where.status = status;
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { first_name: { [Sequelize.Op.regexp]: search } },
+                    { last_name: { [Sequelize.Op.regexp]: search } },
+                    { email: { [Sequelize.Op.regexp]: search } },
+                    { contact: { [Sequelize.Op.regexp]: search } },
+                    { token: { [Sequelize.Op.regexp]: search } },
+                ];
+            }
+
+            const { count, rows } = await Customer.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "contact",
+                    "status",
+                    "create_date"
+                ],
+                order: [["create_date", "DESC"]],
+                limit,
+                offset,
+                raw: true
+            });
+
+            const customers = rows.map(c => ({
+                id: c.id,
+                token: c.token,
+                name: `${c.first_name || ""} ${c.last_name || ""}`.trim() || "N/A",
+                email: c.email || "N/A",
+                contact: c.contact || "N/A",
+                status: c.status || "inactive",
+                joined: c.create_date
+                    ? new Date(c.create_date).toLocaleDateString("en-IN")
+                    : "N/A"
+            }));
+
+            const counterRows = await Customer.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END)`),
+                        "active"
+                    ],
+                    [
+                        sequelize.literal(`SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END)`),
+                        "inactive"
+                    ]
+                ],
+                raw: true
+            });
+
+            return responseData_("Customers fetched", {
+                customers,
+                counters: {
+                    total: Number(counterRows?.[0]?.total || 0),
+                    active: Number(counterRows?.[0]?.active || 0),
+                    inactive: Number(counterRows?.[0]?.inactive || 0)
+                },
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    status,
+                    date_from,
+                    date_to,
+                    limit
+                }
+            }, true);
+
+        } catch (err) {
+            console.error("getAllCustomers error:", err);
+            return responseData_("Error fetching customers", { error: err.message }, false);
+        }
+    },
+
+    getCustomerDetails: async (token) => {
+        try {
+            const customer = await Customer.findOne({
+                where: {
+                    token,
+                    flag: 0
+                },
+                attributes: [
+                    "id",
+                    "token",
+                    "first_name",
+                    "last_name",
+                    "contact",
+                    "alt_contact",
+                    "email",
+                    "role",
+                    "location",
+                    "address",
+                    "pincode",
+                    "profile_image",
+                    "country",
+                    "city",
+                    "state",
+                    "preferred_state",
+                    "preferred_cities",
+                    "feedback",
+                    "car_alert",
+                    "location_alert",
+                    "status",
+                    "ref_code",
+                    "referer_code_used",
+                    "about_me",
+                    "booking_notification_enabled",
+                    "notification_trip_type",
+                    "notification_vehicle_type",
+                    "notification_city",
+                    "notification_state",
+                    "customer_notification_enabled",
+                    "create_date",
+                    "update_date"
+                ],
+                raw: true
+            });
+
+            if (!customer) {
+                return responseData_("Customer not found", {}, false);
+            }
+
+            const safeJson = (value) => {
+                if (!value) return "N/A";
+                if (Array.isArray(value)) return value.join(", ");
+                if (typeof value === "object") return JSON.stringify(value);
+                return value;
+            };
+
+            const data = {
+                id: customer.id,
+                token: customer.token,
+                full_name: `${customer.first_name || ""} ${customer.last_name || ""}`.trim() || "N/A",
+                first_name: customer.first_name || "N/A",
+                last_name: customer.last_name || "N/A",
+                contact: customer.contact || "N/A",
+                alt_contact: customer.alt_contact || "N/A",
+                email: customer.email || "N/A",
+                role: customer.role || "CUSTOMER",
+
+                profile_image: customer.profile_image
+                    ? `${admin_url}/${customer.profile_image}`
+                    : `${admin_url}/assets/img/profiles/avatar-02.jpg`,
+
+                location: customer.location || "N/A",
+                address: customer.address || "N/A",
+                pincode: customer.pincode || "N/A",
+                country: customer.country || "N/A",
+                state: customer.state || "N/A",
+                city: customer.city || "N/A",
+
+                preferred_state: customer.preferred_state || "N/A",
+                preferred_cities: safeJson(customer.preferred_cities),
+
+                feedback: customer.feedback || "N/A",
+                car_alert: customer.car_alert || "N/A",
+                location_alert: customer.location_alert || "N/A",
+
+                status: customer.status || "inactive",
+                ref_code: customer.ref_code || "N/A",
+                referer_code_used: customer.referer_code_used || "N/A",
+                about_me: customer.about_me || "N/A",
+
+                booking_notification_enabled: customer.booking_notification_enabled,
+                customer_notification_enabled: customer.customer_notification_enabled,
+                notification_trip_type: customer.notification_trip_type || "N/A",
+                notification_vehicle_type: customer.notification_vehicle_type || "N/A",
+                notification_city: customer.notification_city || "N/A",
+                notification_state: customer.notification_state || "N/A",
+
+                joined: customer.create_date
+                    ? new Date(customer.create_date).toLocaleString("en-IN")
+                    : "N/A",
+
+                updated: customer.update_date
+                    ? new Date(customer.update_date).toLocaleString("en-IN")
+                    : "N/A"
+            };
+
+            return responseData_("Customer fetched", data, true);
+
+        } catch (error) {
+            console.error("getCustomerDetails error:", error);
+            return responseData_("Error fetching customer", { error: error.message }, false);
+        }
+    },
+
+    getAllBidBookings: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                status = "",
+                payment_status = "",
+                trip_type = "",
+                date_from = "",
+                date_to = "",
+                pickup_from = "",
+                pickup_to = ""
+            } = req.query;
+
+            const where = {
+                flag: 0,
+                accept_type: "BID"
+            };
+
+            if (status) where.status = status;
+            if (payment_status) where.payment_status = payment_status;
+            if (trip_type) where.trip_type = trip_type;
+
+            if (date_from || date_to) {
+                where.created_at = {};
+                if (date_from) where.created_at[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                if (date_to) where.created_at[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+            }
+
+            if (pickup_from || pickup_to) {
+                where.pickup_datetime = {};
+                if (pickup_from) where.pickup_datetime[Sequelize.Op.gte] = new Date(`${pickup_from} 00:00:00`);
+                if (pickup_to) where.pickup_datetime[Sequelize.Op.lte] = new Date(`${pickup_to} 23:59:59`);
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vendor_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { assigned_vendor_token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vehicle_type: { [Sequelize.Op.like]: `%${search}%` } },
+                    { vehicle_name: { [Sequelize.Op.like]: `%${search}%` } },
+                    { pickup_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { drop_location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { city: { [Sequelize.Op.like]: `%${search}%` } },
+                    { state: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await Booking.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "vendor_token",
+                    "assigned_vendor_token",
+                    "trip_type",
+                    "vehicle_type",
+                    "vehicle_name",
+                    "pickup_datetime",
+                    "return_datetime",
+                    "pickup_location",
+                    "drop_location",
+                    "city",
+                    "state",
+                    "accept_type",
+                    "booking_amount",
+                    "commission",
+                    "total_amount",
+                    "is_negotiable",
+                    "visibility",
+                    "secure_booking",
+                    "payment_status",
+                    "status",
+                    "created_at",
+
+                    [
+                        sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM tbl_booking_requests br
+                        WHERE br.booking_token = booking.token
+                        AND br.flag = 0
+                    )`),
+                        "total_bids"
+                    ],
+
+                    [
+                        sequelize.literal(`(
+                        SELECT MIN(br.bid_amount)
+                        FROM tbl_booking_requests br
+                        WHERE br.booking_token = booking.token
+                        AND br.flag = 0
+                        AND br.bid_amount IS NOT NULL
+                    )`),
+                        "lowest_bid"
+                    ],
+
+                    [
+                        sequelize.literal(`(
+                        SELECT MAX(br.bid_amount)
+                        FROM tbl_booking_requests br
+                        WHERE br.booking_token = booking.token
+                        AND br.flag = 0
+                        AND br.bid_amount IS NOT NULL
+                    )`),
+                        "highest_bid"
+                    ],
+
+                    [
+                        sequelize.literal(`(
+                        SELECT COUNT(*)
+                        FROM tbl_booking_requests br
+                        WHERE br.booking_token = booking.token
+                        AND br.flag = 0
+                        AND br.status = 'ACCEPTED'
+                    )`),
+                        "accepted_bids"
+                    ]
+                ],
+                order: [["created_at", "DESC"]],
+                limit,
+                offset,
+                raw: true
+            });
+
+            const formatDate = (value) => {
+                return value ? new Date(value).toLocaleString("en-IN") : "N/A";
+            };
+
+            const formatMoney = (value) => {
+                const num = Number(value || 0);
+                return `₹${num.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            };
+
+            const bidBookings = rows.map(row => ({
+                id: row.id,
+                token: row.token,
+                vendor_token: row.vendor_token || "N/A",
+                assigned_vendor_token: row.assigned_vendor_token || "N/A",
+                trip_type: row.trip_type || "N/A",
+                vehicle_type: row.vehicle_type || "N/A",
+                vehicle_name: row.vehicle_name || "N/A",
+                pickup_datetime: formatDate(row.pickup_datetime),
+                return_datetime: formatDate(row.return_datetime),
+                pickup_location: row.pickup_location || "N/A",
+                drop_location: row.drop_location || "N/A",
+                city: row.city || "N/A",
+                state: row.state || "N/A",
+                booking_amount: formatMoney(row.booking_amount),
+                commission: formatMoney(row.commission),
+                total_amount: formatMoney(row.total_amount),
+                raw_total_amount: Number(row.total_amount || 0),
+                is_negotiable: row.is_negotiable,
+                visibility: row.visibility || "N/A",
+                secure_booking: row.secure_booking,
+                payment_status: row.payment_status || "N/A",
+                status: row.status || "OPEN",
+                total_bids: Number(row.total_bids || 0),
+                lowest_bid: row.lowest_bid ? formatMoney(row.lowest_bid) : "N/A",
+                highest_bid: row.highest_bid ? formatMoney(row.highest_bid) : "N/A",
+                accepted_bids: Number(row.accepted_bids || 0),
+                created_at: formatDate(row.created_at)
+            }));
+
+            const counterRows = await Booking.findAll({
+                where: {
+                    flag: 0,
+                    accept_type: "BID"
+                },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total_bid_bookings"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END)`), "open_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END)`), "accepted_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END)`), "in_progress_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END)`), "completed_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END)`), "cancelled_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'EXPIRED' THEN 1 ELSE 0 END)`), "expired_count"],
+                    [sequelize.literal(`SUM(CASE WHEN payment_status = 'PAID' THEN 1 ELSE 0 END)`), "paid_count"],
+                    [sequelize.literal(`SUM(CASE WHEN payment_status = 'UNPAID' THEN 1 ELSE 0 END)`), "unpaid_count"],
+                    [sequelize.literal(`COALESCE(SUM(total_amount), 0)`), "total_value"]
+                ],
+                raw: true
+            });
+
+            const bidRequestCounterRows = await BookingRequest.findAll({
+                where: { flag: 0 },
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total_bids"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'OPEN' THEN 1 ELSE 0 END)`), "open_bids"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'ACCEPTED' THEN 1 ELSE 0 END)`), "accepted_bids"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END)`), "rejected_bids"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'EXPIRED' THEN 1 ELSE 0 END)`), "expired_bids"]
+                ],
+                raw: true
+            });
+
+            const c = counterRows?.[0] || {};
+            const brc = bidRequestCounterRows?.[0] || {};
+
+            const counters = {
+                total_bid_bookings: Number(c.total_bid_bookings || 0),
+                total_bids: Number(brc.total_bids || 0),
+                open_count: Number(c.open_count || 0),
+                accepted_count: Number(c.accepted_count || 0),
+                in_progress_count: Number(c.in_progress_count || 0),
+                completed_count: Number(c.completed_count || 0),
+                cancelled_count: Number(c.cancelled_count || 0),
+                expired_count: Number(c.expired_count || 0),
+                paid_count: Number(c.paid_count || 0),
+                unpaid_count: Number(c.unpaid_count || 0),
+                open_bids: Number(brc.open_bids || 0),
+                accepted_bids: Number(brc.accepted_bids || 0),
+                rejected_bids: Number(brc.rejected_bids || 0),
+                expired_bids: Number(brc.expired_bids || 0),
+                total_value: formatMoney(c.total_value || 0)
+            };
+
+            return responseData_("Fetched bid bookings", {
+                bidBookings,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    status,
+                    payment_status,
+                    trip_type,
+                    date_from,
+                    date_to,
+                    pickup_from,
+                    pickup_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("getAllBidBookings error:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getBidBookingDetails: async (bookingToken) => {
+        try {
+            const Booking = db.booking;
+            const BookingRequest = db.bookingRequest;
+            const BookingPayment = db.bookingPayment;
+            const BookingRefund = db.bookingRefund;
+            const BookingCancel = db.booking_cancel;
+            const BookingAdvanceRequest = db.bookingAdvanceRequest;
+            const BookingAdvanceRequestHistory = db.bookingAdvanceRequestHistory;
+            const Vendor = db.vendor || db.Vendor || db.tbl_vendor;
+
+            const booking = await Booking.findOne({
+                where: {
+                    token: bookingToken,
+                    flag: 0,
+                    accept_type: "BID"
+                },
+                raw: true
+            });
+
+            if (!booking) {
+                return responseData_("BID booking not found", {}, false);
+            }
+
+            const [
+                bookingRequests,
+                payments,
+                refunds,
+                cancelInfo,
+                advanceRequests,
+                advanceHistory
+            ] = await Promise.all([
+                BookingRequest.findAll({
+                    where: {
+                        booking_token: bookingToken,
+                        flag: 0
+                    },
+                    order: [["created_at", "DESC"]],
+                    raw: true
+                }),
+
+                BookingPayment.findAll({
+                    where: {
+                        booking_token: bookingToken,
+                        flag: false
+                    },
+                    order: [["created_at", "DESC"]],
+                    raw: true
+                }),
+
+                BookingRefund.findAll({
+                    where: {
+                        booking_token: bookingToken,
+                        flag: false
+                    },
+                    order: [["created_at", "DESC"]],
+                    raw: true
+                }),
+
+                BookingCancel.findOne({
+                    where: {
+                        booking_token: bookingToken
+                    },
+                    raw: true
+                }),
+
+                BookingAdvanceRequest.findAll({
+                    where: {
+                        booking_token: bookingToken,
+                        flag: 0
+                    },
+                    order: [["created_at", "DESC"]],
+                    raw: true
+                }),
+
+                BookingAdvanceRequestHistory.findAll({
+                    where: {
+                        booking_token: bookingToken,
+                        flag: 0
+                    },
+                    order: [["created_at", "DESC"]],
+                    raw: true
+                })
+            ]);
+
+            const vendorTokens = [
+                booking.vendor_token,
+                booking.assigned_vendor_token,
+                booking.completion_requested_by,
+                booking.completion_confirmed_by,
+
+                ...bookingRequests.flatMap(item => [
+                    item.requested_by_vendor_token,
+                    item.owner_vendor_token
+                ]),
+
+                ...payments.flatMap(item => [
+                    item.payer_token,
+                    item.payee_vendor_token
+                ]),
+
+                ...refunds.flatMap(item => [
+                    item.refunded_by_token,
+                    item.refund_to_token
+                ]),
+
+                ...(cancelInfo ? [
+                    cancelInfo.cancelled_by_token
+                ] : []),
+
+                ...advanceRequests.flatMap(item => [
+                    item.owner_vendor_token,
+                    item.bidder_vendor_token
+                ]),
+
+                ...advanceHistory.flatMap(item => [
+                    item.actor_token
+                ])
+            ].filter(Boolean);
+
+            const uniqueVendorTokens = [...new Set(vendorTokens)];
+
+            const vendors = uniqueVendorTokens.length
+                ? await Vendor.findAll({
+                    where: {
+                        token: uniqueVendorTokens
+                    },
+                    attributes: [
+                        "token",
+                        "first_name",
+                        "last_name",
+                        "contact",
+                        "role"
+                    ],
+                    raw: true
+                })
+                : [];
+
+            const vendorMap = {};
+            vendors.forEach(v => {
+                const fullName = `${v.first_name || ""} ${v.last_name || ""}`.trim();
+
+                vendorMap[v.token] = {
+                    token: v.token,
+                    first_name: v.first_name || "N/A",
+                    last_name: v.last_name || "N/A",
+                    full_name: fullName || "N/A",
+                    contact: v.contact || "N/A",
+                    role: v.role || "VENDOR"
+                };
+            });
+
+            const userInfo = (token, fallbackRole = "VENDOR") => {
+                if (!token) {
+                    return {
+                        token: "N/A",
+                        first_name: "N/A",
+                        last_name: "N/A",
+                        full_name: "N/A",
+                        contact: "N/A",
+                        role: fallbackRole
+                    };
+                }
+
+                return vendorMap[token] || {
+                    token,
+                    first_name: "N/A",
+                    last_name: "N/A",
+                    full_name: "N/A",
+                    contact: "N/A",
+                    role: fallbackRole
+                };
+            };
+
+            const money = (value) => {
+                const num = Number(value || 0);
+                return `₹${num.toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+            };
+
+            const date = (value) => {
+                return value ? new Date(value).toLocaleString("en-IN") : "N/A";
+            };
+
+            const jsonText = (value) => {
+                if (!value) return "N/A";
+                if (typeof value === "string") return value;
+                return JSON.stringify(value, null, 2);
+            };
+
+            const bidAmounts = bookingRequests
+                .map(b => Number(b.bid_amount || 0))
+                .filter(v => v > 0);
+
+            const summary = {
+                total_bids: bookingRequests.length,
+                open_bids: bookingRequests.filter(b => b.status === "OPEN").length,
+                accepted_bids: bookingRequests.filter(b => b.status === "ACCEPTED").length,
+                rejected_bids: bookingRequests.filter(b => b.status === "REJECTED").length,
+                expired_bids: bookingRequests.filter(b => b.status === "EXPIRED").length,
+                lowest_bid: bidAmounts.length ? money(Math.min(...bidAmounts)) : "N/A",
+                highest_bid: bidAmounts.length ? money(Math.max(...bidAmounts)) : "N/A",
+                total_paid: money(
+                    payments
+                        .filter(p => p.order_status === "PAID")
+                        .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+                ),
+                total_refunded: money(
+                    refunds
+                        .filter(r => r.refund_status === "PROCESSED")
+                        .reduce((sum, r) => sum + Number(r.refund_amount || 0), 0)
+                )
+            };
+
+            return responseData_("BID booking details fetched", {
+                booking: {
+                    ...booking,
+
+                    owner_vendor: userInfo(booking.vendor_token),
+                    assigned_vendor: userInfo(booking.assigned_vendor_token),
+                    completion_requested_by_user: userInfo(booking.completion_requested_by),
+                    completion_confirmed_by_user: userInfo(booking.completion_confirmed_by),
+
+                    booking_amount_display: money(booking.booking_amount),
+                    commission_display: money(booking.commission),
+                    total_amount_display: money(booking.total_amount),
+
+                    pickup_datetime_display: date(booking.pickup_datetime),
+                    return_datetime_display: date(booking.return_datetime),
+                    completion_requested_at_display: date(booking.completion_requested_at),
+                    completion_confirmed_at_display: date(booking.completion_confirmed_at),
+                    completion_rejected_at_display: date(booking.completion_rejected_at),
+                    auto_complete_at_display: date(booking.auto_complete_at),
+                    completed_at_display: date(booking.completed_at),
+                    created_at_display: date(booking.created_at),
+                    updated_at_display: date(booking.updated_at),
+
+                    extra_requirements_display: jsonText(booking.extra_requirements),
+                    completion_proof_display: jsonText(booking.completion_proof)
+                },
+
+                bookingRequests: bookingRequests.map(r => ({
+                    ...r,
+
+                    requested_by_vendor: userInfo(r.requested_by_vendor_token),
+                    owner_vendor: userInfo(r.owner_vendor_token),
+
+                    bid_amount_display: r.bid_amount ? money(r.bid_amount) : "N/A",
+                    bid_valid_till_display: date(r.bid_valid_till),
+                    responded_at_display: date(r.responded_at),
+                    created_at_display: date(r.created_at),
+                    updated_at_display: date(r.updated_at)
+                })),
+
+                payments: payments.map(p => ({
+                    ...p,
+
+                    payer: userInfo(p.payer_token),
+                    payee_vendor: userInfo(p.payee_vendor_token),
+
+                    amount_display: money(p.amount),
+                    paid_at_display: date(p.paid_at),
+                    refunded_at_display: date(p.refunded_at),
+                    created_at_display: date(p.created_at),
+                    updated_at_display: date(p.updated_at),
+                    meta_display: jsonText(p.meta)
+                })),
+
+                refunds: refunds.map(r => ({
+                    ...r,
+
+                    refunded_by: userInfo(r.refunded_by_token),
+                    refund_to: userInfo(r.refund_to_token),
+
+                    refund_amount_display: money(r.refund_amount),
+                    created_at_display: date(r.created_at),
+                    updated_at_display: date(r.updated_at),
+                    meta_display: jsonText(r.meta)
+                })),
+
+                cancelInfo: cancelInfo ? {
+                    ...cancelInfo,
+                    cancelled_by: userInfo(cancelInfo.cancelled_by_token, cancelInfo.cancelled_by_role || "VENDOR")
+                } : null,
+
+                advanceRequests: advanceRequests.map(a => ({
+                    ...a,
+
+                    owner_vendor: userInfo(a.owner_vendor_token),
+                    bidder_vendor: userInfo(a.bidder_vendor_token),
+
+                    requested_advance_amount_display: money(a.requested_advance_amount),
+                    responded_advance_amount_display: a.responded_advance_amount ? money(a.responded_advance_amount) : "N/A",
+                    final_advance_amount_display: a.final_advance_amount ? money(a.final_advance_amount) : "N/A",
+
+                    requested_at_display: date(a.requested_at),
+                    responded_at_display: date(a.responded_at),
+                    accepted_at_display: date(a.accepted_at),
+                    expires_at_display: date(a.expires_at),
+                    created_at_display: date(a.created_at),
+                    updated_at_display: date(a.updated_at)
+                })),
+
+                advanceHistory: advanceHistory.map(h => ({
+                    ...h,
+
+                    actor: userInfo(h.actor_token, h.actor_role || "VENDOR"),
+
+                    previous_amount_display: h.previous_amount ? money(h.previous_amount) : "N/A",
+                    amount_display: h.amount ? money(h.amount) : "N/A",
+                    created_at_display: date(h.created_at),
+                    meta_display: jsonText(h.meta)
+                })),
+
+                summary
+            }, true);
+
+        } catch (error) {
+            console.error("getBidBookingDetails error:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    getAllCustomerEnquiries: async (req, res) => {
+        try {
+            const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+            const limit = Math.max(parseInt(req.query.limit || "10", 10), 1);
+            const offset = (page - 1) * limit;
+
+            const {
+                search = "",
+                requirement_type = "",
+                posted = "",
+                status = "",
+                source = "",
+                flag = "",
+                adults = "",
+                children = "",
+                sort_by = "create_date",
+                sort_order = "DESC",
+                enquiry_date_from = "",
+                enquiry_date_to = "",
+                date_from = "",
+                date_to = ""
+            } = req.query;
+
+            const allowedSortColumns = [
+                "id",
+                "name",
+                "mobile",
+                "requirement_type",
+                "status",
+                "posted",
+                "enquiry_date",
+                "create_date"
+            ];
+
+            const sortColumn = allowedSortColumns.includes(sort_by)
+                ? sort_by
+                : "create_date";
+
+            const sortDirection = String(sort_order).toUpperCase() === "ASC"
+                ? "ASC"
+                : "DESC";
+
+            const where = {};
+
+            if (requirement_type) where.requirement_type = requirement_type;
+
+            if (posted !== "") {
+                where.posted = String(posted) === "true";
+            }
+
+            if (status) where.status = status;
+            if (source) where.source = source;
+
+            if (flag !== "") {
+                where.flag = Number(flag);
+            }
+
+            if (adults !== "") {
+                where.adults = Number(adults);
+            }
+
+            if (children !== "") {
+                where.children = Number(children);
+            }
+
+            if (enquiry_date_from || enquiry_date_to) {
+                where.enquiry_date = {};
+                if (enquiry_date_from) {
+                    where.enquiry_date[Sequelize.Op.gte] = enquiry_date_from;
+                }
+                if (enquiry_date_to) {
+                    where.enquiry_date[Sequelize.Op.lte] = enquiry_date_to;
+                }
+            }
+
+            if (date_from || date_to) {
+                where.create_date = {};
+                if (date_from) {
+                    where.create_date[Sequelize.Op.gte] = new Date(`${date_from} 00:00:00`);
+                }
+                if (date_to) {
+                    where.create_date[Sequelize.Op.lte] = new Date(`${date_to} 23:59:59`);
+                }
+            }
+
+            if (search) {
+                where[Sequelize.Op.or] = [
+                    { token: { [Sequelize.Op.like]: `%${search}%` } },
+                    { name: { [Sequelize.Op.like]: `%${search}%` } },
+                    { email: { [Sequelize.Op.like]: `%${search}%` } },
+                    { mobile: { [Sequelize.Op.like]: `%${search}%` } },
+                    { requirement_type: { [Sequelize.Op.like]: `%${search}%` } },
+                    { location: { [Sequelize.Op.like]: `%${search}%` } },
+                    { comments: { [Sequelize.Op.like]: `%${search}%` } },
+                    { source: { [Sequelize.Op.like]: `%${search}%` } }
+                ];
+            }
+
+            const { count, rows } = await Enquiry.findAndCountAll({
+                where,
+                attributes: [
+                    "id",
+                    "token",
+                    "name",
+                    "email",
+                    "mobile",
+                    "requirement_type",
+                    "enquiry_date",
+                    "enquiry_time",
+                    "location",
+                    "adults",
+                    "children",
+                    "comments",
+                    "status",
+                    "flag",
+                    "source",
+                    "posted",
+                    "ip_address",
+                    "user_agent",
+                    "create_date",
+                    "update_date"
+                ],
+                order: [[sortColumn, sortDirection]],
+                limit,
+                offset,
+                raw: true
+            });
+
+            const formatDate = (value) => {
+                return value ? new Date(value).toLocaleString("en-IN") : "N/A";
+            };
+
+            const formatOnlyDate = (value) => {
+                return value ? new Date(value).toLocaleDateString("en-IN") : "N/A";
+            };
+
+            const enquiries = rows.map(row => ({
+                id: row.id,
+                token: row.token || "N/A",
+                name: row.name || "N/A",
+                email: row.email || "N/A",
+                mobile: row.mobile || "N/A",
+                requirement_type: row.requirement_type || "other",
+                enquiry_date: row.enquiry_date ? formatOnlyDate(row.enquiry_date) : "N/A",
+                enquiry_time: row.enquiry_time || "",
+                location: row.location || "N/A",
+                adults: Number(row.adults || 0),
+                children: Number(row.children || 0),
+                comments: row.comments || "",
+                status: row.status || "new",
+                flag: Number(row.flag || 0),
+                source: row.source || "N/A",
+                posted: row.posted === true || row.posted === 1,
+                ip_address: row.ip_address || "N/A",
+                user_agent: row.user_agent || "N/A",
+                create_date: formatDate(row.create_date),
+                createdDate: formatDate(row.create_date),
+                update_date: formatDate(row.update_date)
+            }));
+
+            const counterRows = await Enquiry.findAll({
+                attributes: [
+                    [sequelize.fn("COUNT", sequelize.col("id")), "total"],
+                    [sequelize.literal(`SUM(CASE WHEN posted = true THEN 1 ELSE 0 END)`), "posted_count"],
+                    [sequelize.literal(`SUM(CASE WHEN posted = false OR posted IS NULL THEN 1 ELSE 0 END)`), "not_posted_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END)`), "new_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'contacted' THEN 1 ELSE 0 END)`), "contacted_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END)`), "in_progress_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'converted' THEN 1 ELSE 0 END)`), "converted_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'closed' THEN 1 ELSE 0 END)`), "closed_count"],
+                    [sequelize.literal(`SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END)`), "cancelled_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'hotel' THEN 1 ELSE 0 END)`), "hotel_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'flight' THEN 1 ELSE 0 END)`), "flight_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'insurance' THEN 1 ELSE 0 END)`), "insurance_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'cab' THEN 1 ELSE 0 END)`), "cab_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'tour' THEN 1 ELSE 0 END)`), "tour_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'package' THEN 1 ELSE 0 END)`), "package_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'event' THEN 1 ELSE 0 END)`), "event_count"],
+                    [sequelize.literal(`SUM(CASE WHEN requirement_type = 'other' THEN 1 ELSE 0 END)`), "other_count"]
+                ],
+                raw: true
+            });
+
+            const c = counterRows?.[0] || {};
+
+            const counters = {
+                total: Number(c.total || 0),
+                posted_count: Number(c.posted_count || 0),
+                not_posted_count: Number(c.not_posted_count || 0),
+                new_count: Number(c.new_count || 0),
+                contacted_count: Number(c.contacted_count || 0),
+                in_progress_count: Number(c.in_progress_count || 0),
+                converted_count: Number(c.converted_count || 0),
+                closed_count: Number(c.closed_count || 0),
+                cancelled_count: Number(c.cancelled_count || 0),
+                hotel_count: Number(c.hotel_count || 0),
+                flight_count: Number(c.flight_count || 0),
+                insurance_count: Number(c.insurance_count || 0),
+                cab_count: Number(c.cab_count || 0),
+                tour_count: Number(c.tour_count || 0),
+                package_count: Number(c.package_count || 0),
+                event_count: Number(c.event_count || 0),
+                other_count: Number(c.other_count || 0)
+            };
+
+            return responseData_("Fetched customer enquiries", {
+                enquiries,
+                counters,
+                pagination: {
+                    total: count,
+                    current_page: page,
+                    per_page: limit,
+                    total_pages: Math.ceil(count / limit)
+                },
+                filters: {
+                    search,
+                    requirement_type,
+                    posted,
+                    status,
+                    source,
+                    flag,
+                    adults,
+                    children,
+                    sort_by: sortColumn,
+                    sort_order: sortDirection,
+                    enquiry_date_from,
+                    enquiry_date_to,
+                    date_from,
+                    date_to,
+                    limit
+                }
+            }, true);
+
+        } catch (error) {
+            console.error("getAllCustomerEnquiries error:", error);
+            return responseData_("Internal server error", { error: error.message }, false);
+        }
+    },
+
+    uploadCustomerEnquiryToApp: async (req, res) => {
+        const transaction = await sequelize.transaction();
+
+        try {
+            const {
+                main_enquiry_token,
+                requirement_type,
+
+                customer_token,
+                vendor_token,
+                who_posted = "CUSTOMER",
+                from_web = "false",
+
+                adults = 1,
+                children = 0,
+
+                hotel_area,
+                hotel_check_in,
+                hotel_check_out,
+                hotel_room_type,
+
+                flight_trip_type,
+                flight_from_location,
+                flight_to_location,
+                flight_departure_date,
+                flight_return_date,
+                flight_class_type,
+
+                package_from_city,
+                package_to_city,
+                package_departure_date,
+                package_room_type,
+
+                insurance_car_number,
+                insurance_name,
+                insurance_contact,
+                insurance_agree_policy = "false",
+                insurance_whatsapp = "false"
+            } = req.body;
+
+            if (!main_enquiry_token) {
+                await transaction.rollback();
+                req.setFlash("Main enquiry token is required", "error");
+                return res.redirect("/enquiries");
+            }
+
+            const mainEnquiry = await Enquiry.findOne({
+                where: { token: main_enquiry_token },
+                transaction
+            });
+
+            if (!mainEnquiry) {
+                await transaction.rollback();
+                req.setFlash("Customer enquiry not found", "error");
+                return res.redirect("/enquiries");
+            }
+
+            if (mainEnquiry.posted === true || mainEnquiry.posted === 1) {
+                await transaction.rollback();
+                req.setFlash("This enquiry is already posted", "error");
+                return res.redirect("/enquiries");
+            }
+
+            const type = String(requirement_type || mainEnquiry.requirement_type || "").toLowerCase();
+
+            const customerInfo = await Customer.findOne({
+                where: { contact: mainEnquiry.mobile },
+                attributes: [
+                    'token'
+                ],
+                raw: true
+            })
+
+            if (!customerInfo) {
+                await transaction.rollback();
+                req.setFlash('Customer not found', 'error');
+                return res.redirect("/enquiries")
+            }
+
+            const commonPayload = {
+                token: randomstring(64),
+                customer_token: customerInfo.token || null,
+                vendor_token: null,
+                who_posted,
+                from_web: String(from_web) === "true",
+                adults: Number(adults || mainEnquiry.adults || 1),
+                children: Number(children || mainEnquiry.children || 0),
+                status: "active",
+                flag: 0
+            };
+
+            let createdEnquiry = null;
+
+            if (type === "hotel") {
+                createdEnquiry = await HotelEnquiry.create({
+                    ...commonPayload,
+                    area: hotel_area || mainEnquiry.location || null,
+                    check_in: hotel_check_in || mainEnquiry.enquiry_date || null,
+                    check_out: hotel_check_out || null,
+                    room_type: hotel_room_type || null
+                }, { transaction });
+            }
+
+            else if (type === "flight") {
+                createdEnquiry = await FlightEnquiry.create({
+                    ...commonPayload,
+                    trip_type: flight_trip_type || "oneway",
+                    from_location: flight_from_location || mainEnquiry.location || null,
+                    to_location: flight_to_location || null,
+                    departure_date: flight_departure_date || mainEnquiry.enquiry_date || null,
+                    return_date: flight_return_date || null,
+                    class_type: flight_class_type || null,
+                    segments: null
+                }, { transaction });
+            }
+
+            else if (type === "package" || type === "tour") {
+                createdEnquiry = await HolidayPackageEnquiry.create({
+                    ...commonPayload,
+                    from_city: package_from_city || mainEnquiry.location || null,
+                    to_city: package_to_city || null,
+                    departure_date: package_departure_date || mainEnquiry.enquiry_date || null,
+                    room_type: package_room_type || null
+                }, { transaction });
+            }
+
+            else if (type === "insurance") {
+                createdEnquiry = await InsuranceEnquiry.create({
+                    token: generatedToken,
+                    customer_token: customer_token || mainEnquiry.mobile || null,
+                    vendor_token: vendor_token || null,
+                    who_posted,
+                    from_web: String(from_web) === "true",
+                    car_number: insurance_car_number || null,
+                    name: insurance_name || mainEnquiry.name || null,
+                    contact: insurance_contact || mainEnquiry.mobile || null,
+                    agree_policy: String(insurance_agree_policy) === "true",
+                    whatsapp: String(insurance_whatsapp) === "true",
+                    status: "active",
+                    flag: 0
+                }, { transaction });
+            }
+
+            else {
+                await transaction.rollback();
+                req.setFlash(`Upload not supported for ${type || "this"} enquiry type`, "error");
+                return res.redirect("/enquiries");
+            }
+
+            await mainEnquiry.update({
+                posted: true,
+                status: "converted"
+            }, { transaction });
+
+            await transaction.commit();
+
+            req.setFlash("Enquiry uploaded to app successfully", "success");
+            return res.redirect("/enquiries");
+
+        } catch (error) {
+            await transaction.rollback();
+            console.error("uploadCustomerEnquiryToApp error:", error);
+            req.setFlash("Error while uploading enquiry to app", "error");
+            return res.redirect("/enquiries");
+        }
+    },
+
+    createPlatformFlightEnquiry: async (req, res) => {
+        try {
+            const {
+                trip_type,
+                from_location,
+                to_location,
+                departure_date,
+                return_date,
+                adults,
+                children,
+                class_type,
+                segments
+            } = req.body;
+
+            if (!trip_type) {
+                req.setFlash("error", "Trip type is required");
+                return res.redirect("/flight-enquiry");
+            }
+
+            if (trip_type !== "multi" && (!from_location || !to_location || !departure_date)) {
+                req.setFlash("error", "From, To and Departure Date are required");
+                return res.redirect("/flight-enquiry");
+            }
+
+            let parsedSegments = null;
+
+            if (trip_type === "multi") {
+                try {
+                    parsedSegments = segments ? JSON.parse(segments) : null;
+                } catch (e) {
+                    req.setFlash("error", "Invalid multi-city segments JSON");
+                    return res.redirect("/flight-enquiry");
+                }
+            }
+
+            await FlightEnquiry.create({
+                token: randomstring(64),
+
+                customer_token: null,
+                vendor_token: null,
+
+                who_posted: "PLATFORM",
+                from_web: true,
+
+                trip_type,
+                from_location: trip_type === "multi" ? null : from_location,
+                to_location: trip_type === "multi" ? null : to_location,
+                departure_date: trip_type === "multi" ? null : departure_date,
+                return_date: trip_type === "round" ? return_date || null : null,
+
+                adults: Number(adults || 1),
+                children: Number(children || 0),
+                class_type: class_type || null,
+                segments: parsedSegments,
+
+                status: "active",
+                flag: 0
+            });
+
+            req.setFlash("success", "Flight enquiry created successfully");
+            return res.redirect("/flight-enquiry");
+
+        } catch (error) {
+            console.error("createPlatformFlightEnquiry error:", error);
+            req.setFlash("error", "Something went wrong while creating flight enquiry");
+            return res.redirect("/flight-enquiry");
+        }
+    },
+
+    createPlatformHolidayEnquiry: async (req, res) => {
+        try {
+            const {
+                from_city,
+                to_city,
+                departure_date,
+                adults,
+                children,
+                room_type,
+            } = req.body;
+
+            if (!from_city || !to_city || !departure_date) {
+                req.setFlash("error", "From city, To city and Departure date required");
+                return res.redirect("/holiday-package-enquiry");
+            }
+
+            await HolidayPackageEnquiry.create({
+                token: randomstring(64),
+
+                customer_token: null,
+                vendor_token: null,
+
+                who_posted: "PLATFORM",
+                from_web: true,
+
+                from_city,
+                to_city,
+                departure_date,
+
+                adults: Number(adults || 0),
+                children: Number(children || 0),
+                room_type: room_type || null,
+
+                status: "active",
+                flag: 0,
+            });
+
+            req.setFlash("success", "Holiday enquiry created successfully");
+            return res.redirect("/holiday-package-enquiry");
+        } catch (error) {
+            console.error("createPlatformHolidayEnquiry error:", error);
+            req.setFlash("error", "Something went wrong");
+            return res.redirect("/holiday-package-enquiry");
+        }
+    },
+
+    createPlatformInsuranceEnquiry: async (req, res) => {
+        try {
+            const {
+                car_number,
+                name,
+                contact,
+                agree_policy,
+                whatsapp
+            } = req.body;
+
+            if (!name || !contact) {
+                req.setFlash("error", "Name and contact required");
+                return res.redirect("/insurance");
+            }
+
+            await InsuranceEnquiry.create({
+                token: randomstring(64),
+
+                customer_token: null,
+                vendor_token: null,
+
+                who_posted: "PLATFORM",
+                from_web: true,
+
+                car_number: car_number || null,
+                name,
+                contact,
+
+                agree_policy: agree_policy === "on" ? true : false,
+                whatsapp: whatsapp === "on" ? true : false,
+
+                status: "active",
+                flag: 0
+            });
+
+            req.setFlash("success", "Insurance enquiry created successfully");
+            return res.redirect("/insurance");
+
+        } catch (error) {
+            console.error("createPlatformInsuranceEnquiry error:", error);
+            req.setFlash("error", "Something went wrong");
+            return res.redirect("/insurance");
+        }
+    },
+
+    createPlatformHotelEnquiry: async (req, res) => {
+        try {
+            const {
+                area,
+                check_in,
+                check_out,
+                adults,
+                children,
+                room_type
+            } = req.body;
+
+            if (!area || !check_in) {
+                req.setFlash("error", "Area and check-in date required");
+                return res.redirect("/hotel-enquiry");
+            }
+
+            await HotelEnquiry.create({
+                token: randomstring(64),
+
+                customer_token: null,
+                vendor_token: null,
+
+                who_posted: "PLATFORM",
+                from_web: true,
+
+                area,
+                check_in,
+                check_out: check_out || null,
+
+                adults: Number(adults || 1),
+                children: Number(children || 0),
+                room_type: room_type || null,
+
+                status: "active",
+                flag: 0
+            });
+
+            req.setFlash("success", "Hotel enquiry created successfully");
+            return res.redirect("/hotel-enquiry");
+
+        } catch (error) {
+            console.error("createPlatformHotelEnquiry error:", error);
+            req.setFlash("error", "Something went wrong");
+            return res.redirect("/hotel-enquiry");
+        }
+    },
+
+    createPlatformCabEnquiry: async (req, res) => {
+        try {
+            const {
+                trip_type,
+                from_location,
+                to_location,
+                departure_date,
+                return_date,
+                car_type,
+                contact,
+            } = req.body;
+
+            if (!trip_type || !departure_date) {
+                req.setFlash("error", "Trip type and departure date required");
+                return res.redirect("/cab-enquiry");
+            }
+
+            if (trip_type !== "local" && (!from_location || !to_location)) {
+                req.setFlash("error", "From and To location required");
+                return res.redirect("/cab-enquiry");
+            }
+
+            await CabEnquiry.create({
+                token: randomstring(64),
+
+                vehicle_token: null,
+                vendor_token: null,
+                customer_token: null,
+
+                who_posted: "PLATFORM",
+                from_web: true,
+
+                trip_type,
+                from_location: from_location || null,
+                to_location: trip_type === "local" ? null : to_location || null,
+                departure_date,
+                return_date: trip_type === "round_trip" ? return_date || null : null,
+
+                car_type: car_type || null,
+                contact: contact || null,
+
+                status: "active",
+                flag: 0,
+            });
+
+            req.setFlash("success", "Cab enquiry created successfully");
+            return res.redirect("/cab-enquiry");
+        } catch (error) {
+            console.error("createPlatformCabEnquiry error:", error);
+            req.setFlash("error", "Something went wrong");
+            return res.redirect("/cab-enquiry");
+        }
+    },
+
+    getFlightEnquiry: async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const FlightEnquiry = db.FlightEnquiry || db.flightEnquiry;
+            const EnquiryRequest = db.EnquiryRequest || db.enquiryRequest;
+            const Customer = db.customer || db.Customer || db.tbl_customer;
+            const Vendor = db.vendor || db.Vendor || db.tbl_vendor;
+
+            const sequelizeInstance =
+                db.sequelize ||
+                FlightEnquiry.sequelize ||
+                EnquiryRequest.sequelize;
+
+            const SequelizeLib =
+                db.Sequelize ||
+                sequelizeInstance.Sequelize ||
+                require("sequelize");
+
+            const admin_url = String(process.env.admin_url || process.env.ADMIN_URL || "").replace(/\/$/, "") + "/";
+
+            const imageLiteral = (column = "profile_image") => [
+                SequelizeLib.literal(`
+                CASE 
+                    WHEN ${column} IS NOT NULL AND ${column} != '' 
+                    THEN CONCAT('${admin_url}', ${column})
+                    ELSE NULL
+                END
+            `),
+                "profile_image"
+            ];
+
+            const flightEnquiry = await FlightEnquiry.findOne({
+                where: {
+                    id,
+                    flag: 0
+                },
+                raw: true
+            });
+
+            if (!flightEnquiry) {
+                req.setFlash("error", "Flight enquiry not found");
+                return res.redirect("/flight-enquiry");
+            }
+
+            const enquiryRequests = await EnquiryRequest.findAll({
+                where: {
+                    enquiry_type: "flight",
+                    enquiry_token: flightEnquiry.token,
+                    flag: 0
+                },
+                order: [["created_at", "DESC"]],
+                raw: true
+            });
+
+            const requesterTokens = [
+                ...new Set(enquiryRequests.map(item => item.requester_token).filter(Boolean))
+            ];
+
+            const vendorTokens = [
+                ...new Set(enquiryRequests.map(item => item.vendor_token).filter(Boolean))
+            ];
+
+            const allTokens = [...new Set([...requesterTokens, ...vendorTokens])];
+
+            let customers = [];
+            let vendors = [];
+
+            if (allTokens.length > 0) {
+                customers = await Customer.findAll({
+                    where: {
+                        token: allTokens
+                    },
+                    attributes: [
+                        "token",
+                        "first_name",
+                        "last_name",
+                        "contact",
+                        "email",
+                        imageLiteral("profile_image")
+                    ],
+                    raw: true
+                });
+
+                vendors = await Vendor.findAll({
+                    where: {
+                        token: allTokens
+                    },
+                    attributes: [
+                        "token",
+                        "first_name",
+                        "last_name",
+                        "contact",
+                        "email",
+                        imageLiteral("profile_image")
+                    ],
+                    raw: true
+                });
+            }
+
+            const customerMap = {};
+            customers.forEach(customer => {
+                customerMap[customer.token] = customer;
+            });
+
+            const vendorMap = {};
+            vendors.forEach(vendor => {
+                vendorMap[vendor.token] = vendor;
+            });
+
+            const formattedRequests = enquiryRequests.map(request => {
+                const requester =
+                    customerMap[request.requester_token] ||
+                    vendorMap[request.requester_token] ||
+                    null;
+
+                const vendor = vendorMap[request.vendor_token] || null;
+
+                const requesterRole = customerMap[request.requester_token]
+                    ? "CUSTOMER"
+                    : vendorMap[request.requester_token]
+                        ? "VENDOR"
+                        : request.who_posted || "N/A";
+
+                return {
+                    ...request,
+
+                    requester: requester
+                        ? {
+                            token: requester.token,
+                            first_name: requester.first_name || "",
+                            last_name: requester.last_name || "",
+                            name: `${requester.first_name || ""} ${requester.last_name || ""}`.trim() || "N/A",
+                            contact: requester.contact || request.contact || "N/A",
+                            email: requester.email || "N/A",
+                            profile_image: requester.profile_image || null,
+                            role: requesterRole
+                        }
+                        : {
+                            token: request.requester_token || "N/A",
+                            first_name: "",
+                            last_name: "",
+                            name: "N/A",
+                            contact: request.contact || "N/A",
+                            email: "N/A",
+                            profile_image: null,
+                            role: requesterRole
+                        },
+
+                    vendor: vendor
+                        ? {
+                            token: vendor.token,
+                            first_name: vendor.first_name || "",
+                            last_name: vendor.last_name || "",
+                            name: `${vendor.first_name || ""} ${vendor.last_name || ""}`.trim() || "N/A",
+                            contact: vendor.contact || "N/A",
+                            email: vendor.email || "N/A",
+                            profile_image: vendor.profile_image || null,
+                            role: "VENDOR"
+                        }
+                        : null,
+
+                    createdDate: request.created_at
+                        ? new Date(request.created_at).toLocaleString("en-IN")
+                        : "N/A"
+                };
+            });
+
+            const requestCounters = {
+                total: formattedRequests.length,
+                pending: formattedRequests.filter(item => item.status === "PENDING").length,
+                accepted: formattedRequests.filter(item => item.status === "ACCEPTED").length,
+                rejected: formattedRequests.filter(item => item.status === "REJECTED").length,
+                cancelled: formattedRequests.filter(item => item.status === "CANCELLED").length,
+                booked: formattedRequests.filter(item => item.status === "BOOKED").length
+            };
+
+            return res.render("enquiry/enquiry_detail", {
+                title: "LehConnect | Flight Enquiry Details",
+                admin: req?.session?.user || null,
+                currentPage: "flight-enquiry",
+
+                pageTitle: "Flight Enquiry Details",
+                backUrl: "/flight-enquiry",
+
+                enquiryType: "flight",
+                enquiry: flightEnquiry,
+                flightEnquiry,
+
+                enquiryRequests: formattedRequests,
+                requestCounters,
+
+                fields: [
+                    { label: "Token", key: "token" },
+                    { label: "Trip Type", key: "trip_type" },
+                    { label: "From Location", key: "from_location" },
+                    { label: "To Location", key: "to_location" },
+                    { label: "Departure Date", key: "departure_date" },
+                    { label: "Return Date", key: "return_date" },
+                    { label: "Adults", key: "adults" },
+                    { label: "Children", key: "children" },
+                    { label: "Class Type", key: "class_type" },
+                    { label: "Created", key: "create_date" }
+                ]
+            });
+
+        } catch (error) {
+            console.log("Get flight enquiry error : ", error);
+            req.setFlash("error", "Server Error");
+            return res.redirect("/flight-enquiry");
+        }
+    },
+
+    getHotelEnquiry: async (req, res) => {
+        const HotelEnquiry = db.HotelEnquiry || db.hotelEnquiry;
+
+        return getEnquiryDetail({
+            req,
+            res,
+            model: HotelEnquiry,
+            enquiryType: "hotel",
+            redirectUrl: "/hotel-enquiry",
+            renderTitle: "LehConnect | Hotel Enquiry Details",
+            pageTitle: "Hotel Enquiry Details",
+            currentPage: "hotel-enquiry",
+            fields: [
+                { label: "Token", key: "token" },
+                { label: "Area", key: "area" },
+                { label: "Check In", key: "check_in" },
+                { label: "Check Out", key: "check_out" },
+                { label: "Adults", key: "adults" },
+                { label: "Children", key: "children" },
+                { label: "Room Type", key: "room_type" },
+                { label: "Created", key: "create_date" }
+            ]
+        });
+    },
+
+    getHolidayPackageEnquiry: async (req, res) => {
+        const HolidayPackageEnquiry =
+            db.HolidayPackageEnquiry || db.holidayPackageEnquiry;
+
+        return getEnquiryDetail({
+            req,
+            res,
+            model: HolidayPackageEnquiry,
+            enquiryType: "holiday_package",
+            redirectUrl: "/holiday-package-enquiry",
+            renderTitle: "LehConnect | Holiday Package Enquiry Details",
+            pageTitle: "Holiday Package Enquiry Details",
+            currentPage: "holiday-package-enquiry",
+            fields: [
+                { label: "Token", key: "token" },
+                { label: "From City", key: "from_city" },
+                { label: "To City", key: "to_city" },
+                { label: "Departure Date", key: "departure_date" },
+                { label: "Adults", key: "adults" },
+                { label: "Children", key: "children" },
+                { label: "Room Type", key: "room_type" },
+                { label: "Created", key: "create_date" }
+            ]
+        });
+    },
+
+    getInsuranceEnquiry: async (req, res) => {
+        const InsuranceEnquiry =
+            db.InsuranceEnquiry || db.insuranceEnquiry;
+
+        return getEnquiryDetail({
+            req,
+            res,
+            model: InsuranceEnquiry,
+            enquiryType: "insurance",
+            redirectUrl: "/insurance",
+            renderTitle: "LehConnect | Insurance Enquiry Details",
+            pageTitle: "Insurance Enquiry Details",
+            currentPage: "insurance",
+            fields: [
+                { label: "Token", key: "token" },
+                { label: "Name", key: "name" },
+                { label: "Contact", key: "contact" },
+                { label: "Car Number", key: "car_number" },
+                { label: "WhatsApp", key: "whatsapp" },
+                { label: "Agree Policy", key: "agree_policy" },
+                { label: "Created", key: "create_date" }
+            ]
+        });
+    },
+
+    getCabEnquiry: async (req, res) => {
+        const CabEnquiry = db.CabEnquiry || db.cabEnquiry;
+
+        return getEnquiryDetail({
+            req,
+            res,
+            model: CabEnquiry,
+            enquiryType: "cab",
+            redirectUrl: "/cab-enquiry",
+            renderTitle: "LehConnect | Cab Enquiry Details",
+            pageTitle: "Cab Enquiry Details",
+            currentPage: "cab-enquiry",
+            fields: [
+                { label: "Token", key: "token" },
+                { label: "Trip Type", key: "trip_type" },
+                { label: "From Location", key: "from_location" },
+                { label: "To Location", key: "to_location" },
+                { label: "Departure Date", key: "departure_date" },
+                { label: "Return Date", key: "return_date" },
+                { label: "Car Type", key: "car_type" },
+                { label: "Form Contact", key: "contact" },
+                { label: "Created", key: "create_date" }
+            ]
+        });
     }
 }
 
